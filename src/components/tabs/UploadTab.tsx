@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Upload as UploadIcon,
   Plus,
@@ -8,9 +8,13 @@ import {
   CheckCircle2,
   RotateCcw,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { DissectedGarment } from '../../types';
+import { DissectedGarment, ClothingItem } from '../../types';
+import { INITIAL_CATALOG } from '../../data/mockCatalog';
 
 export const UploadTab: React.FC = () => {
   const {
@@ -27,7 +31,41 @@ export const UploadTab: React.FC = () => {
   } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const [selectedGarmentId, setSelectedGarmentId] = useState<string | null>(null);
+
+  // Trending items for "Hot Right Now" carousel based on likes, wishlists, and purchases
+  const trendingItems = useMemo(() => {
+    return [...INITIAL_CATALOG]
+      .filter((i) => !i.isBundle)
+      .sort((a, b) => {
+        const scoreA = (a.likeCount || 0) + (a.savedCount || 0) * 1.4 + (a.purchaseCount || 0) * 2;
+        const scoreB = (b.likeCount || 0) + (b.savedCount || 0) * 1.4 + (b.purchaseCount || 0) * 2;
+        return scoreB - scoreA;
+      });
+  }, []);
+
+  // Automatic gentle rotation of trending items carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (carouselRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+        if (scrollLeft + clientWidth >= scrollWidth - 10) {
+          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          carouselRef.current.scrollBy({ left: 160, behavior: 'smooth' });
+        }
+      }
+    }, 3800);
+    return () => clearInterval(timer);
+  }, []);
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const offset = direction === 'left' ? -170 : 170;
+      carouselRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,6 +149,86 @@ export const UploadTab: React.FC = () => {
               <UploadIcon className="w-5 h-5" strokeWidth={2.5} />
               <span>Upload</span>
             </button>
+          </div>
+
+          {/* Lower Half: "Hot Right Now" Rotating Carousel with Red Text and Fire Emoji */}
+          <div className="mt-8 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-black text-red-500 flex items-center gap-1.5 tracking-tight">
+                  <span className="text-base animate-pulse">🔥</span>
+                  <span>Hot Right Now</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => scrollCarousel('left')}
+                  className="p-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+                  title="Previous"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => scrollCarousel('right')}
+                  className="p-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+                  title="Next"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Rotating Carousel Track */}
+            <div
+              ref={carouselRef}
+              className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {trendingItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="w-36 flex-shrink-0 snap-start rounded-2xl bg-slate-950 border border-slate-800 p-2 flex flex-col justify-between hover:border-slate-600 transition-all shadow-md group"
+                >
+                  <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-slate-900 mb-2">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/85 text-[10px] font-mono font-bold text-white">
+                      ${item.price}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0 mb-2">
+                    <span className="text-[9px] uppercase font-bold text-emerald-400 block truncate">
+                      {item.brand}
+                    </span>
+                    <p className="text-[11px] font-bold text-white truncate leading-tight">
+                      {item.name}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => addToCart(item)}
+                      className="flex-1 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-bold transition-colors"
+                    >
+                      Cart
+                    </button>
+                    <button
+                      onClick={() => toggleWishlist(item)}
+                      className={`p-1 rounded-lg border transition-colors ${
+                        isItemInWishlist(item.id)
+                          ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                          : 'border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Heart className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : isAnalyzing ? (

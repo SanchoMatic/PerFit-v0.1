@@ -15,11 +15,15 @@ export interface ClothingItem {
   sizes: string[];
   material: string;
   fit: string;
+  gender?: 'men' | 'women' | 'unisex';
   matchScore?: number;
   inStock: boolean;
   isBundle?: boolean;
   collectionId?: string;
   likedAt?: number;
+  likeCount?: number;
+  savedCount?: number;
+  purchaseCount?: number;
 }
 
 export interface DissectedGarment {
@@ -85,9 +89,26 @@ export interface WishlistCollection {
 export interface UserProfile {
   name: string;
   handle: string;
+  email?: string;
+  phone?: string;
   avatarUrl: string;
   bio: string;
   membership: string;
+  paymentMethod?: {
+    cardNumber: string;
+    cardHolder: string;
+    expiry: string;
+    cvc: string;
+    billingZip: string;
+    applePay: boolean;
+  };
+  shippingAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  };
   preferences: {
     topSize: string;
     bottomSize: string;
@@ -96,5 +117,10 @@ export interface UserProfile {
     hapticFeedback: boolean;
     priceDropAlerts: boolean;
     dailySwipeLimit: number | null;
+    theme?: 'dark' | 'light' | 'system';
+    autoAdvance?: boolean;
+    highResImages?: boolean;
+    compactCards?: boolean;
+    showOutOfStock?: boolean;
   };
 }

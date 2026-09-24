@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ClothingItem } from '../../types';
+import { TRENDING_AESTHETICS_25 } from '../../data/aesthetics';
 
 export const SwipeTab: React.FC = () => {
   const {
@@ -29,6 +30,8 @@ export const SwipeTab: React.FC = () => {
     setCategoryFilter,
     aestheticFilter,
     setAestheticFilter,
+    genderFilter,
+    setGenderFilter,
     itemTypeFilter,
     setItemTypeFilter,
     sizeFilter,
@@ -47,6 +50,7 @@ export const SwipeTab: React.FC = () => {
 
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [tossState, setTossState] = useState<'like' | 'dislike' | null>(null);
   const [isBrandMenuOpen, setIsBrandMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
@@ -61,7 +65,7 @@ export const SwipeTab: React.FC = () => {
     swipesToday >= userProfile.preferences.dailySwipeLimit &&
     !swipeLimitBypassed;
 
-  // Brand list
+  // Comprehensive brand list including athletic, casual, retro, and vintage thrift
   const availableBrands = [
     'all',
     "Arc'teryx",
@@ -77,15 +81,57 @@ export const SwipeTab: React.FC = () => {
     'Carhartt WIP',
     'Kith',
     'Nike ACG',
+    'Nike',
+    'Adidas',
+    'Champion',
+    'New Balance',
+    'Lululemon',
+    'Under Armour',
+    'Uniqlo',
+    'GAP',
+    "Levi's",
+    'Zara',
+    'Coogi',
+    'Kappa',
+    'Sergio Tacchini',
+    'Tommy Jeans',
+    'Fila',
+    'Goodwill Vintage',
+    'Thrifted Archive',
+    'Russell Athletic',
+    'Screen Stars',
+    'Military Surplus',
+    'Vintage Carhartt',
   ];
 
   const categories = ['all', 'Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Footwear', 'Accessories', 'Dresses'];
-  const aesthetics = ['all', 'Gorpcore', 'Minimalist', 'Streetwear', 'Quiet Luxury', 'Avant-Garde', 'Workwear'];
+  const aesthetics = ['all', ...TRENDING_AESTHETICS_25];
   const sizes = ['all', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'M Tall', 'L Tall'];
+
+  // Toss animations for Like and Dislike (smooth Tinder-like toss)
+  const triggerLike = () => {
+    if (!currentItem || hasReachedDailyLimit || tossState) return;
+    setTossState('like');
+    setTimeout(() => {
+      swipe('like', currentItem);
+      setTossState(null);
+      setDragOffset({ x: 0, y: 0 });
+    }, 280);
+  };
+
+  const triggerDislike = () => {
+    if (!currentItem || hasReachedDailyLimit || tossState) return;
+    setTossState('dislike');
+    setTimeout(() => {
+      swipe('dislike', currentItem);
+      setTossState(null);
+      setDragOffset({ x: 0, y: 0 });
+    }, 280);
+  };
 
   // Drag handlers for desktop and mobile
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    if (hasReachedDailyLimit) return;
+    if (hasReachedDailyLimit || tossState) return;
     setIsDragging(true);
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -93,7 +139,7 @@ export const SwipeTab: React.FC = () => {
   };
 
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDragging || hasReachedDailyLimit) return;
+    if (!isDragging || hasReachedDailyLimit || tossState) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     setDragOffset({
@@ -103,46 +149,37 @@ export const SwipeTab: React.FC = () => {
   };
 
   const handleTouchEnd = () => {
-    if (!isDragging) return;
+    if (!isDragging || tossState) return;
     setIsDragging(false);
 
-    if (dragOffset.x > 90) {
-      // Swiped right -> Like
-      handleLike();
-    } else if (dragOffset.x < -90) {
-      // Swiped left -> Dislike
-      handleDislike();
+    if (dragOffset.x > 80) {
+      triggerLike();
+    } else if (dragOffset.x < -80) {
+      triggerDislike();
+    } else {
+      setDragOffset({ x: 0, y: 0 });
     }
-    setDragOffset({ x: 0, y: 0 });
   };
 
-  const handleLike = () => {
-    if (!currentItem || hasReachedDailyLimit) return;
-    swipe('like', currentItem);
-    setDragOffset({ x: 0, y: 0 });
-  };
+  const rotation = tossState === 'like' ? 22 : tossState === 'dislike' ? -22 : dragOffset.x * 0.08;
+  const effectiveLikeOpacity = tossState === 'like' ? 1 : Math.min(1, Math.max(0, dragOffset.x / 80));
+  const effectiveDislikeOpacity = tossState === 'dislike' ? 1 : Math.min(1, Math.max(0, -dragOffset.x / 80));
 
-  const handleDislike = () => {
-    if (!currentItem || hasReachedDailyLimit) return;
-    swipe('dislike', currentItem);
-    setDragOffset({ x: 0, y: 0 });
-  };
-
-  const rotation = dragOffset.x * 0.08;
-  const likeOpacity = Math.min(1, Math.max(0, dragOffset.x / 80));
-  const dislikeOpacity = Math.min(1, Math.max(0, -dragOffset.x / 80));
+  const cardTranslateX = tossState === 'like' ? 440 : tossState === 'dislike' ? -440 : dragOffset.x;
+  const cardTranslateY = tossState ? -25 : dragOffset.y;
+  const cardOpacity = tossState ? 0.15 : 1;
 
   return (
-    <div className="relative min-h-[calc(100vh-64px)] flex flex-col justify-between pb-24 px-4 pt-3 max-w-md mx-auto select-none">
+    <div className="relative h-[calc(100vh-64px)] max-h-[calc(100vh-64px)] overflow-hidden flex flex-col justify-between pb-20 px-4 pt-2 max-w-md mx-auto select-none">
       {/* Dynamic Gradual Gradient Glow matching Like (green) or Dislike (red) */}
       <div
-        className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-150 ease-out"
+        className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-200 ease-out"
         style={{
-          opacity: Math.max(likeOpacity, dislikeOpacity) * 0.75,
+          opacity: Math.max(effectiveLikeOpacity, effectiveDislikeOpacity) * 0.85,
           background:
-            dragOffset.x > 0
-              ? `radial-gradient(ellipse at 70% 40%, rgba(16, 185, 129, ${likeOpacity * 0.55}) 0%, rgba(16, 185, 129, 0.15) 45%, transparent 75%)`
-              : `radial-gradient(ellipse at 30% 40%, rgba(239, 68, 68, ${dislikeOpacity * 0.55}) 0%, rgba(239, 68, 68, 0.15) 45%, transparent 75%)`,
+            effectiveLikeOpacity > 0.05 || tossState === 'like' || dragOffset.x > 0
+              ? `radial-gradient(ellipse at 70% 40%, rgba(16, 185, 129, ${effectiveLikeOpacity * 0.65}) 0%, rgba(16, 185, 129, 0.2) 45%, transparent 75%)`
+              : `radial-gradient(ellipse at 30% 40%, rgba(239, 68, 68, ${effectiveDislikeOpacity * 0.65}) 0%, rgba(239, 68, 68, 0.2) 45%, transparent 75%)`,
         }}
       />
 
@@ -209,10 +246,10 @@ export const SwipeTab: React.FC = () => {
         </button>
       </header>
 
-      {/* Main Tinder Card Deck Canvas */}
-      <div className="relative flex-1 flex items-center justify-center my-1 z-10 min-h-[460px]">
+      {/* Main Tinder Card Deck Canvas - Hard limit on height so it never overlaps buttons or header */}
+      <div className="relative flex-1 flex items-center justify-center my-auto z-10 w-full max-h-[min(54vh,460px)] min-h-[350px]">
         {currentItem ? (
-          <div className="relative w-full h-full max-h-[500px] flex items-center justify-center">
+          <div className="relative w-full h-full max-h-[min(54vh,460px)] flex items-center justify-center">
             {/* Background Card Preview for depth */}
             {nextItem && (
               <div className="absolute w-[92%] h-[94%] rounded-3xl bg-slate-900/60 border border-slate-800 transform translate-y-3 scale-95 opacity-60 overflow-hidden pointer-events-none">
@@ -233,19 +270,25 @@ export const SwipeTab: React.FC = () => {
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
               style={{
-                transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${rotation}deg)`,
+                transform: `translate3d(${cardTranslateX}px, ${cardTranslateY}px, 0) rotate(${rotation}deg)`,
+                opacity: cardOpacity,
                 cursor: isDragging ? 'grabbing' : 'grab',
+                transition: tossState
+                  ? 'transform 280ms cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 280ms ease-out'
+                  : isDragging
+                  ? 'none'
+                  : 'transform 200ms ease-out, opacity 200ms ease-out',
                 borderColor:
-                  dragOffset.x > 30
-                    ? `rgba(16, 185, 129, ${Math.min(1, dragOffset.x / 100)})`
-                    : dragOffset.x < -30
-                    ? `rgba(239, 68, 68, ${Math.min(1, -dragOffset.x / 100)})`
+                  effectiveLikeOpacity > 0.2
+                    ? `rgba(16, 185, 129, ${effectiveLikeOpacity})`
+                    : effectiveDislikeOpacity > 0.2
+                    ? `rgba(239, 68, 68, ${effectiveDislikeOpacity})`
                     : 'rgb(51 65 85)',
               }}
-              className="relative w-full h-full rounded-3xl overflow-hidden border-2 bg-slate-950 shadow-2xl transition-transform duration-75 ease-out select-none flex flex-col justify-between"
+              className="relative w-full h-full max-h-[min(54vh,460px)] rounded-3xl overflow-hidden border-2 bg-slate-950 shadow-2xl select-none flex flex-col justify-between"
             >
               {/* Garment Image Area (Focused directly on clothing item) */}
-              <div className="relative flex-1 w-full overflow-hidden bg-slate-900 flex items-center justify-center">
+              <div className="relative flex-1 w-full min-h-0 overflow-hidden bg-slate-900 flex items-center justify-center">
                 <img
                   src={currentItem.image}
                   alt={currentItem.name}
@@ -256,18 +299,24 @@ export const SwipeTab: React.FC = () => {
                 {/* Dark Vignette Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
 
-                {/* LIKE Stamp on Drag Right */}
+                {/* LIKE Stamp on Drag Right / Like Click */}
                 <div
-                  style={{ opacity: likeOpacity }}
-                  className="absolute top-6 right-6 transform rotate-12 border-4 border-emerald-400 bg-emerald-950/70 backdrop-blur-sm text-emerald-400 font-black text-2xl px-4 py-1 rounded-2xl tracking-wider pointer-events-none z-30 shadow-lg shadow-emerald-950/60"
+                  style={{
+                    opacity: effectiveLikeOpacity,
+                    transform: `scale(${effectiveLikeOpacity > 0.1 ? 1 : 0.8}) rotate(12deg)`,
+                  }}
+                  className="absolute top-6 right-6 border-4 border-emerald-400 bg-emerald-950/70 backdrop-blur-sm text-emerald-400 font-black text-2xl px-4 py-1 rounded-2xl tracking-wider pointer-events-none z-30 shadow-lg shadow-emerald-950/60 transition-transform duration-150"
                 >
                   LIKE
                 </div>
 
-                {/* PASS Stamp on Drag Left */}
+                {/* PASS Stamp on Drag Left / Pass Click */}
                 <div
-                  style={{ opacity: dislikeOpacity }}
-                  className="absolute top-6 left-6 transform -rotate-12 border-4 border-red-500 bg-red-950/70 backdrop-blur-sm text-red-400 font-black text-2xl px-4 py-1 rounded-2xl tracking-wider pointer-events-none z-30 shadow-lg shadow-red-950/60"
+                  style={{
+                    opacity: effectiveDislikeOpacity,
+                    transform: `scale(${effectiveDislikeOpacity > 0.1 ? 1 : 0.8}) -rotate-12`,
+                  }}
+                  className="absolute top-6 left-6 border-4 border-red-500 bg-red-950/70 backdrop-blur-sm text-red-400 font-black text-2xl px-4 py-1 rounded-2xl tracking-wider pointer-events-none z-30 shadow-lg shadow-red-950/60 transition-transform duration-150"
                 >
                   PASS
                 </div>
@@ -392,11 +441,11 @@ export const SwipeTab: React.FC = () => {
           - Center circle with lines (inspect item details / undo)
           - Green hatching corner with thumbs up
       */}
-      <div className="relative z-20 flex items-center justify-between px-2 pt-1">
+      <div className="relative z-20 flex items-center justify-between px-2 pt-1 flex-shrink-0">
         {/* Red Dislike Corner Button */}
         <button
-          onClick={handleDislike}
-          disabled={!currentItem || hasReachedDailyLimit}
+          onClick={triggerDislike}
+          disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
           className="relative group p-4 rounded-3xl bg-red-950/40 border-2 border-red-500/80 text-red-400 hover:bg-red-900/60 hover:text-red-300 hover:border-red-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-red-950/60 flex items-center justify-center disabled:opacity-40"
           title="Pass / Dislike (Swipe Left)"
         >
@@ -410,7 +459,7 @@ export const SwipeTab: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={undoLastSwipe}
-            disabled={!canUndo}
+            disabled={!canUndo || tossState !== null}
             className="p-3 rounded-full border border-slate-700 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-md"
             title="Undo last swipe"
           >
@@ -419,7 +468,7 @@ export const SwipeTab: React.FC = () => {
 
           <button
             onClick={() => currentItem && setInspectItem(currentItem)}
-            disabled={!currentItem}
+            disabled={!currentItem || tossState !== null}
             className="p-3.5 rounded-full border-2 border-slate-600 bg-slate-950 text-white hover:border-slate-400 hover:scale-105 transition-all shadow-md flex items-center justify-center group"
             title="Inspect garment details"
           >
@@ -433,8 +482,8 @@ export const SwipeTab: React.FC = () => {
 
         {/* Green Like Corner Button */}
         <button
-          onClick={handleLike}
-          disabled={!currentItem || hasReachedDailyLimit}
+          onClick={triggerLike}
+          disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
           className="relative group p-4 rounded-3xl bg-emerald-950/40 border-2 border-emerald-500 text-emerald-400 hover:bg-emerald-900/60 hover:text-emerald-300 hover:border-emerald-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-950/60 flex items-center justify-center disabled:opacity-40"
           title="Like & Save to Wishlist (Swipe Right)"
         >
@@ -555,12 +604,48 @@ export const SwipeTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Price Range Filter (Off by default) */}
+            {/* Gender / Target Fit Filter */}
+            <div className="mb-4">
+              <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 block">
+                Target Fit / Gender
+              </label>
+              <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-slate-900 border border-slate-800">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'men', label: 'Men' },
+                  { id: 'women', label: 'Women' },
+                  { id: 'unisex', label: 'Unisex' },
+                ].map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setGenderFilter(g.id as typeof genderFilter)}
+                    className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
+                      genderFilter === g.id
+                        ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Price Range Filter ($1 to Unlimited Slider) */}
             <div className="mb-4 p-3 rounded-2xl bg-slate-950 border border-slate-800">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold uppercase text-slate-300 tracking-wider">
-                  Price Range
-                </label>
+                <div>
+                  <label className="text-xs font-semibold uppercase text-slate-300 tracking-wider block">
+                    Price Range Slider
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {priceRangeFilter.active
+                      ? priceRangeFilter.max === null
+                        ? '$1 to Unlimited'
+                        : `$1 to $${priceRangeFilter.max}`
+                      : 'Off ($1 - Unlimited)'}
+                  </span>
+                </div>
                 <button
                   onClick={() =>
                     setPriceRangeFilter({
@@ -578,28 +663,40 @@ export const SwipeTab: React.FC = () => {
                 </button>
               </div>
 
-              {priceRangeFilter.active && (
-                <div className="space-y-2 mt-2 pt-2 border-t border-slate-800">
-                  <div className="flex justify-between text-xs font-mono text-emerald-400">
-                    <span>${priceRangeFilter.min}</span>
-                    <span>${priceRangeFilter.max}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="600"
-                    step="25"
-                    value={priceRangeFilter.max}
-                    onChange={(e) =>
-                      setPriceRangeFilter({
-                        ...priceRangeFilter,
-                        max: parseInt(e.target.value, 10),
-                      })
-                    }
-                    className="w-full accent-emerald-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
-                  />
+              {/* Interactive Range Slider from $1 to Unlimited */}
+              <div className="space-y-2 mt-2 pt-2 border-t border-slate-800">
+                <div className="flex justify-between text-xs font-mono text-emerald-400 font-bold">
+                  <span>$1</span>
+                  <span>
+                    {priceRangeFilter.max === null || (priceRangeFilter.max && priceRangeFilter.max >= 500)
+                      ? 'Unlimited (∞)'
+                      : `$${priceRangeFilter.max}`}
+                  </span>
                 </div>
-              )}
+                <input
+                  type="range"
+                  min="1"
+                  max="500"
+                  step="10"
+                  value={priceRangeFilter.max === null ? 500 : priceRangeFilter.max}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setPriceRangeFilter({
+                      min: 1,
+                      max: val >= 500 ? null : val,
+                      active: true,
+                    });
+                  }}
+                  className="w-full accent-emerald-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <span>$1</span>
+                  <span>$50</span>
+                  <span>$150</span>
+                  <span>$300</span>
+                  <span>Unlimited</span>
+                </div>
+              </div>
             </div>
 
             {/* Category selection */}
@@ -624,23 +721,28 @@ export const SwipeTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Aesthetic selection */}
+            {/* Aesthetic selection (25 Trending Aesthetics Bank) */}
             <div className="mb-5">
-              <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 block">
-                Aesthetic Vibe
-              </label>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider block">
+                  Aesthetic Vibe (25 Trends)
+                </label>
+                <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                  {aestheticFilter === 'all' ? 'All Aesthetics' : aestheticFilter}
+                </span>
+              </div>
+              <div className="max-h-44 overflow-y-auto pr-1 flex flex-wrap gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800">
                 {aesthetics.map((a) => (
                   <button
                     key={a}
                     onClick={() => setAestheticFilter(a)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
                       aestheticFilter === a
                         ? 'bg-emerald-500 text-black font-bold'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
                     }`}
                   >
-                    {a === 'all' ? 'All' : a}
+                    {a === 'all' ? 'All Aesthetics' : a}
                   </button>
                 ))}
               </div>
@@ -651,9 +753,10 @@ export const SwipeTab: React.FC = () => {
                 onClick={() => {
                   setCategoryFilter('all');
                   setAestheticFilter('all');
+                  setGenderFilter('all');
                   setItemTypeFilter('single');
                   setSizeFilter('all');
-                  setPriceRangeFilter({ min: 0, max: 600, active: false });
+                  setPriceRangeFilter({ min: 1, max: null, active: false });
                 }}
                 className="flex-1 py-2.5 rounded-xl border border-slate-700 text-xs font-medium text-slate-300 hover:bg-slate-800"
               >

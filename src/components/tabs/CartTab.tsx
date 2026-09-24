@@ -22,7 +22,10 @@ export const CartTab: React.FC = () => {
     cartTotal,
     showToast,
     setActiveTab,
+    userProfile,
   } = useApp();
+
+  const isLight = userProfile.preferences.theme === 'light';
 
   const [promoCode, setPromoCode] = useState('');
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -33,6 +36,7 @@ export const CartTab: React.FC = () => {
   const shipping = cartTotal > 200 || cartTotal === 0 ? 0 : 15;
   const discountAmount = Math.round(cartTotal * promoDiscount);
   const finalTotal = Math.max(0, cartTotal - discountAmount + shipping);
+  const totalItemsCount = cartItems.reduce((acc, ci) => acc + ci.quantity, 0);
 
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,55 +66,60 @@ export const CartTab: React.FC = () => {
     <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-3 max-w-md mx-auto">
       {/* Top Header - Exact match to sketch: Shopping Bag inside a silver circle */}
       <div className="flex flex-col items-center justify-center my-3">
-        {/* Silver-gray circle with shopping bag icon (matching sketch 2 right top) */}
-        <div className="w-16 h-16 rounded-full bg-slate-800/80 border-2 border-slate-600 flex items-center justify-center text-slate-200 shadow-md shadow-black/40 mb-2 relative group">
-          <ShoppingBag className="w-8 h-8 text-emerald-400" strokeWidth={1.8} />
+        {/* Silver-gray circle with shopping bag icon */}
+        <div className={`w-16 h-16 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-600 text-slate-200'} border-2 flex items-center justify-center shadow-md mb-2 relative group`}>
+          <ShoppingBag className="w-8 h-8 text-emerald-500" strokeWidth={1.8} />
           {cartItems.length > 0 && (
             <span className="absolute -top-1 -right-1 bg-emerald-500 text-black text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">
               {cartItems.reduce((acc, c) => acc + c.quantity, 0)}
             </span>
           )}
         </div>
-        <h1 className="text-base font-extrabold tracking-tight text-white">Your Cart</h1>
-        <p className="text-[11px] text-slate-400">
-          {cartItems.length > 0
-            ? `${cartItems.length} styles selected for purchase`
+        <h1 className={`text-base font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Your Cart</h1>
+        <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+          {totalItemsCount > 0
+            ? `${totalItemsCount} items selected`
             : 'Your shopping bag is currently empty'}
         </p>
       </div>
 
       {cartItems.length > 0 ? (
         <div className="mt-4">
-          {/* Cart Item List with Sketch-style Line Dividers (matching sketch 2 right) */}
-          <div className="divide-y-2 divide-slate-800 border-y-2 border-slate-800">
+          {/* Cart Item List with Sketch-style Line Dividers */}
+          <div className={`divide-y-2 ${isLight ? 'divide-slate-200 border-slate-200' : 'divide-slate-800 border-slate-800'} border-y-2`}>
             {cartItems.map((ci) => (
               <div
                 key={`${ci.item.id}-${ci.selectedSize}-${ci.selectedColor}`}
                 className="py-4 flex items-center justify-between gap-3 group"
               >
-                {/* Garment Image / Icon */}
-                <div className="w-14 h-16 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 flex-shrink-0 relative">
+                {/* Garment Image / Icon - Fixed sizing so image displays clearly */}
+                <div className="w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 relative shadow-md">
                   <img
                     src={ci.item.image}
                     alt={ci.item.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover block"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80';
+                    }}
                   />
-                  <div className="absolute inset-0 bg-black/10" />
+                  <div className="absolute inset-0 bg-black/5" />
                 </div>
 
                 {/* Item Details */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">
+                  <span className="text-[10px] uppercase font-bold text-emerald-500 block tracking-wider">
                     {ci.item.brand}
                   </span>
-                  <h3 className="text-xs font-bold text-white truncate mb-1">
+                  <h3 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate mb-1`}>
                     {ci.item.name}
                   </h3>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                    <span className="bg-slate-800/80 px-1.5 py-0.5 rounded text-[10px] text-slate-300">
+                    <span className={`${isLight ? 'bg-slate-200 text-slate-700' : 'bg-slate-800/80 text-slate-300'} px-1.5 py-0.5 rounded text-[10px]`}>
                       Size: {ci.selectedSize}
                     </span>
-                    <span className="truncate text-slate-400 text-[10px]">
+                    <span className={`truncate ${isLight ? 'text-slate-500' : 'text-slate-400'} text-[10px]`}>
                       {ci.selectedColor}
                     </span>
                   </div>
@@ -119,25 +128,25 @@ export const CartTab: React.FC = () => {
                   <div className="flex items-center gap-2 mt-2">
                     <button
                       onClick={() => updateCartQuantity(ci.item.id, -1, ci.selectedSize)}
-                      className="w-5 h-5 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                      className={`w-5 h-5 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="text-xs font-bold text-white px-1">
+                    <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} px-1`}>
                       {ci.quantity}
                     </span>
                     <button
                       onClick={() => updateCartQuantity(ci.item.id, 1, ci.selectedSize)}
-                      className="w-5 h-5 rounded-md bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                      className={`w-5 h-5 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
                     >
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
 
-                {/* Price (e.g. $10.00 / $120.00 as in sketch) */}
+                {/* Price */}
                 <div className="text-right">
-                  <span className="text-sm font-extrabold text-white font-mono block">
+                  <span className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} font-mono block`}>
                     ${ci.item.price * ci.quantity}
                   </span>
                   {ci.quantity > 1 && (
@@ -147,7 +156,7 @@ export const CartTab: React.FC = () => {
                   )}
                 </div>
 
-                {/* Red Square Trash Button (Exact match to the red trash bin drawn on the right side of sketch 2) */}
+                {/* Red Square Trash Button */}
                 <button
                   onClick={() => removeFromCart(ci.item.id, ci.selectedSize)}
                   className="w-9 h-9 rounded-xl border-2 border-red-500/80 bg-red-950/30 text-red-400 hover:bg-red-900/60 hover:text-red-200 hover:border-red-400 transition-all flex items-center justify-center flex-shrink-0 shadow-sm"

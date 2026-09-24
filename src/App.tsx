@@ -22,14 +22,30 @@ const MainContent: React.FC = () => {
   );
 };
 
+const AppShell: React.FC = () => {
+  const { userProfile } = useApp();
+  const isLight = userProfile.preferences.theme === 'light';
+
+  return (
+    <div
+      className={`min-h-screen transition-colors duration-200 flex flex-col font-sans antialiased ${
+        isLight
+          ? 'bg-white text-slate-900 selection:bg-emerald-500 selection:text-white'
+          : 'bg-black text-white selection:bg-emerald-500 selection:text-black'
+      }`}
+    >
+      <Toasts />
+      <MainContent />
+      {/* Toolbar stays the exact same fixed dark navigation bar */}
+      <Navigation />
+    </div>
+  );
+};
+
 export default function App() {
   return (
     <AppProvider>
-      <div className="min-h-screen bg-black text-white selection:bg-emerald-500 selection:text-black flex flex-col font-sans antialiased">
-        <Toasts />
-        <MainContent />
-        <Navigation />
-      </div>
+      <AppShell />
     </AppProvider>
   );
 }

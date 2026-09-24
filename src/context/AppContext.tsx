@@ -17,6 +17,7 @@ import {
   DEMO_OUTFIT_PRESETS,
   DemoOutfitPreset,
 } from '../data/mockCatalog';
+import { TRENDING_AESTHETICS_25 } from '../data/aesthetics';
 
 interface NotificationToast {
   id: string;
@@ -39,12 +40,14 @@ interface AppContextType {
   setCategoryFilter: (category: string) => void;
   aestheticFilter: string;
   setAestheticFilter: (aesthetic: string) => void;
+  genderFilter: 'all' | 'men' | 'women' | 'unisex';
+  setGenderFilter: (gender: 'all' | 'men' | 'women' | 'unisex') => void;
   itemTypeFilter: 'single' | 'all' | 'bundles';
   setItemTypeFilter: (type: 'single' | 'all' | 'bundles') => void;
   sizeFilter: string;
   setSizeFilter: (size: string) => void;
-  priceRangeFilter: { min: number; max: number; active: boolean };
-  setPriceRangeFilter: (filter: { min: number; max: number; active: boolean }) => void;
+  priceRangeFilter: { min: number; max: number | null; active: boolean };
+  setPriceRangeFilter: (filter: { min: number; max: number | null; active: boolean }) => void;
   swipesToday: number;
   swipeLimitBypassed: boolean;
   bypassSwipeLimit: () => void;
@@ -79,6 +82,7 @@ interface AppContextType {
   // Algorithm & Profile
   algorithmProfile: AlgorithmProfile;
   updateAlgorithmWeight: (type: 'aesthetic' | 'color', key: string, value: number) => void;
+  applyQuizResults: (weights: Record<string, number>, primaryAesthetic: string) => void;
   addDissectedStyleToAlgorithm: (garment: DissectedGarment) => void;
   resetAlgorithm: () => void;
   userProfile: UserProfile;
@@ -105,17 +109,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Tabs in requested order: 1: swipe, 2: wishlist, 3: cart, 4: profile, 5: upload
   const [activeTab, setActiveTab] = useState<TabType>('swipe');
 
-  // Algorithm Profile state
+  // Algorithm Profile state with all 25 trending aesthetics
   const [algorithmProfile, setAlgorithmProfile] = useState<AlgorithmProfile>({
     aestheticWeights: {
-      'Gorpcore': 82,
+      'Gorpcore': 84,
       'Minimalist': 86,
-      'Streetwear': 74,
-      'Quiet Luxury': 78,
+      'Streetwear': 78,
+      'Quiet Luxury': 80,
       'Avant-Garde': 68,
-      'Workwear': 55,
-      'Vintage': 48,
-      'Techwear': 72,
+      'Workwear': 72,
+      'Vintage 70s Retro': 65,
+      '90s Grunge': 70,
+      'Y2K Cyber': 60,
+      'Old Money': 74,
+      'Dark Academia': 66,
+      'Techwear': 75,
+      'Punk Rock': 58,
+      'Skatecore': 68,
+      'Blokecore': 72,
+      'Bohemian Indie': 55,
+      'Western Americana': 64,
+      'Utilitarian Military': 70,
+      'Futuristic Cyberpunk': 62,
+      'Coquette Softcore': 58,
+      'Normcore': 76,
+      'Japanese Americana': 80,
+      'Rave Acid House': 60,
+      'Coastal Grandmillennial': 64,
+      'Clean Sartorial': 75,
     },
     colorWeights: {
       'Olive Green': 90,
@@ -141,6 +162,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       'Carhartt WIP': 72,
       'Kith': 76,
       'Nike ACG': 83,
+      'Nike': 82,
+      'Adidas': 79,
+      'New Balance': 85,
+      'Uniqlo': 88,
+      "Levi's": 84,
+      'Goodwill Vintage': 86,
     },
     categoryWeights: {
       'Outerwear': 85,
@@ -202,11 +229,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [brandFilter, setBrandFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [aestheticFilter, setAestheticFilter] = useState<string>('all');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'men' | 'women' | 'unisex'>('all');
   const [itemTypeFilter, setItemTypeFilter] = useState<'single' | 'all' | 'bundles'>('single');
   const [sizeFilter, setSizeFilter] = useState<string>('all');
-  const [priceRangeFilter, setPriceRangeFilter] = useState<{ min: number; max: number; active: boolean }>({
-    min: 0,
-    max: 600,
+  const [priceRangeFilter, setPriceRangeFilter] = useState<{ min: number; max: number | null; active: boolean }>({
+    min: 1,
+    max: null,
     active: false,
   });
   const [swipesToday, setSwipesToday] = useState<number>(14);
@@ -232,9 +260,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: 'Sanyi Aga',
     handle: '@sanyi_style',
+    email: 'sanyiiaga416@gmail.com',
+    phone: '+1 (555) 234-5678',
     avatarUrl: '',
     bio: 'Curating minimalist utilitarian staples, technical shells & sculptural silhouettes.',
     membership: 'Pro Style Member',
+    paymentMethod: {
+      cardNumber: '•••• •••• •••• 4128',
+      cardHolder: 'Sanyi Aga',
+      expiry: '08/28',
+      cvc: '•••',
+      billingZip: '90210',
+      applePay: true,
+    },
+    shippingAddress: {
+      street: '420 Fashion Ave, Suite 12B',
+      city: 'Los Angeles',
+      state: 'CA',
+      zip: '90210',
+      country: 'United States',
+    },
     preferences: {
       topSize: 'L',
       bottomSize: '32 (M)',
@@ -243,6 +288,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hapticFeedback: true,
       priceDropAlerts: true,
       dailySwipeLimit: null,
+      theme: 'dark',
+      autoAdvance: true,
+      highResImages: true,
+      compactCards: false,
+      showOutOfStock: false,
     },
   });
 
@@ -280,6 +330,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
 
+      // Men / Women / Unisex Filter (applies to recommendations depending on what is selected)
+      if (genderFilter === 'men') {
+        if (item.gender !== 'men' && item.gender !== 'unisex') {
+          return false;
+        }
+      } else if (genderFilter === 'women') {
+        if (item.gender !== 'women' && item.gender !== 'unisex') {
+          return false;
+        }
+      } else if (genderFilter === 'unisex') {
+        if (item.gender !== 'unisex') {
+          return false;
+        }
+      }
+
       // Brand Filter
       if (brandFilter !== 'all' && item.brand.toLowerCase() !== brandFilter.toLowerCase()) {
         return false;
@@ -290,7 +355,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
 
-      // Aesthetic Filter
+      // Aesthetic Filter (25 trending aesthetics bank)
       if (aestheticFilter !== 'all' && !item.aesthetics.includes(aestheticFilter)) {
         return false;
       }
@@ -301,9 +366,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!matchesSize) return false;
       }
 
-      // Price Range Filter (off by default)
+      // Price Range Filter ($1 to unlimited slider, off by default)
       if (priceRangeFilter.active) {
-        if (item.price < priceRangeFilter.min || item.price > priceRangeFilter.max) {
+        if (item.price < priceRangeFilter.min) {
+          return false;
+        }
+        if (priceRangeFilter.max !== null && item.price > priceRangeFilter.max) {
           return false;
         }
       }
@@ -316,6 +384,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     brandFilter,
     categoryFilter,
     aestheticFilter,
+    genderFilter,
     itemTypeFilter,
     sizeFilter,
     priceRangeFilter,
@@ -560,18 +629,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
+  // Apply Quiz Results to adjust all 25 aesthetic weights
+  const applyQuizResults = useCallback((weights: Record<string, number>, primaryAesthetic: string) => {
+    setAlgorithmProfile((prev) => {
+      const updatedAestheticWeights = {
+        ...prev.aestheticWeights,
+        ...weights,
+      };
+
+      return {
+        ...prev,
+        aestheticWeights: updatedAestheticWeights,
+        recentLearnedStyles: [
+          {
+            style: `${primaryAesthetic} Taste Discovery`,
+            source: "What's My Aesthetic? Quiz",
+            timestamp: Date.now(),
+            delta: 25,
+          },
+          ...prev.recentLearnedStyles.slice(0, 8),
+        ],
+      };
+    });
+    showToast("Taste Profile Updated!", `Calibrated around ${primaryAesthetic} across 25 styles`, 'green');
+  }, [showToast]);
+
   const resetAlgorithm = useCallback(() => {
+    const neutralAesthetics: Record<string, number> = {};
+    TRENDING_AESTHETICS_25.forEach((aes) => {
+      neutralAesthetics[aes] = 50;
+    });
+
     setAlgorithmProfile({
-      aestheticWeights: {
-        'Gorpcore': 50,
-        'Minimalist': 50,
-        'Streetwear': 50,
-        'Quiet Luxury': 50,
-        'Avant-Garde': 50,
-        'Workwear': 50,
-        'Vintage': 50,
-        'Techwear': 50,
-      },
+      aestheticWeights: neutralAesthetics,
       colorWeights: {
         'Olive Green': 50,
         'Forest Green': 50,
@@ -868,6 +958,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCategoryFilter,
         aestheticFilter,
         setAestheticFilter,
+        genderFilter,
+        setGenderFilter,
         itemTypeFilter,
         setItemTypeFilter,
         sizeFilter,
@@ -902,6 +994,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cartCount,
         algorithmProfile,
         updateAlgorithmWeight,
+        applyQuizResults,
         addDissectedStyleToAlgorithm,
         resetAlgorithm,
         userProfile,

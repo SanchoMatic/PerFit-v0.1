@@ -35,17 +35,11 @@ export const WishlistTab: React.FC = () => {
   return (
     <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-3 max-w-md mx-auto">
       {/* Top Header - Exact match to sketch with Gear icon */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {/* Sketch-like styled header badge */}
-          <div className="px-3 py-1 rounded-xl bg-slate-900 border border-slate-700/80 shadow-sm">
-            <h1 className="text-base font-extrabold tracking-tight text-white flex items-center gap-2">
-              <span>Wishlist</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                {wishlistItems.length}
-              </span>
-            </h1>
-          </div>
+      <div className="flex items-center justify-between mb-4 pt-1">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-white">
+            Wishlist
+          </h1>
         </div>
 
         {/* Gear Icon (matching sketch 1 right top) */}

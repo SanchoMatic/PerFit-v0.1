@@ -19,8 +19,24 @@ import {
   Trash2,
   Clock,
   Layers,
+  Sun,
+  Moon,
+  Monitor,
+  CheckCircle2,
+  MessageSquarePlus,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Check,
+  Mail,
+  CreditCard,
+  Phone,
+  MapPin,
+  Shield,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { AestheticQuizModal } from '../quiz/AestheticQuizModal';
 
 type ProfileSubView =
   | 'none'
@@ -38,6 +54,7 @@ export const ProfileTab: React.FC = () => {
     updateUserProfile,
     algorithmProfile,
     updateAlgorithmWeight,
+    applyQuizResults,
     resetAlgorithm,
     collections,
     createCollection,
@@ -46,11 +63,49 @@ export const ProfileTab: React.FC = () => {
     showToast,
   } = useApp();
 
+  const isLight = userProfile.preferences.theme === 'light';
+
   const [activeSubView, setActiveSubView] = useState<ProfileSubView>('none');
   const [newCollectionTitle, setNewCollectionTitle] = useState('');
   const [newCollectionDesc, setNewCollectionDesc] = useState('');
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [activeCollectionDetailId, setActiveCollectionDetailId] = useState<string | null>(null);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
+
+  // Reset taste confirmation state
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // FAQ accordion state
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+
+  // Feedback modal state
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState('love');
+  const [feedbackCategory, setFeedbackCategory] = useState('Recommendations');
+  const [feedbackComments, setFeedbackComments] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  // Account setup, email change and payment options state
+  const [currentEmail, setCurrentEmail] = useState(userProfile.email || 'sanyiiaga416@gmail.com');
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+
+  const [cardHolder, setCardHolder] = useState(userProfile.paymentMethod?.cardHolder || 'Sanyi Aga');
+  const [cardNumber, setCardNumber] = useState(userProfile.paymentMethod?.cardNumber || '•••• •••• •••• 4128');
+  const [cardExpiry, setCardExpiry] = useState(userProfile.paymentMethod?.expiry || '08/28');
+  const [cardCvc, setCardCvc] = useState(userProfile.paymentMethod?.cvc || '•••');
+  const [billingZip, setBillingZip] = useState(userProfile.paymentMethod?.billingZip || '90210');
+  const [applePayActive, setApplePayActive] = useState(userProfile.paymentMethod?.applePay ?? true);
+
+  const [phoneInput, setPhoneInput] = useState(userProfile.phone || '+1 (555) 234-5678');
+  const [streetAddress, setStreetAddress] = useState(userProfile.shippingAddress?.street || '420 Fashion Ave, Suite 12B');
+  const [cityAddress, setCityAddress] = useState(userProfile.shippingAddress?.city || 'Los Angeles');
+  const [stateAddress, setStateAddress] = useState(userProfile.shippingAddress?.state || 'CA');
+  const [zipAddress, setZipAddress] = useState(userProfile.shippingAddress?.zip || '90210');
+  const [countryAddress, setCountryAddress] = useState(userProfile.shippingAddress?.country || 'United States');
+  const [twoFactorAuth, setTwoFactorAuth] = useState(true);
+  const [isEditingPayment, setIsEditingPayment] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -106,7 +161,7 @@ export const ProfileTab: React.FC = () => {
     },
   ];
 
-  // Menu items matching sketch in IMG_0317 plus Collections as requested
+  // Menu items with generalized, positive, playful forward-looking summaries
   const menuItems: Array<{
     id: ProfileSubView;
     title: string;
@@ -116,43 +171,43 @@ export const ProfileTab: React.FC = () => {
     {
       id: 'collections',
       title: 'Collections',
-      description: 'Curated moodboards & wardrobe archives',
+      description: 'Curate dream capsule edits, organize moodboards, and shape your style vault',
       icon: FolderHeart,
     },
     {
       id: 'friends',
       title: 'Friends',
-      description: 'Shared closets & style compatibility',
+      description: 'Connect with your fashion circle, trade fits, and vibe check with style kindred',
       icon: Users,
     },
     {
       id: 'stats',
       title: 'Stats',
-      description: 'Swipe activity & style breakdown',
+      description: 'Celebrate your curating journey, track your style pulse, and watch your taste blossom',
       icon: BarChart3,
     },
     {
       id: 'data',
       title: 'Data',
-      description: 'Recommendation algorithm weights & taste profile',
+      description: 'Fine-tune your personal style engine and shape how PerFit discovers pieces for you',
       icon: Database,
     },
     {
       id: 'settings',
       title: 'Settings',
-      description: 'Sizing, tall options & daily limits',
+      description: 'Customize your sizing, dial in your vibe, and make your styling experience truly yours',
       icon: SettingsIcon,
     },
     {
       id: 'account',
       title: 'Account',
-      description: 'Profile details & membership',
+      description: 'Your style identity, membership perks, and account preferences in one cozy spot',
       icon: UserCheck,
     },
     {
       id: 'help',
       title: 'Help',
-      description: 'AI outfit recognition guide & support',
+      description: 'Quick tips, friendly answers, and handy guides whenever you need a helping hand',
       icon: HelpCircle,
     },
   ];
@@ -215,18 +270,15 @@ export const ProfileTab: React.FC = () => {
 
       {activeSubView === 'none' ? (
         <div>
-          {/* Top Profile Header - Exact layout as drawn in sketch IMG_0317:
-              - Circular avatar on left (now interactive for photo upload)
-              - "Profile" title
-          */}
-          <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-slate-800">
+          {/* Top Profile Header */}
+          <div className={`flex items-center gap-4 mb-6 pb-4 border-b-2 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
             {/* Interactive Circular Avatar */}
             <div
               onClick={() => avatarInputRef.current?.click()}
               className="relative cursor-pointer group"
               title="Tap to change profile photo"
             >
-              <div className="w-20 h-20 rounded-full bg-slate-700/80 border-2 border-slate-500 group-hover:border-emerald-400 flex items-center justify-center overflow-hidden shadow-lg shadow-black/50 transition-colors">
+              <div className={`w-20 h-20 rounded-full ${isLight ? 'bg-slate-200 border-slate-400' : 'bg-slate-700/80 border-slate-500'} border-2 group-hover:border-emerald-400 flex items-center justify-center overflow-hidden shadow-lg transition-colors`}>
                 {userProfile.avatarUrl ? (
                   <img
                     src={userProfile.avatarUrl}
@@ -254,18 +306,18 @@ export const ProfileTab: React.FC = () => {
 
             {/* Profile Title & Handle */}
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+              <h1 className={`text-2xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
                 <span>Profile</span>
               </h1>
-              <p className="text-sm font-bold text-emerald-400">{userProfile.name}</p>
-              <p className="text-xs text-slate-400 font-mono">{userProfile.handle}</p>
+              <p className="text-sm font-bold text-emerald-500">{userProfile.name}</p>
+              <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'} font-mono`}>{userProfile.handle}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800 border-slate-700 text-slate-300'} border`}>
                   {userProfile.membership}
                 </span>
                 <button
                   onClick={() => avatarInputRef.current?.click()}
-                  className="text-[10px] text-emerald-400 hover:underline font-semibold"
+                  className="text-[10px] text-emerald-500 hover:underline font-semibold"
                 >
                   Edit Photo
                 </button>
@@ -274,33 +326,25 @@ export const ProfileTab: React.FC = () => {
           </div>
 
           {/* Taste Archetype preview */}
-          <div className="mb-6 p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
+          <div className={`mb-6 p-3.5 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/90 border-slate-800'} border flex items-center justify-between`}>
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400">
+              <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-500">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Active Style Archetype</p>
-                <p className="text-[11px] text-slate-400">Minimal Utilitarian / Gorpcore</p>
+                <p className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Active Style Archetype</p>
+                <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Minimal Utilitarian / Gorpcore</p>
               </div>
             </div>
             <button
               onClick={() => setActiveSubView('data')}
-              className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300"
+              className="text-[11px] font-bold text-emerald-500 hover:text-emerald-400"
             >
               Tune AI &rarr;
             </button>
           </div>
 
-          {/* Chevron Navigation Menu - Exact match to sketch plus Collections:
-              > Collections
-              > Friends
-              > Stats
-              > Data
-              > Settings
-              > Account
-              > Help
-          */}
+          {/* Chevron Navigation Menu */}
           <div className="space-y-2">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -308,25 +352,25 @@ export const ProfileTab: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => setActiveSubView(item.id)}
-                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:bg-slate-800/80 hover:border-slate-700 transition-all duration-200 group text-left shadow-sm"
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl ${isLight ? 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-900' : 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-white'} border transition-all duration-200 group text-left shadow-sm`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-slate-800 text-slate-300 group-hover:text-emerald-400 group-hover:bg-slate-700/80 transition-colors">
+                    <div className={`p-2 rounded-xl ${isLight ? 'bg-slate-200 text-slate-700 group-hover:text-emerald-600' : 'bg-slate-800 text-slate-300 group-hover:text-emerald-400'} transition-colors`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-extrabold text-white group-hover:text-emerald-300 transition-colors">
+                        <span className={`text-sm font-extrabold ${isLight ? 'text-slate-900 group-hover:text-emerald-600' : 'text-white group-hover:text-emerald-300'} transition-colors`}>
                           {item.title}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 leading-tight">
+                      <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'} leading-tight`}>
                         {item.description}
                       </p>
                     </div>
                   </div>
 
-                  <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
                 </button>
               );
             })}
@@ -336,21 +380,21 @@ export const ProfileTab: React.FC = () => {
         /* Subview Detail Page */
         <div className="animate-in fade-in slide-in-from-right-4 duration-200">
           {/* Back Navigation Bar */}
-          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-slate-800">
+          <div className={`flex items-center gap-3 mb-5 pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
             <button
               onClick={() => {
                 setActiveSubView('none');
                 setActiveCollectionDetailId(null);
               }}
-              className="p-2 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+              className={`p-2 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'} border`}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h2 className="text-base font-extrabold text-white capitalize">
+              <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} capitalize`}>
                 {activeSubView}
               </h2>
-              <p className="text-[11px] text-slate-400">Wardrobe & Style Preferences</p>
+              <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Wardrobe & Style Preferences</p>
             </div>
           </div>
 
@@ -588,32 +632,38 @@ export const ProfileTab: React.FC = () => {
           {/* SUBVIEW: DATA */}
           {activeSubView === 'data' && (
             <div className="space-y-4">
-              <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-600/40 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Neural Taste Matrix</span>
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Weights update automatically when you swipe or dissect outfits
-                  </p>
+              {/* What's My Aesthetic? Quiz Button */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/50 via-slate-900 to-slate-950 border border-emerald-500/40 shadow-lg shadow-emerald-950/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-400">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-white">
+                      Taste Discovery Engine
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Answer 20 quick questions to automatically calibrate all 25 aesthetic weights
+                    </p>
+                  </div>
                 </div>
+
                 <button
-                  onClick={resetAlgorithm}
-                  className="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-[10px] text-slate-300 hover:text-white flex items-center gap-1"
+                  onClick={() => setIsQuizOpen(true)}
+                  className="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-black font-black text-xs tracking-wide flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-500/25"
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Reset</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Whats my Aesthetic? Quiz</span>
                 </button>
               </div>
 
               {/* Aesthetic Sliders */}
               <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
                 <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3 flex items-center justify-between">
-                  <span>Aesthetic Weight Sliders</span>
+                  <span>Aesthetic Weight Sliders (25 Trends)</span>
                   <Sliders className="w-3.5 h-3.5 text-emerald-400" />
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                   {Object.entries(algorithmProfile.aestheticWeights).map(([key, value]) => (
                     <div key={key}>
                       <div className="flex justify-between text-xs mb-1">
@@ -660,6 +710,49 @@ export const ProfileTab: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Red Reset Taste Button at Bottom with Confirmation Prompt */}
+              <div className="pt-2">
+                {!showResetConfirm ? (
+                  <button
+                    onClick={() => setShowResetConfirm(true)}
+                    className="w-full py-3 px-4 rounded-2xl border border-red-500/40 bg-red-950/30 hover:bg-red-950/60 text-red-400 hover:text-red-300 font-bold text-xs tracking-wide flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-red-950/20"
+                  >
+                    <RotateCcw className="w-4 h-4 text-red-400" />
+                    <span>Reset Taste</span>
+                  </button>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/50 space-y-3 animate-in fade-in duration-200">
+                    <div>
+                      <p className="text-xs font-black text-red-300 flex items-center gap-1.5">
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Reset Taste Profile?</span>
+                      </p>
+                      <p className="text-[11px] text-slate-300 mt-1">
+                        Are you sure you want to reset all 25 aesthetic weights back to neutral starting points? This will recalibrate your recommendations.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          resetAlgorithm();
+                          setShowResetConfirm(false);
+                          showToast('Taste profile reset to neutral defaults', '', 'green');
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition-colors shadow-md shadow-red-900/40"
+                      >
+                        Yes, Reset Taste
+                      </button>
+                      <button
+                        onClick={() => setShowResetConfirm(false)}
+                        className="px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -792,6 +885,168 @@ export const ProfileTab: React.FC = () => {
                 </div>
               </div>
 
+              {/* App Preferences & Quality of Life (QoL) Settings */}
+              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3.5">
+                <div>
+                  <h3 className="text-xs font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>App Preferences & Quality of Life</span>
+                  </h3>
+                  <p className="text-[10px] text-slate-400">
+                    Fine-tune your browsing comfort, display theme, and deck controls
+                  </p>
+                </div>
+
+                {/* Light or Dark Mode Option */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs text-slate-300 font-semibold">Theme / Appearance</label>
+                    <span className="text-[10px] text-emerald-400 font-medium capitalize">
+                      {userProfile.preferences.theme || 'Dark Mode'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800">
+                    {[
+                      { id: 'dark', label: 'Dark Mode', icon: Moon },
+                      { id: 'light', label: 'Light Mode', icon: Sun },
+                      { id: 'system', label: 'System', icon: Monitor },
+                    ].map((mode) => {
+                      const Icon = mode.icon;
+                      const isActive = (userProfile.preferences.theme || 'dark') === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          onClick={() => {
+                            updateUserProfile({
+                              preferences: {
+                                ...userProfile.preferences,
+                                theme: mode.id as 'dark' | 'light' | 'system',
+                              },
+                            });
+                            showToast(`${mode.label} selected`, '', 'green');
+                          }}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                            isActive
+                              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          <span>{mode.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Auto-Advance on Swipes */}
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                  <div>
+                    <p className="font-semibold text-white">Smooth Auto-Advance</p>
+                    <p className="text-[10px] text-slate-400">Instantly reveal next card after swiping</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={userProfile.preferences.autoAdvance ?? true}
+                    onChange={(e) =>
+                      updateUserProfile({
+                        preferences: {
+                          ...userProfile.preferences,
+                          autoAdvance: e.target.checked,
+                        },
+                      })
+                    }
+                    className="accent-emerald-400 w-4 h-4 cursor-pointer"
+                  />
+                </div>
+
+                {/* High-Resolution Textures */}
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                  <div>
+                    <p className="font-semibold text-white">High-Definition Fabric Textures</p>
+                    <p className="text-[10px] text-slate-400">Load full-res garment weaves & stitch details</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={userProfile.preferences.highResImages ?? true}
+                    onChange={(e) =>
+                      updateUserProfile({
+                        preferences: {
+                          ...userProfile.preferences,
+                          highResImages: e.target.checked,
+                        },
+                      })
+                    }
+                    className="accent-emerald-400 w-4 h-4 cursor-pointer"
+                  />
+                </div>
+
+                {/* Compact Card View */}
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                  <div>
+                    <p className="font-semibold text-white">Compact Card Spacing</p>
+                    <p className="text-[10px] text-slate-400">Optimized layout margins for smaller viewports</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={userProfile.preferences.compactCards ?? false}
+                    onChange={(e) =>
+                      updateUserProfile({
+                        preferences: {
+                          ...userProfile.preferences,
+                          compactCards: e.target.checked,
+                        },
+                      })
+                    }
+                    className="accent-emerald-400 w-4 h-4 cursor-pointer"
+                  />
+                </div>
+
+                {/* Preferred Currency */}
+                <div className="pt-1 border-t border-slate-800/80">
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs text-slate-300 font-semibold">Display Currency</label>
+                    <span className="text-[10px] text-slate-400 font-mono">Real-time fx</span>
+                  </div>
+                  <select
+                    value={userProfile.preferences.currency}
+                    onChange={(e) =>
+                      updateUserProfile({
+                        preferences: { ...userProfile.preferences, currency: e.target.value },
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  >
+                    <option value="USD ($)">USD ($) - United States Dollar</option>
+                    <option value="EUR (€)">EUR (€) - Euro</option>
+                    <option value="GBP (£)">GBP (£) - British Pound</option>
+                    <option value="CAD ($)">CAD ($) - Canadian Dollar</option>
+                    <option value="JPY (¥)">JPY (¥) - Japanese Yen</option>
+                  </select>
+                </div>
+
+                {/* Show Out of Stock Archive Pieces */}
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                  <div>
+                    <p className="font-semibold text-white">Browse Archive & Sold-Out Pieces</p>
+                    <p className="text-[10px] text-slate-400">Include rare vintage archive garments in feed</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={userProfile.preferences.showOutOfStock ?? false}
+                    onChange={(e) =>
+                      updateUserProfile({
+                        preferences: {
+                          ...userProfile.preferences,
+                          showOutOfStock: e.target.checked,
+                        },
+                      })
+                    }
+                    className="accent-emerald-400 w-4 h-4 cursor-pointer"
+                  />
+                </div>
+              </div>
+
               {/* Experience and Alerts */}
               <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
                 <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
@@ -844,44 +1099,9 @@ export const ProfileTab: React.FC = () => {
           {/* SUBVIEW: ACCOUNT */}
           {activeSubView === 'account' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                  Account Details
-                </h3>
-
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Display Name</label>
-                  <input
-                    type="text"
-                    value={userProfile.name}
-                    onChange={(e) => updateUserProfile({ name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Handle</label>
-                  <input
-                    type="text"
-                    value={userProfile.handle}
-                    onChange={(e) => updateUserProfile({ handle: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Bio</label>
-                  <textarea
-                    rows={2}
-                    value={userProfile.bio}
-                    onChange={(e) => updateUserProfile({ bio: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">
+              {/* 1. Membership Tier Section */}
+              <div className={`p-4 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border`}>
+                <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider mb-2`}>
                   Membership Tier
                 </h3>
                 <div className="flex items-center justify-between">
@@ -889,40 +1109,712 @@ export const ProfileTab: React.FC = () => {
                     <span className="text-xs font-black text-emerald-400">
                       {userProfile.membership}
                     </span>
-                    <p className="text-[10px] text-slate-400">
+                    <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       Unlimited AI outfit dissections & priority marketplace drops
                     </p>
                   </div>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-bold">
                     Active
                   </span>
                 </div>
               </div>
+
+              {/* 2. RIGHT BETWEEN MEMBERSHIP TIER AND ACCOUNT DETAILS:
+                  - Option to change email address associated with the account
+                  - Payment options inputs
+                  - Other very basic account setup things (Phone, Shipping Address, Security & 2FA) */}
+              <div className={`p-4 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border space-y-4`}>
+                <div>
+                  <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider flex items-center gap-1.5`}>
+                    <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Account Email & Communication</span>
+                  </h3>
+                  <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Primary email address associated with your PerFit account and order receipts
+                  </p>
+                </div>
+
+                {/* Current Email Display & Change Option */}
+                <div className={`p-3 rounded-xl ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'} border space-y-2`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className={`text-[10px] uppercase font-bold ${isLight ? 'text-slate-500' : 'text-slate-400'} block`}>
+                        Current Email
+                      </span>
+                      <span className={`text-xs font-mono font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        {currentEmail}
+                      </span>
+                    </div>
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30 font-semibold">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Verified</span>
+                    </span>
+                  </div>
+
+                  {!isChangingEmail ? (
+                    <button
+                      onClick={() => {
+                        setIsChangingEmail(true);
+                        setNewEmailInput('');
+                      }}
+                      className="w-full mt-1 py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5 border border-slate-700"
+                    >
+                      <Mail className="w-3 h-3 text-emerald-400" />
+                      <span>Change Email Address</span>
+                    </button>
+                  ) : (
+                    <div className="pt-2 border-t border-slate-800/80 space-y-2 animate-in fade-in duration-150">
+                      <label className={`text-[11px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} block`}>
+                        New Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={newEmailInput}
+                        onChange={(e) => setNewEmailInput(e.target.value)}
+                        placeholder="e.g. yourname@example.com"
+                        className={`w-full px-3 py-2 rounded-xl ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400' : 'bg-slate-900 border-slate-700 text-white placeholder-slate-500'} border text-xs focus:outline-none focus:border-emerald-500`}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const trimmed = newEmailInput.trim();
+                            if (!trimmed || !trimmed.includes('@') || !trimmed.includes('.')) {
+                              showToast('Please enter a valid email address', '', 'red');
+                              return;
+                            }
+                            setCurrentEmail(trimmed);
+                            updateUserProfile({ email: trimmed });
+                            setIsChangingEmail(false);
+                            showToast('Email address updated!', `Confirmation sent to ${trimmed}`, 'green');
+                          }}
+                          className="flex-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[11px] transition-all shadow-sm"
+                        >
+                          Confirm & Update Email
+                        </button>
+                        <button
+                          onClick={() => setIsChangingEmail(false)}
+                          className={`px-3 py-2 rounded-lg ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-slate-800 text-slate-400 hover:text-white'} text-[11px] font-medium`}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment Options Inputs */}
+                <div className="pt-2 border-t border-slate-800/80 space-y-3">
+                  <div>
+                    <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider flex items-center gap-1.5`}>
+                      <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Payment Options & Methods</span>
+                    </h3>
+                    <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Manage your default payment card and 1-tap mobile wallets
+                    </p>
+                  </div>
+
+                  {/* Active Default Card Preview */}
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-7 rounded-md bg-emerald-950/60 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-mono font-black text-[10px]">
+                        VISA
+                      </div>
+                      <div>
+                        <span className="font-mono font-bold text-white block">
+                          {cardNumber}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {cardHolder} • Exp {cardExpiry}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsEditingPayment(!isEditingPayment)}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/20"
+                    >
+                      {isEditingPayment ? 'Close' : 'Update Card'}
+                    </button>
+                  </div>
+
+                  {/* Payment Inputs Form */}
+                  {isEditingPayment && (
+                    <div className={`p-3 rounded-xl ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'} border space-y-2.5 animate-in fade-in duration-150`}>
+                      <div>
+                        <label className={`text-[11px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} block mb-1`}>
+                          Cardholder Name
+                        </label>
+                        <input
+                          type="text"
+                          value={cardHolder}
+                          onChange={(e) => setCardHolder(e.target.value)}
+                          placeholder="Name on card"
+                          className={`w-full px-3 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`text-[11px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} block mb-1`}>
+                          Card Number
+                        </label>
+                        <input
+                          type="text"
+                          value={cardNumber}
+                          onChange={(e) => setCardNumber(e.target.value)}
+                          placeholder="4128 •••• •••• ••••"
+                          className={`w-full px-3 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs font-mono focus:outline-none focus:border-emerald-500`}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className={`text-[10px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} block mb-1`}>
+                            Expiry
+                          </label>
+                          <input
+                            type="text"
+                            value={cardExpiry}
+                            onChange={(e) => setCardExpiry(e.target.value)}
+                            placeholder="MM/YY"
+                            className={`w-full px-2.5 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs font-mono focus:outline-none focus:border-emerald-500`}
+                          />
+                        </div>
+                        <div>
+                          <label className={`text-[10px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} block mb-1`}>
+                            CVC
+                          </label>
+                          <input
+                            type="text"
+                            value={cardCvc}
+                            onChange={(e) => setCardCvc(e.target.value)}
+                            placeholder="•••"
+                            className={`w-full px-2.5 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs font-mono focus:outline-none focus:border-emerald-500`}
+                          />
+                        </div>
+                        <div>
+                          <label className={`text-[10px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} block mb-1`}>
+                            Billing ZIP
+                          </label>
+                          <input
+                            type="text"
+                            value={billingZip}
+                            onChange={(e) => setBillingZip(e.target.value)}
+                            placeholder="90210"
+                            className={`w-full px-2.5 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs font-mono focus:outline-none focus:border-emerald-500`}
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          updateUserProfile({
+                            paymentMethod: {
+                              cardHolder,
+                              cardNumber,
+                              expiry: cardExpiry,
+                              cvc: cardCvc,
+                              billingZip,
+                              applePay: applePayActive,
+                            },
+                          });
+                          setIsEditingPayment(false);
+                          showToast('Payment method saved', 'Default card updated successfully', 'green');
+                        }}
+                        className="w-full mt-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[11px] transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Payment Method</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 1-Tap Apple Pay / Google Pay toggle */}
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <div>
+                      <p className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>Apple Pay & Express Wallets</p>
+                      <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Instant biometric checkout without entering card numbers</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={applePayActive}
+                      onChange={(e) => {
+                        setApplePayActive(e.target.checked);
+                        updateUserProfile({
+                          paymentMethod: {
+                            ...(userProfile.paymentMethod || {
+                              cardHolder,
+                              cardNumber,
+                              expiry: cardExpiry,
+                              cvc: cardCvc,
+                              billingZip,
+                            }),
+                            applePay: e.target.checked,
+                          },
+                        });
+                        showToast(e.target.checked ? 'Apple Pay enabled' : 'Apple Pay disabled', '', 'green');
+                      }}
+                      className="accent-emerald-400 w-4 h-4 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Other Basic Account Setup: Phone & Shipping Address */}
+                <div className="pt-2 border-t border-slate-800/80 space-y-3">
+                  <div>
+                    <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider flex items-center gap-1.5`}>
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Delivery & Setup Details</span>
+                    </h3>
+                    <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Shipping address, delivery phone, and account security
+                    </p>
+                  </div>
+
+                  {/* Phone Number */}
+                  <div>
+                    <label className={`text-[11px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'} flex items-center gap-1.5 mb-1`}>
+                      <Phone className="w-3 h-3 text-emerald-400" />
+                      <span>Phone Number (SMS order & drop tracking)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={phoneInput}
+                        onChange={(e) => setPhoneInput(e.target.value)}
+                        placeholder="+1 (555) 000-0000"
+                        className={`flex-1 px-3 py-1.5 rounded-lg ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500 font-mono`}
+                      />
+                      <button
+                        onClick={() => {
+                          updateUserProfile({ phone: phoneInput });
+                          showToast('Phone number saved', '', 'green');
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-[11px] border border-slate-700"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Shipping Address */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={`text-[11px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                        Default Delivery Address
+                      </label>
+                      <button
+                        onClick={() => setIsEditingAddress(!isEditingAddress)}
+                        className="text-[10px] text-emerald-400 hover:underline font-semibold"
+                      >
+                        {isEditingAddress ? 'Cancel' : 'Edit Address'}
+                      </button>
+                    </div>
+
+                    {!isEditingAddress ? (
+                      <div className={`p-2.5 rounded-xl ${isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-950 border-slate-800 text-slate-300'} border text-xs`}>
+                        <p className="font-semibold text-white">{streetAddress}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {cityAddress}, {stateAddress} {zipAddress} • {countryAddress}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className={`p-3 rounded-xl ${isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'} border space-y-2 animate-in fade-in duration-150`}>
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">Street Address</label>
+                          <input
+                            type="text"
+                            value={streetAddress}
+                            onChange={(e) => setStreetAddress(e.target.value)}
+                            className={`w-full px-2.5 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">City</label>
+                            <input
+                              type="text"
+                              value={cityAddress}
+                              onChange={(e) => setCityAddress(e.target.value)}
+                              className={`w-full px-2 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">State</label>
+                            <input
+                              type="text"
+                              value={stateAddress}
+                              onChange={(e) => setStateAddress(e.target.value)}
+                              className={`w-full px-2 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">ZIP</label>
+                            <input
+                              type="text"
+                              value={zipAddress}
+                              onChange={(e) => setZipAddress(e.target.value)}
+                              className={`w-full px-2 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs font-mono focus:outline-none focus:border-emerald-500`}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-slate-400 block mb-0.5">Country</label>
+                          <select
+                            value={countryAddress}
+                            onChange={(e) => setCountryAddress(e.target.value)}
+                            className={`w-full px-2.5 py-1.5 rounded-lg ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
+                          >
+                            <option value="United States">United States</option>
+                            <option value="Canada">Canada</option>
+                            <option value="United Kingdom">United Kingdom</option>
+                            <option value="European Union">European Union</option>
+                            <option value="Japan">Japan</option>
+                            <option value="Australia">Australia</option>
+                          </select>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            updateUserProfile({
+                              shippingAddress: {
+                                street: streetAddress,
+                                city: cityAddress,
+                                state: stateAddress,
+                                zip: zipAddress,
+                                country: countryAddress,
+                              },
+                            });
+                            setIsEditingAddress(false);
+                            showToast('Delivery address saved', '', 'green');
+                          }}
+                          className="w-full mt-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[11px] transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Save Delivery Address</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Two-Factor Authentication toggle */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                      <div>
+                        <p className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>Two-Factor Security (2FA)</p>
+                        <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Require SMS verification on new logins</p>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={twoFactorAuth}
+                      onChange={(e) => {
+                        setTwoFactorAuth(e.target.checked);
+                        showToast(e.target.checked ? '2FA Enabled' : '2FA Disabled', '', 'green');
+                      }}
+                      className="accent-emerald-400 w-4 h-4 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Account Details Section */}
+              <div className={`p-4 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border space-y-3`}>
+                <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider`}>
+                  Account Details
+                </h3>
+
+                <div>
+                  <label className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} block mb-1`}>Display Name</label>
+                  <input
+                    type="text"
+                    value={userProfile.name}
+                    onChange={(e) => updateUserProfile({ name: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} block mb-1`}>Handle</label>
+                  <input
+                    type="text"
+                    value={userProfile.handle}
+                    onChange={(e) => updateUserProfile({ handle: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500 font-mono`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} block mb-1`}>Bio</label>
+                  <textarea
+                    rows={2}
+                    value={userProfile.bio}
+                    onChange={(e) => updateUserProfile({ bio: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-xl ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
+                  />
+                </div>
+              </div>
             </div>
           )}
-
-          {/* SUBVIEW: HELP */}
           {activeSubView === 'help' && (
-            <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <h3 className="font-bold text-white mb-1">How does PerFit AI Dissection work?</h3>
-                <p className="text-slate-400 leading-relaxed text-[11px]">
-                  When you upload an outfit photo in the Upload tab, multimodal computer vision
-                  dissects each garment (tops, cargo pants, trail runners, accessories) and searches
-                  the live marketplace catalog for matching pieces.
+            <div className="space-y-4 text-xs">
+              {/* Simplified Overview */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-sm text-white">How PerFit Works</h3>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  PerFit learns your fashion taste in real-time. Upload street style outfits to dissect garments, or swipe through pieces to refine your 25 aesthetic affinities.
                 </p>
+                <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-base block mb-0.5">📸</span>
+                    <span className="text-[10px] font-bold text-white block">1. Dissect</span>
+                    <span className="text-[9px] text-slate-400">Find any item</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-base block mb-0.5">⚡</span>
+                    <span className="text-[10px] font-bold text-white block">2. Swipe</span>
+                    <span className="text-[9px] text-slate-400">Train your taste</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                    <span className="text-base block mb-0.5">🛍️</span>
+                    <span className="text-[10px] font-bold text-white block">3. Collect</span>
+                    <span className="text-[9px] text-slate-400">Build dream fits</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <h3 className="font-bold text-white mb-1">Recommendation Engine</h3>
-                <p className="text-slate-400 leading-relaxed text-[11px]">
-                  Every swipe right (or like) enhances the weighting of that garment's brand,
-                  silhouette, color, and aesthetic. You can fine-tune these weights anytime in the Data
-                  section.
-                </p>
+              {/* FAQs Section - 7 Most Likely Confusing Parts */}
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Frequently Asked Questions</span>
+                </h3>
+
+                {[
+                  {
+                    q: 'How does swiping right (Like) or left (Pass) affect my future feed?',
+                    a: 'Swiping right tells PerFit to surface more pieces matching that garment’s cut, brand, silhouette, and aesthetic tags. Swiping left gently downweights those traits. Your recommendations get noticeably more tailored every 5–10 swipes.',
+                  },
+                  {
+                    q: 'What is the difference between Single Items and Outfit Bundles?',
+                    a: 'By default, the Swipe tab suggests single pieces so you can curate individual wardrobe staples. You can toggle "Bundles Only" or "All Items" in the filter menu to explore complete pre-coordinated outfit sets.',
+                  },
+                  {
+                    q: 'How does the "Hot Right Now" carousel work on the Upload page?',
+                    a: 'It automatically tracks the most loved, saved, and purchased pieces across all PerFit members in real-time, giving you quick access to community favorites.',
+                  },
+                  {
+                    q: 'Can I bypass the Daily Swipe Limit if I want to keep browsing?',
+                    a: 'Yes! The daily swipe limit is purely a personal goal feature to encourage mindful shopping. When prompted, you can simply tap "Bypass Limit & Keep Swiping" anytime.',
+                  },
+                  {
+                    q: 'What does the "Whats my Aesthetic? Quiz" do?',
+                    a: 'Located in your Profile > Data section, this 20-question quiz calculates your style leanings and automatically calibrates all 25 aesthetic sliders to match your taste in one go.',
+                  },
+                  {
+                    q: 'How do I organize my saved pieces into Collections?',
+                    a: 'Head to Profile > Collections. You can create custom themed capsules (like "Summer Gorpcore" or "Vintage Denim") and assign any of your wishlisted items to them.',
+                  },
+                  {
+                    q: 'How does the AI Outfit Dissection in the Upload tab work?',
+                    a: 'Upload or snap any street-style photo, and PerFit’s computer vision engine breaks the photo down into individual garments (jackets, tops, pants, shoes) and finds matching marketplace pieces.',
+                  },
+                ].map((faq, idx) => {
+                  const isOpen = expandedFaq === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 transition-colors hover:border-slate-700"
+                    >
+                      <button
+                        onClick={() => setExpandedFaq(isOpen ? null : idx)}
+                        className="w-full flex items-center justify-between text-left gap-2"
+                      >
+                        <span className="font-bold text-xs text-white leading-snug">
+                          {faq.q}
+                        </span>
+                        {isOpen ? (
+                          <ChevronUp className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        )}
+                      </button>
+                      {isOpen && (
+                        <p className="mt-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300 leading-relaxed animate-in fade-in duration-150">
+                          {faq.a}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Feedback Button at Bottom */}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    setIsFeedbackOpen(true);
+                    setFeedbackSubmitted(false);
+                  }}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs tracking-wide flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+                >
+                  <MessageSquarePlus className="w-4 h-4" />
+                  <span>Share App Feedback & Suggestions</span>
+                </button>
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 20-Question What's My Aesthetic? Quiz Modal */}
+      <AestheticQuizModal
+        isOpen={isQuizOpen}
+        onClose={() => setIsQuizOpen(false)}
+        onComplete={applyQuizResults}
+      />
+
+      {/* Feedback Form Modal */}
+      {isFeedbackOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            {!feedbackSubmitted ? (
+              <>
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-400">
+                      <MessageSquarePlus className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm text-white">App Feedback</h3>
+                      <p className="text-[10px] text-slate-400">Help us refine and perfect PerFit</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsFeedbackOpen(false)}
+                    className="p-1 rounded-full text-slate-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Simple Ratings Options */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
+                    How would you rate your experience?
+                  </label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { id: 'love', icon: '😍', label: 'Love' },
+                      { id: 'great', icon: '🙂', label: 'Great' },
+                      { id: 'okay', icon: '😐', label: 'Okay' },
+                      { id: 'needs_work', icon: '🙁', label: 'Fair' },
+                      { id: 'bug', icon: '🐞', label: 'Bug' },
+                    ].map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setFeedbackRating(r.id)}
+                        className={`py-2 px-1 rounded-xl text-center border transition-all ${
+                          feedbackRating === r.id
+                            ? 'border-emerald-500 bg-emerald-950/60 shadow-md shadow-emerald-500/20 scale-105'
+                            : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className="text-base block">{r.icon}</span>
+                        <span className="text-[9px] font-bold block mt-0.5">{r.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Topic / Category */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    What is your feedback about?
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Recommendations',
+                      'Aesthetic Styles',
+                      'Upload & Dissection',
+                      'Feature Idea',
+                      'Design & Sizing',
+                    ].map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setFeedbackCategory(cat)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                          feedbackCategory === cat
+                            ? 'bg-emerald-500 text-black shadow-sm'
+                            : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Open-ended comments box */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    Comments & Suggestions
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={feedbackComments}
+                    onChange={(e) => setFeedbackComments(e.target.value)}
+                    placeholder="Tell us what you're loving, what could be smoother, or features you'd like to see next..."
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
+                  />
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFeedbackSubmitted(true);
+                    showToast('Thank you for your feedback!', 'Your input helps improve PerFit', 'green');
+                  }}
+                  className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs tracking-wide transition-all shadow-lg shadow-emerald-500/25 active:scale-[0.98]"
+                >
+                  Submit Feedback
+                </button>
+              </>
+            ) : (
+              /* Thank You State */
+              <div className="text-center py-4 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/60 flex items-center justify-center mx-auto text-emerald-400">
+                  <CheckCircle2 className="w-9 h-9" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Thank You for Your Feedback!</h3>
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                    We truly appreciate you taking the time to share your thoughts. Your feedback directly guides how we train recommendations and build new features for PerFit!
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsFeedbackOpen(false);
+                    setFeedbackComments('');
+                    setFeedbackSubmitted(false);
+                  }}
+                  className="w-full py-2.5 rounded-2xl bg-slate-800 border border-slate-700 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
