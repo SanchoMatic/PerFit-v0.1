@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag,
   Trash2,
@@ -10,8 +10,11 @@ import {
   CheckCircle2,
   X,
   Sparkles,
+  Heart,
+  Info,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { ClothingItem } from '../../types';
 
 export const CartTab: React.FC = () => {
   const {
@@ -23,6 +26,11 @@ export const CartTab: React.FC = () => {
     showToast,
     setActiveTab,
     userProfile,
+    addToCart,
+    isItemInWishlist,
+    toggleWishlist,
+    activeTab,
+    tabResetTimestamp,
   } = useApp();
 
   const isLight = userProfile.preferences.theme === 'light';
@@ -32,6 +40,13 @@ export const CartTab: React.FC = () => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
+
+  // Return to main cart view when tab is clicked
+  useEffect(() => {
+    setInspectItem(null);
+    setOrderComplete(false);
+  }, [activeTab, tabResetTimestamp]);
 
   const shipping = cartTotal > 200 || cartTotal === 0 ? 0 : 15;
   const discountAmount = Math.round(cartTotal * promoDiscount);
@@ -92,8 +107,12 @@ export const CartTab: React.FC = () => {
                 key={`${ci.item.id}-${ci.selectedSize}-${ci.selectedColor}`}
                 className="py-4 flex items-center justify-between gap-3 group"
               >
-                {/* Garment Image / Icon - Fixed sizing so image displays clearly */}
-                <div className="w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 relative shadow-md">
+                {/* Garment Image / Icon - Clickable to open more info */}
+                <div
+                  onClick={() => setInspectItem(ci.item)}
+                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 relative shadow-md cursor-pointer hover:border-emerald-500 hover:scale-[1.02] transition-all"
+                  title="Click to view more info"
+                >
                   <img
                     src={ci.item.image}
                     alt={ci.item.name}
@@ -104,15 +123,19 @@ export const CartTab: React.FC = () => {
                         'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80';
                     }}
                   />
-                  <div className="absolute inset-0 bg-black/5" />
+                  <div className="absolute inset-0 bg-black/5 hover:bg-black/0 transition-colors" />
                 </div>
 
-                {/* Item Details */}
-                <div className="flex-1 min-w-0">
+                {/* Item Details - Clickable to view more info */}
+                <div
+                  onClick={() => setInspectItem(ci.item)}
+                  className="flex-1 min-w-0 cursor-pointer group/details"
+                  title="Click to view more info"
+                >
                   <span className="text-[10px] uppercase font-bold text-emerald-500 block tracking-wider">
                     {ci.item.brand}
                   </span>
-                  <h3 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate mb-1`}>
+                  <h3 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} group-hover/details:text-emerald-400 transition-colors truncate mb-1`}>
                     {ci.item.name}
                   </h3>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400">
@@ -302,6 +325,86 @@ export const CartTab: React.FC = () => {
             >
               Continue Exploring
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Garment Details Modal (Similar to Swipe tab's 3-line inspect modal) */}
+      {inspectItem && (
+        <div
+          onClick={() => setInspectItem(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in zoom-in-95"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase text-emerald-400 tracking-wider">
+                  {inspectItem.brand}
+                </span>
+                <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
+              </div>
+              <button
+                onClick={() => setInspectItem(null)}
+                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
+              <img
+                src={inspectItem.image}
+                alt={inspectItem.name}
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-emerald-400">
+                ${inspectItem.price}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {inspectItem.description}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Material</span>
+                <span className="font-semibold text-white">{inspectItem.material}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Silhouette Fit</span>
+                <span className="font-semibold text-white">{inspectItem.fit}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  addToCart(inspectItem);
+                  setInspectItem(null);
+                }}
+                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add Another (${inspectItem.price})</span>
+              </button>
+              <button
+                onClick={() => {
+                  toggleWishlist(inspectItem);
+                }}
+                className={`p-3 rounded-xl border transition-colors ${
+                  isItemInWishlist(inspectItem.id)
+                    ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white'
+                }`}
+                title="Toggle Wishlist"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

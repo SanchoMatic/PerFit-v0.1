@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   ShoppingBag,
@@ -18,11 +18,19 @@ export const WishlistTab: React.FC = () => {
     addToCart,
     addAllWishlistToCart,
     setActiveTab,
+    activeTab,
+    tabResetTimestamp,
   } = useApp();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedItemForAction, setSelectedItemForAction] = useState<ClothingItem | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'price-asc' | 'price-desc' | 'match'>('match');
+
+  // Return to main wishlist page when tab is tapped
+  useEffect(() => {
+    setIsSettingsOpen(false);
+    setSelectedItemForAction(null);
+  }, [activeTab, tabResetTimestamp]);
 
   // Sorted items
   const sortedItems = [...wishlistItems].sort((a, b) => {

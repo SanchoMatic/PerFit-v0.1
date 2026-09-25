@@ -12,7 +12,7 @@ const MainContent: React.FC = () => {
   const { activeTab } = useApp();
 
   return (
-    <main className="flex-1 w-full overflow-x-hidden">
+    <main key={activeTab} className="flex-1 w-full overflow-x-hidden animate-page-enter">
       {activeTab === 'swipe' && <SwipeTab />}
       {activeTab === 'wishlist' && <WishlistTab />}
       {activeTab === 'cart' && <CartTab />}

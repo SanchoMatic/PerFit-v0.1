@@ -92,6 +92,8 @@ export interface UserProfile {
   email?: string;
   phone?: string;
   avatarUrl: string;
+  coverImageUrl?: string;
+  joinedDate?: string;
   bio: string;
   membership: string;
   paymentMethod?: {
@@ -117,6 +119,8 @@ export interface UserProfile {
     hapticFeedback: boolean;
     priceDropAlerts: boolean;
     dailySwipeLimit: number | null;
+    preferredDepartment?: 'men' | 'women' | 'both';
+    showArchetypePublicly?: boolean;
     theme?: 'dark' | 'light' | 'system';
     autoAdvance?: boolean;
     highResImages?: boolean;

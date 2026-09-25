@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Flame,
+  X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DissectedGarment, ClothingItem } from '../../types';
@@ -28,22 +29,37 @@ export const UploadTab: React.FC = () => {
     isItemInWishlist,
     setActiveTab,
     showToast,
+    activeTab,
+    tabResetTimestamp,
+    userProfile,
   } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [selectedGarmentId, setSelectedGarmentId] = useState<string | null>(null);
+  const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
+
+  // Return to main upload view when tab is clicked
+  useEffect(() => {
+    setInspectItem(null);
+  }, [activeTab, tabResetTimestamp]);
 
   // Trending items for "Hot Right Now" carousel based on likes, wishlists, and purchases
   const trendingItems = useMemo(() => {
+    const dept = userProfile.preferences.preferredDepartment || 'both';
     return [...INITIAL_CATALOG]
       .filter((i) => !i.isBundle)
+      .filter((item) => {
+        if (dept === 'men') return item.gender !== 'women';
+        if (dept === 'women') return item.gender !== 'men';
+        return true;
+      })
       .sort((a, b) => {
         const scoreA = (a.likeCount || 0) + (a.savedCount || 0) * 1.4 + (a.purchaseCount || 0) * 2;
         const scoreB = (b.likeCount || 0) + (b.savedCount || 0) * 1.4 + (b.purchaseCount || 0) * 2;
         return scoreB - scoreA;
       });
-  }, []);
+  }, [userProfile.preferences.preferredDepartment]);
 
   // Automatic gentle rotation of trending items carousel
   useEffect(() => {
@@ -187,7 +203,9 @@ export const UploadTab: React.FC = () => {
               {trendingItems.map((item) => (
                 <div
                   key={item.id}
-                  className="w-36 flex-shrink-0 snap-start rounded-2xl bg-slate-950 border border-slate-800 p-2 flex flex-col justify-between hover:border-slate-600 transition-all shadow-md group"
+                  onClick={() => setInspectItem(item)}
+                  className="w-36 flex-shrink-0 snap-start rounded-2xl bg-slate-950 border border-slate-800 p-2 flex flex-col justify-between hover:border-slate-500 hover:scale-[1.02] transition-all shadow-md group cursor-pointer"
+                  title="Click to view more info"
                 >
                   <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-slate-900 mb-2">
                     <img
@@ -204,11 +222,11 @@ export const UploadTab: React.FC = () => {
                     <span className="text-[9px] uppercase font-bold text-emerald-400 block truncate">
                       {item.brand}
                     </span>
-                    <p className="text-[11px] font-bold text-white truncate leading-tight">
+                    <p className="text-[11px] font-bold text-white truncate leading-tight group-hover:text-emerald-400 transition-colors">
                       {item.name}
                     </p>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => addToCart(item)}
                       className="flex-1 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-bold transition-colors"
@@ -461,6 +479,86 @@ export const UploadTab: React.FC = () => {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Garment Details Modal (Similar to Swipe tab's 3-line inspect modal) */}
+      {inspectItem && (
+        <div
+          onClick={() => setInspectItem(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in zoom-in-95"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase text-emerald-400 tracking-wider">
+                  {inspectItem.brand}
+                </span>
+                <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
+              </div>
+              <button
+                onClick={() => setInspectItem(null)}
+                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
+              <img
+                src={inspectItem.image}
+                alt={inspectItem.name}
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-emerald-400">
+                ${inspectItem.price}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {inspectItem.description}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Material</span>
+                <span className="font-semibold text-white">{inspectItem.material}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Silhouette Fit</span>
+                <span className="font-semibold text-white">{inspectItem.fit}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  addToCart(inspectItem);
+                  setInspectItem(null);
+                }}
+                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add to Cart (${inspectItem.price})</span>
+              </button>
+              <button
+                onClick={() => {
+                  toggleWishlist(inspectItem);
+                }}
+                className={`p-3 rounded-xl border transition-colors ${
+                  isItemInWishlist(inspectItem.id)
+                    ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white'
+                }`}
+                title="Toggle Wishlist"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

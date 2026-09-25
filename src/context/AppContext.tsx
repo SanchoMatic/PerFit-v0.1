@@ -29,6 +29,8 @@ interface NotificationToast {
 interface AppContextType {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  tabResetTimestamp: number;
+  resetActiveTab: (tab: TabType) => void;
 
   // Swiping
   catalog: ClothingItem[];
@@ -108,6 +110,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Tabs in requested order: 1: swipe, 2: wishlist, 3: cart, 4: profile, 5: upload
   const [activeTab, setActiveTab] = useState<TabType>('swipe');
+  const [tabResetTimestamp, setTabResetTimestamp] = useState<number>(Date.now());
+
+  const resetActiveTab = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    setTabResetTimestamp(Date.now());
+  }, []);
 
   // Algorithm Profile state with all 25 trending aesthetics
   const [algorithmProfile, setAlgorithmProfile] = useState<AlgorithmProfile>({
@@ -263,6 +271,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     email: 'sanyiiaga416@gmail.com',
     phone: '+1 (555) 234-5678',
     avatarUrl: '',
+    coverImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80',
+    joinedDate: 'Joined May 2024',
     bio: 'Curating minimalist utilitarian staples, technical shells & sculptural silhouettes.',
     membership: 'Pro Style Member',
     paymentMethod: {
@@ -288,6 +298,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hapticFeedback: true,
       priceDropAlerts: true,
       dailySwipeLimit: null,
+      preferredDepartment: 'both',
+      showArchetypePublicly: true,
       theme: 'dark',
       autoAdvance: true,
       highResImages: true,
@@ -328,6 +340,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (itemTypeFilter === 'bundles' && !item.isBundle) {
         return false;
+      }
+
+      // Department Setting Filter from Wardrobe & Sizing (Men's, Women's, or Both)
+      const dept = userProfile.preferences.preferredDepartment || 'both';
+      if (dept === 'men') {
+        if (item.gender !== 'men' && item.gender !== 'unisex') {
+          return false;
+        }
+      } else if (dept === 'women') {
+        if (item.gender !== 'women' && item.gender !== 'unisex') {
+          return false;
+        }
       }
 
       // Men / Women / Unisex Filter (applies to recommendations depending on what is selected)
@@ -388,6 +412,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     itemTypeFilter,
     sizeFilter,
     priceRangeFilter,
+    userProfile.preferences.preferredDepartment,
   ]);
 
   const currentCardIndex = 0; // Top card is always index 0 of filtered queue
@@ -949,6 +974,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         activeTab,
         setActiveTab,
+        tabResetTimestamp,
+        resetActiveTab,
         catalog: catalogWithScores,
         filteredCatalog,
         currentCardIndex,

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ChevronDown,
   SlidersHorizontal,
@@ -46,14 +46,24 @@ export const SwipeTab: React.FC = () => {
     isItemInWishlist,
     toggleWishlist,
     setActiveTab,
+    activeTab,
+    tabResetTimestamp,
   } = useApp();
 
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [tossState, setTossState] = useState<'like' | 'dislike' | null>(null);
+  const [isUndoing, setIsUndoing] = useState(false);
   const [isBrandMenuOpen, setIsBrandMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
+
+  // Reset any modals/menus when tapping the Swipe tab
+  useEffect(() => {
+    setInspectItem(null);
+    setIsFilterModalOpen(false);
+    setIsBrandMenuOpen(false);
+  }, [activeTab, tabResetTimestamp]);
 
   const startPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const currentItem = filteredCatalog[0];
@@ -129,6 +139,15 @@ export const SwipeTab: React.FC = () => {
     }, 280);
   };
 
+  const handleUndo = () => {
+    if (!canUndo || tossState !== null) return;
+    setIsUndoing(true);
+    undoLastSwipe();
+    setTimeout(() => {
+      setIsUndoing(false);
+    }, 700);
+  };
+
   // Drag handlers for desktop and mobile
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (hasReachedDailyLimit || tossState) return;
@@ -171,23 +190,26 @@ export const SwipeTab: React.FC = () => {
 
   return (
     <div className="relative h-[calc(100vh-64px)] max-h-[calc(100vh-64px)] overflow-hidden flex flex-col justify-between pb-20 px-4 pt-2 max-w-md mx-auto select-none">
-      {/* Dynamic Gradual Gradient Glow matching Like (green) or Dislike (red) */}
+      {/* Dynamic Gradual Gradient Glow matching Like (green), Dislike (red), or Undo (goldish yellow lower-middle) */}
       <div
         className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-200 ease-out"
         style={{
-          opacity: Math.max(effectiveLikeOpacity, effectiveDislikeOpacity) * 0.85,
-          background:
-            effectiveLikeOpacity > 0.05 || tossState === 'like' || dragOffset.x > 0
-              ? `radial-gradient(ellipse at 70% 40%, rgba(16, 185, 129, ${effectiveLikeOpacity * 0.65}) 0%, rgba(16, 185, 129, 0.2) 45%, transparent 75%)`
-              : `radial-gradient(ellipse at 30% 40%, rgba(239, 68, 68, ${effectiveDislikeOpacity * 0.65}) 0%, rgba(239, 68, 68, 0.2) 45%, transparent 75%)`,
+          opacity: isUndoing
+            ? 0.95
+            : Math.max(effectiveLikeOpacity, effectiveDislikeOpacity) * 0.85,
+          background: isUndoing
+            ? 'radial-gradient(ellipse at 50% 68%, rgba(245, 158, 11, 0.7) 0%, rgba(217, 119, 6, 0.3) 45%, transparent 75%)'
+            : effectiveLikeOpacity > 0.05 || tossState === 'like' || dragOffset.x > 0
+            ? `radial-gradient(ellipse at 70% 40%, rgba(16, 185, 129, ${effectiveLikeOpacity * 0.65}) 0%, rgba(16, 185, 129, 0.2) 45%, transparent 75%)`
+            : `radial-gradient(ellipse at 30% 40%, rgba(239, 68, 68, ${effectiveDislikeOpacity * 0.65}) 0%, rgba(239, 68, 68, 0.2) 45%, transparent 75%)`,
         }}
       />
 
       {/* Top Header - Exact sketch layout with Brands pill in center & Filter icon on right */}
       <header className="flex items-center justify-between z-20 mb-2">
-        <div className="w-14">
-          {/* Brand logo/mark updated to PerFit */}
-          <span className="text-xs font-black tracking-widest text-emerald-400 font-mono">
+        <div className="flex items-center min-w-[70px]">
+          {/* Brand logo/mark updated to PerFit - larger font matching the reach/height of Brands pill */}
+          <span className="text-xl font-black tracking-wider text-emerald-400 font-mono leading-none flex items-center">
             PerFit
           </span>
         </div>
@@ -320,6 +342,13 @@ export const SwipeTab: React.FC = () => {
                 >
                   PASS
                 </div>
+
+                {/* UNDO Stamp in lower middle portion under the card */}
+                {isUndoing && (
+                  <div className="absolute bottom-16 left-1/2 -translate-x-1/2 border-4 border-amber-400 bg-amber-950/85 backdrop-blur-md text-amber-300 font-black text-2xl px-6 py-1.5 rounded-2xl tracking-wider pointer-events-none z-30 shadow-2xl shadow-amber-950/90 animate-in zoom-in-90 fade-in duration-200">
+                    UNDO
+                  </div>
+                )}
 
                 {/* Item Type & Match Score Badges */}
                 <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
@@ -458,9 +487,13 @@ export const SwipeTab: React.FC = () => {
         {/* Center Controls: Circular details button + Undo */}
         <div className="flex items-center gap-2">
           <button
-            onClick={undoLastSwipe}
+            onClick={handleUndo}
             disabled={!canUndo || tossState !== null}
-            className="p-3 rounded-full border border-slate-700 bg-slate-900/90 text-slate-300 hover:text-white hover:border-slate-500 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-md"
+            className={`p-3 rounded-full border transition-all duration-300 shadow-md ${
+              canUndo
+                ? 'border-amber-400 bg-amber-950/50 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-300 hover:text-amber-200 hover:scale-105 active:scale-95 animate-pulse'
+                : 'border-slate-800 bg-slate-900/60 text-slate-500 opacity-30 pointer-events-none'
+            }`}
             title="Undo last swipe"
           >
             <RotateCcw className="w-4 h-4" />

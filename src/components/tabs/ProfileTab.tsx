@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Users,
   BarChart3,
@@ -34,12 +34,21 @@ import {
   MapPin,
   Shield,
   Lock,
+  Wrench,
+  X,
+  Edit3,
+  Calendar,
+  Image as ImageIcon,
+  Heart,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AestheticQuizModal } from '../quiz/AestheticQuizModal';
+import { INITIAL_CATALOG } from '../../data/mockCatalog';
+import { ClothingItem } from '../../types';
 
 type ProfileSubView =
   | 'none'
+  | 'menu'
   | 'friends'
   | 'stats'
   | 'data'
@@ -60,7 +69,13 @@ export const ProfileTab: React.FC = () => {
     createCollection,
     wishlistItems,
     addToCart,
+    toggleWishlist,
+    isItemInWishlist,
     showToast,
+    activeTab,
+    setActiveTab,
+    tabResetTimestamp,
+    setGenderFilter,
   } = useApp();
 
   const isLight = userProfile.preferences.theme === 'light';
@@ -71,6 +86,32 @@ export const ProfileTab: React.FC = () => {
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [activeCollectionDetailId, setActiveCollectionDetailId] = useState<string | null>(null);
   const [isQuizOpen, setIsQuizOpen] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<any | null>(null);
+
+  // Edit Profile Popup state (relocated name, handle, bio)
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editName, setEditName] = useState(userProfile.name);
+  const [editHandle, setEditHandle] = useState(userProfile.handle);
+  const [editBio, setEditBio] = useState(userProfile.bio);
+
+  // Cover background upload ref
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Inspect item modal state
+  const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
+
+  // Reset tab to main page whenever activeTab or tabResetTimestamp changes
+  useEffect(() => {
+    setActiveSubView('none');
+    setActiveCollectionDetailId(null);
+    setIsCreatingCollection(false);
+    setIsQuizOpen(false);
+    setIsFeedbackOpen(false);
+    setIsEditProfileOpen(false);
+    setShowResetConfirm(false);
+    setSelectedFriend(null);
+    setInspectItem(null);
+  }, [activeTab, tabResetTimestamp]);
 
   // Reset taste confirmation state
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -127,7 +168,25 @@ export const ProfileTab: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Friends mock data
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file', '', 'red');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      updateUserProfile({ coverImageUrl: base64 });
+      showToast('Header banner updated', '', 'green');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Friends mock data with rich Pinterest/Instagram style profiles
   const friends = [
     {
       id: 'f-1',
@@ -135,9 +194,36 @@ export const ProfileTab: React.FC = () => {
       handle: '@julian_arch',
       avatar:
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      coverImage:
+        'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=800&q=80',
       matchScore: 94,
       favoriteBrand: "Arc'teryx",
+      styleArchetype: 'Gorpcore & Techwear',
+      bio: 'Pacific Northwest storm shell archivist. Layering technical ripstop, Salomon chassis footwear & utilitarian packs.',
       sharedItems: 12,
+      outfitsCount: 18,
+      friendsCount: 42,
+      joinedDate: 'Joined Jan 2024',
+      moodboards: [
+        {
+          title: 'Alpine Technical Storm Shells',
+          description: '3-layer Gore-Tex and taped seam garments',
+          items: [
+            INITIAL_CATALOG.find((i) => i.id === 'item-1') || INITIAL_CATALOG[0],
+            INITIAL_CATALOG.find((i) => i.id === 'item-4') || INITIAL_CATALOG[3],
+            INITIAL_CATALOG.find((i) => i.id === 'item-45') || INITIAL_CATALOG[5],
+            INITIAL_CATALOG.find((i) => i.id === 'item-51') || INITIAL_CATALOG[6],
+          ],
+        },
+        {
+          title: 'Trail Footwear Vault',
+          description: 'Aggressive Contagrip lugs & all-weather sneakers',
+          items: [
+            INITIAL_CATALOG.find((i) => i.id === 'item-4') || INITIAL_CATALOG[3],
+            INITIAL_CATALOG.find((i) => i.id === 'item-53') || INITIAL_CATALOG[2],
+          ],
+        },
+      ],
     },
     {
       id: 'f-2',
@@ -145,9 +231,28 @@ export const ProfileTab: React.FC = () => {
       handle: '@chen_archive',
       avatar:
         'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
+      coverImage:
+        'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=800&q=80',
       matchScore: 89,
       favoriteBrand: 'Acne Studios',
+      styleArchetype: 'Minimalist & Quiet Luxury',
+      bio: 'Sculptural architectural draping, brushed mohair sweaters, and subdued monochromatic tones.',
       sharedItems: 8,
+      outfitsCount: 24,
+      friendsCount: 58,
+      joinedDate: 'Joined Aug 2023',
+      moodboards: [
+        {
+          title: 'Soft Mohair & Sculptural Pleats',
+          description: 'Permanent pleats and fuzzy oversized knitwear',
+          items: [
+            INITIAL_CATALOG.find((i) => i.id === 'item-2') || INITIAL_CATALOG[1],
+            INITIAL_CATALOG.find((i) => i.id === 'item-3') || INITIAL_CATALOG[2],
+            INITIAL_CATALOG.find((i) => i.id === 'item-46') || INITIAL_CATALOG[7],
+            INITIAL_CATALOG.find((i) => i.id === 'item-60') || INITIAL_CATALOG[8],
+          ],
+        },
+      ],
     },
     {
       id: 'f-3',
@@ -155,59 +260,65 @@ export const ProfileTab: React.FC = () => {
       handle: '@darius_fit',
       avatar:
         'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+      coverImage:
+        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80',
       matchScore: 82,
       favoriteBrand: 'Rick Owens',
+      styleArchetype: 'Avant-Garde & Dark Sartorial',
+      bio: 'Heavy pod shorts, lugged commando soles, and brutalist geometric silhouettes.',
       sharedItems: 5,
+      outfitsCount: 14,
+      friendsCount: 31,
+      joinedDate: 'Joined Nov 2023',
+      moodboards: [
+        {
+          title: 'Dark Brutalist Uniform',
+          description: 'Drop crotch jersey and spazzolato leather derbies',
+          items: [
+            INITIAL_CATALOG.find((i) => i.id === 'item-62') || INITIAL_CATALOG[0],
+            INITIAL_CATALOG.find((i) => i.id === 'item-66') || INITIAL_CATALOG[1],
+            INITIAL_CATALOG.find((i) => i.id === 'item-47') || INITIAL_CATALOG[2],
+          ],
+        },
+      ],
     },
   ];
 
-  // Menu items with generalized, positive, playful forward-looking summaries
-  const menuItems: Array<{
+  // Settings menu sections in requested order: settings, account, data, stats, help
+  const settingsSections: Array<{
     id: ProfileSubView;
     title: string;
     description: string;
     icon: React.ComponentType<{ className?: string }>;
   }> = [
     {
-      id: 'collections',
-      title: 'Collections',
-      description: 'Curate dream capsule edits, organize moodboards, and shape your style vault',
-      icon: FolderHeart,
-    },
-    {
-      id: 'friends',
-      title: 'Friends',
-      description: 'Connect with your fashion circle, trade fits, and vibe check with style kindred',
-      icon: Users,
-    },
-    {
-      id: 'stats',
-      title: 'Stats',
-      description: 'Celebrate your curating journey, track your style pulse, and watch your taste blossom',
-      icon: BarChart3,
-    },
-    {
-      id: 'data',
-      title: 'Data',
-      description: 'Fine-tune your personal style engine and shape how PerFit discovers pieces for you',
-      icon: Database,
-    },
-    {
       id: 'settings',
       title: 'Settings',
-      description: 'Customize your sizing, dial in your vibe, and make your styling experience truly yours',
+      description: 'Sizing, recommendations & display',
       icon: SettingsIcon,
     },
     {
       id: 'account',
       title: 'Account',
-      description: 'Your style identity, membership perks, and account preferences in one cozy spot',
+      description: 'Security, email, address & visibility',
       icon: UserCheck,
+    },
+    {
+      id: 'data',
+      title: 'Data',
+      description: 'Style algorithm weights & quiz',
+      icon: Database,
+    },
+    {
+      id: 'stats',
+      title: 'Stats',
+      description: 'Swipe activity & wardrobe stats',
+      icon: BarChart3,
     },
     {
       id: 'help',
       title: 'Help',
-      description: 'Quick tips, friendly answers, and handy guides whenever you need a helping hand',
+      description: 'Guides, FAQs & feedback',
       icon: HelpCircle,
     },
   ];
@@ -268,102 +379,444 @@ export const ProfileTab: React.FC = () => {
         className="hidden"
       />
 
+      {/* Hidden file input for header banner background upload */}
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCoverChange}
+        className="hidden"
+      />
+
       {activeSubView === 'none' ? (
-        <div>
-          {/* Top Profile Header */}
-          <div className={`flex items-center gap-4 mb-6 pb-4 border-b-2 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
-            {/* Interactive Circular Avatar */}
-            <div
-              onClick={() => avatarInputRef.current?.click()}
-              className="relative cursor-pointer group"
-              title="Tap to change profile photo"
-            >
-              <div className={`w-20 h-20 rounded-full ${isLight ? 'bg-slate-200 border-slate-400' : 'bg-slate-700/80 border-slate-500'} border-2 group-hover:border-emerald-400 flex items-center justify-center overflow-hidden shadow-lg transition-colors`}>
-                {userProfile.avatarUrl ? (
-                  <img
-                    src={userProfile.avatarUrl}
-                    alt={userProfile.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-black/80 flex items-center justify-center">
-                      <div className="w-6 h-6 rounded-full bg-slate-300" />
-                    </div>
-                  </div>
-                )}
-              </div>
+        <div className="page-slide-forward -mx-4 -mt-4">
+          {/* 1. Header Background Banner Image (Pinterest / Instagram profile mix) */}
+          <div className="relative h-44 w-full overflow-hidden bg-slate-900 border-b border-slate-800">
+            <img
+              src={
+                userProfile.coverImageUrl ||
+                'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80'
+              }
+              alt="Profile Cover"
+              className="w-full h-full object-cover"
+            />
+            {/* Elegant vignette gradients */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/50" />
 
-              {/* Edit Camera Overlay */}
-              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Camera className="w-6 h-6 text-white" />
-              </div>
-
-              <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-400 ring-2 ring-black flex items-center justify-center">
-                <Camera className="w-2.5 h-2.5 text-black" />
-              </span>
-            </div>
-
-            {/* Profile Title & Handle */}
-            <div>
-              <h1 className={`text-2xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'} flex items-center gap-2`}>
-                <span>Profile</span>
-              </h1>
-              <p className="text-sm font-bold text-emerald-500">{userProfile.name}</p>
-              <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'} font-mono`}>{userProfile.handle}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800 border-slate-700 text-slate-300'} border`}>
-                  {userProfile.membership}
-                </span>
-                <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="text-[10px] text-emerald-500 hover:underline font-semibold"
-                >
-                  Edit Photo
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Taste Archetype preview */}
-          <div className={`mb-6 p-3.5 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/90 border-slate-800'} border flex items-center justify-between`}>
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-500">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <p className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Active Style Archetype</p>
-                <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Minimal Utilitarian / Gorpcore</p>
-              </div>
-            </div>
+            {/* Top Right Gear Icon for Settings & Menu */}
             <button
-              onClick={() => setActiveSubView('data')}
-              className="text-[11px] font-bold text-emerald-500 hover:text-emerald-400"
+              onClick={() => setActiveSubView('menu')}
+              className="absolute top-3.5 right-3.5 p-2 rounded-full bg-black/65 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white hover:text-emerald-400 hover:border-emerald-400 transition-all shadow-lg z-10"
+              title="Settings & Menu"
             >
-              Tune AI &rarr;
+              <SettingsIcon className="w-4 h-4" />
+            </button>
+
+            {/* Upload Header Background Image Option */}
+            <button
+              onClick={() => coverInputRef.current?.click()}
+              className="absolute bottom-3 right-3.5 px-2.5 py-1 rounded-full bg-black/65 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-md z-10"
+              title="Change Banner Photo"
+            >
+              <Camera className="w-3 h-3 text-emerald-400" />
+              <span>Change Banner</span>
             </button>
           </div>
 
-          {/* Chevron Navigation Menu */}
+          <div className="px-4">
+            {/* 2. Avatar Overlapping Cover & Edit Profile Button */}
+            <div className="flex items-end justify-between -mt-12 mb-3">
+              {/* Interactive Circular Avatar */}
+              <div
+                onClick={() => avatarInputRef.current?.click()}
+                className="relative cursor-pointer group"
+                title="Tap to change profile photo"
+              >
+                <div
+                  className={`w-24 h-24 rounded-full ${
+                    isLight ? 'bg-slate-200 border-white ring-slate-300' : 'bg-slate-800 border-black ring-slate-800'
+                  } border-4 ring-2 group-hover:ring-emerald-400 flex items-center justify-center overflow-hidden shadow-2xl transition-all`}
+                >
+                  {userProfile.avatarUrl ? (
+                    <img
+                      src={userProfile.avatarUrl}
+                      alt={userProfile.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-black/70 flex items-center justify-center text-white font-bold text-lg">
+                        {userProfile.name.charAt(0)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+
+                <span className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-emerald-400 ring-2 ring-black flex items-center justify-center shadow-md">
+                  <Camera className="w-3.5 h-3.5 text-black" />
+                </span>
+              </div>
+
+              {/* Edit Profile Button (Opens Simple Popup Modal) */}
+              <button
+                onClick={() => {
+                  setEditName(userProfile.name);
+                  setEditHandle(userProfile.handle);
+                  setEditBio(userProfile.bio);
+                  setIsEditProfileOpen(true);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl ${
+                  isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-900' : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-white'
+                } border hover:border-emerald-400 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm`}
+              >
+                <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Edit Profile</span>
+              </button>
+            </div>
+
+            {/* 3. User Name & Handle (Removed actual header saying 'Profile') */}
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  {userProfile.name}
+                </h1>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800 border-slate-700 text-slate-300'
+                  } border`}
+                >
+                  {userProfile.membership}
+                </span>
+              </div>
+              <p className="text-xs font-mono text-emerald-400 font-medium">{userProfile.handle}</p>
+            </div>
+
+            {/* Bio text */}
+            {userProfile.bio && (
+              <p className={`text-xs ${isLight ? 'text-slate-700' : 'text-slate-300'} mt-2 leading-relaxed`}>
+                {userProfile.bio}
+              </p>
+            )}
+
+            {/* 4. Subheader Basic Counts: Friends (button), Outfits, Joined Date */}
+            <div className="flex items-center gap-2 mt-3.5 pb-4 border-b border-slate-800/80">
+              {/* Friends button like a regular social media account that opens friends window */}
+              <button
+                onClick={() => setActiveSubView('friends')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${
+                  isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-900' : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-white'
+                } border transition-all text-xs group`}
+                title="View Friends"
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-extrabold font-mono">{friends.length}</span>
+                <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Friends</span>
+              </button>
+
+              {/* Outfits Count */}
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${
+                  isLight ? 'bg-slate-100 border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-white'
+                } border text-xs`}
+              >
+                <Layers className="w-3.5 h-3.5 text-slate-400" />
+                <span className="font-extrabold font-mono">24</span>
+                <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Outfits</span>
+              </div>
+
+              {/* Month/Year Joined App */}
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${
+                  isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-slate-900 border-slate-800 text-slate-400'
+                } border text-xs`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-[11px] font-medium">{userProfile.joinedDate || 'Joined May 2024'}</span>
+              </div>
+            </div>
+
+            {/* 5. My Style Archetype (Changed title; toggleable via Account settings) */}
+            {userProfile.preferences.showArchetypePublicly !== false && (
+              <div
+                className={`my-4 p-3.5 rounded-2xl ${
+                  isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/90 border-slate-800'
+                } border flex items-center justify-between shadow-sm`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-500">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      My Style Archetype
+                    </p>
+                    <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Minimal Utilitarian / Gorpcore
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveSubView('data')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${
+                    isLight
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                  } border text-xs font-bold transition-colors shadow-sm`}
+                  title="Tune Algorithm Weights"
+                >
+                  <Wrench className="w-3.5 h-3.5" />
+                  <span>Tune</span>
+                </button>
+              </div>
+            )}
+
+            {/* 6. MAIN CONTENT: Collections / Moodboards (Pinterest & Instagram Style) */}
+            <div className="mt-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2
+                    className={`text-sm font-black tracking-tight ${
+                      isLight ? 'text-slate-900' : 'text-white'
+                    } flex items-center gap-1.5`}
+                  >
+                    <FolderHeart className="w-4 h-4 text-emerald-400" />
+                    <span>Moodboards & Collections</span>
+                  </h2>
+                  <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Curated aesthetic capsules and outfits
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsCreatingCollection(true)}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Moodboard</span>
+                </button>
+              </div>
+
+              {/* Inline Create Moodboard Form */}
+              {isCreatingCollection && (
+                <form
+                  onSubmit={handleCreateCollectionSubmit}
+                  className={`p-4 rounded-2xl ${
+                    isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-900 border-slate-700'
+                  } border space-y-3 animate-in fade-in duration-150`}
+                >
+                  <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                    New Moodboard Collection
+                  </h4>
+                  <input
+                    type="text"
+                    placeholder="Collection Name (e.g. Winter Gorpcore)"
+                    value={newCollectionTitle}
+                    onChange={(e) => setNewCollectionTitle(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl ${
+                      isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                    } border text-xs focus:outline-none focus:border-emerald-500`}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Aesthetic notes / description"
+                    value={newCollectionDesc}
+                    onChange={(e) => setNewCollectionDesc(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl ${
+                      isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                    } border text-xs focus:outline-none focus:border-emerald-500`}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400 transition-colors"
+                    >
+                      Save Moodboard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingCollection(false)}
+                      className={`px-3 py-2 rounded-xl border ${
+                        isLight ? 'border-slate-300 text-slate-600' : 'border-slate-700 text-slate-400 hover:text-white'
+                      } text-xs`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Pinterest-style Moodboards Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {collections.map((col) => {
+                  const colItems = wishlistItems.filter((i) => col.itemIds.includes(i.id));
+                  const displayItems = colItems.length > 0 ? colItems : INITIAL_CATALOG.slice(0, 4);
+                  return (
+                    <div
+                      key={col.id}
+                      onClick={() => {
+                        setActiveCollectionDetailId(col.id);
+                        setActiveSubView('collections');
+                      }}
+                      className={`p-3 rounded-2xl ${
+                        isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800'
+                      } border transition-all cursor-pointer group flex flex-col justify-between space-y-2.5 shadow-sm`}
+                    >
+                      {/* 4-Image Mosaic Preview */}
+                      <div className="grid grid-cols-2 gap-1 aspect-square rounded-xl overflow-hidden bg-slate-950/80 p-1">
+                        {displayItems.slice(0, 4).map((item, idx) => (
+                          <div
+                            key={idx}
+                            className={`rounded-lg overflow-hidden bg-slate-800 relative ${
+                              displayItems.length === 1 ? 'col-span-2 row-span-2' : ''
+                            }`}
+                          >
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div>
+                        <h4
+                          className={`text-xs font-bold ${
+                            isLight ? 'text-slate-900' : 'text-white'
+                          } group-hover:text-emerald-400 transition-colors line-clamp-1`}
+                        >
+                          {col.title}
+                        </h4>
+                        <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} line-clamp-1`}>
+                          {col.description}
+                        </p>
+                        <span className="text-[10px] text-emerald-400 font-mono font-semibold mt-1 inline-block">
+                          {colItems.length} pieces
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Saved Aesthetic Pins Gallery */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h3
+                    className={`text-xs font-bold uppercase ${
+                      isLight ? 'text-slate-500' : 'text-slate-400'
+                    } tracking-wider flex items-center gap-1.5`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Saved Pins ({wishlistItems.length})</span>
+                  </h3>
+                  <button
+                    onClick={() => setActiveTab('wishlist')}
+                    className="text-[10px] text-emerald-400 hover:underline font-bold"
+                  >
+                    View All in Wishlist →
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  {wishlistItems.slice(0, 6).map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setInspectItem(item)}
+                      className={`p-2 rounded-2xl ${
+                        isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/80 hover:bg-slate-800 border-slate-800'
+                      } border transition-all cursor-pointer group`}
+                    >
+                      <div className="aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 mb-2 relative">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-sm text-[9px] font-mono font-bold text-emerald-400">
+                          ${item.price}
+                        </span>
+                      </div>
+                      <p className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>
+                        {item.name}
+                      </p>
+                      <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} truncate`}>
+                        {item.brand}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : activeSubView === 'menu' ? (
+        /* Top Right Gear Menu Screen: settings, account, data, stats, help in exact order */
+        <div className="page-slide-forward">
+          {/* Header */}
+          <div
+            className={`flex items-center gap-3 mb-5 pb-3 border-b ${
+              isLight ? 'border-slate-200' : 'border-slate-800'
+            }`}
+          >
+            <button
+              onClick={() => setActiveSubView('none')}
+              className={`p-2 rounded-full ${
+                isLight
+                  ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
+                  : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+              } border`}
+              title="Back to Profile"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div>
+              <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                Settings & Account
+              </h2>
+              <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                Manage preferences, data & app options
+              </p>
+            </div>
+          </div>
+
+          {/* 5 Menu Sections in requested order: settings, account, data, stats, help */}
           <div className="space-y-2">
-            {menuItems.map((item) => {
+            {settingsSections.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveSubView(item.id)}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl ${isLight ? 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-900' : 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-white'} border transition-all duration-200 group text-left shadow-sm`}
+                  className={`w-full flex items-center justify-between p-3.5 rounded-2xl ${
+                    isLight
+                      ? 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-900'
+                      : 'bg-slate-900/70 hover:bg-slate-800/90 border-slate-800 text-white'
+                  } border transition-all duration-200 group text-left shadow-sm`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl ${isLight ? 'bg-slate-200 text-slate-700 group-hover:text-emerald-600' : 'bg-slate-800 text-slate-300 group-hover:text-emerald-400'} transition-colors`}>
+                    <div
+                      className={`p-2.5 rounded-xl ${
+                        isLight
+                          ? 'bg-slate-200 text-slate-700 group-hover:text-emerald-600'
+                          : 'bg-slate-800 text-slate-300 group-hover:text-emerald-400'
+                      } transition-colors`}
+                    >
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-sm font-extrabold ${isLight ? 'text-slate-900 group-hover:text-emerald-600' : 'text-white group-hover:text-emerald-300'} transition-colors`}>
-                          {item.title}
-                        </span>
-                      </div>
+                      <span
+                        className={`text-sm font-extrabold ${
+                          isLight
+                            ? 'text-slate-900 group-hover:text-emerald-600'
+                            : 'text-white group-hover:text-emerald-300'
+                        } transition-colors block`}
+                      >
+                        {item.title}
+                      </span>
                       <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'} leading-tight`}>
                         {item.description}
                       </p>
@@ -378,15 +831,20 @@ export const ProfileTab: React.FC = () => {
         </div>
       ) : (
         /* Subview Detail Page */
-        <div className="animate-in fade-in slide-in-from-right-4 duration-200">
+        <div className="page-slide-forward">
           {/* Back Navigation Bar */}
           <div className={`flex items-center gap-3 mb-5 pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
             <button
               onClick={() => {
-                setActiveSubView('none');
+                if (['settings', 'account', 'data', 'stats', 'help'].includes(activeSubView)) {
+                  setActiveSubView('menu');
+                } else {
+                  setActiveSubView('none');
+                }
                 setActiveCollectionDetailId(null);
               }}
-              className={`p-2 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'} border`}
+              className={`p-2 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'} border transition-colors`}
+              title="Back"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -532,16 +990,23 @@ export const ProfileTab: React.FC = () => {
                 {friends.map((f) => (
                   <div
                     key={f.id}
-                    className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between"
+                    onClick={() => setSelectedFriend(f)}
+                    className="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/40 flex items-center justify-between cursor-pointer transition-all group"
                   >
                     <div className="flex items-center gap-3">
-                      <img
-                        src={f.avatar}
-                        alt={f.name}
-                        className="w-11 h-11 rounded-full object-cover border border-slate-700"
-                      />
+                      <div className="relative">
+                        <img
+                          src={f.avatar}
+                          alt={f.name}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-slate-700 group-hover:border-emerald-400 transition-colors"
+                        />
+                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-black" />
+                      </div>
                       <div>
-                        <h4 className="text-xs font-bold text-white">{f.name}</h4>
+                        <h4 className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
+                          <span>{f.name}</span>
+                          <span className="text-[10px] text-slate-500">→</span>
+                        </h4>
                         <p className="text-[10px] text-slate-400 font-mono">{f.handle}</p>
                         <p className="text-[10px] text-slate-500">
                           Fav: <span className="text-slate-300">{f.favoriteBrand}</span> • {f.sharedItems} saves
@@ -554,10 +1019,11 @@ export const ProfileTab: React.FC = () => {
                         {f.matchScore}% Match
                       </span>
                       <button
-                        onClick={() =>
-                          showToast(`Sent fit recommendation to ${f.name}!`, '', 'green')
-                        }
-                        className="text-[10px] text-slate-400 hover:text-white mt-1 underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          showToast(`Sent fit recommendation to ${f.name}!`, '', 'green');
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-emerald-400 mt-1 underline"
                       >
                         Send Fit
                       </button>
@@ -593,10 +1059,7 @@ export const ProfileTab: React.FC = () => {
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-white">Outfits Dissected with AI</p>
-                  <p className="text-[10px] text-slate-400">Garments ingested into recommendation model</p>
-                </div>
+                <p className="text-xs font-bold text-white">Outfits Uploaded</p>
                 <span className="text-lg font-black text-emerald-400 font-mono">
                   {algorithmProfile.dissectedOutfitsLearned}
                 </span>
@@ -815,6 +1278,54 @@ export const ProfileTab: React.FC = () => {
                   Wardrobe & Sizing
                 </h3>
 
+                {/* Recommendation Department Setting (Men's, Women's, or Both) */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs text-slate-300 font-semibold">Recommendation Department</label>
+                    <span className="text-[10px] text-emerald-400 font-semibold uppercase">
+                      {userProfile.preferences.preferredDepartment === 'men'
+                        ? "Men's"
+                        : userProfile.preferences.preferredDepartment === 'women'
+                        ? "Women's"
+                        : 'Both'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800">
+                    {[
+                      { id: 'men', label: "Men's" },
+                      { id: 'women', label: "Women's" },
+                      { id: 'both', label: 'Both' },
+                    ].map((dept) => {
+                      const isActive = (userProfile.preferences.preferredDepartment || 'both') === dept.id;
+                      return (
+                        <button
+                          key={dept.id}
+                          type="button"
+                          onClick={() => {
+                            updateUserProfile({
+                              preferences: {
+                                ...userProfile.preferences,
+                                preferredDepartment: dept.id as 'men' | 'women' | 'both',
+                              },
+                            });
+                            showToast(`${dept.label} department selected`, 'Swipe feed & recommendations updated', 'green');
+                          }}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                            isActive
+                              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {dept.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Filters the swipe feed, recommendations, and drops strictly to your selection.
+                  </p>
+                </div>
+
                 {/* Tops with Tall sizing options */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
@@ -885,12 +1396,12 @@ export const ProfileTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* App Preferences & Quality of Life (QoL) Settings */}
+              {/* Preferences Settings */}
               <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3.5">
                 <div>
                   <h3 className="text-xs font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>App Preferences & Quality of Life</span>
+                    <span>Preferences</span>
                   </h3>
                   <p className="text-[10px] text-slate-400">
                     Fine-tune your browsing comfort, display theme, and deck controls
@@ -1517,44 +2028,58 @@ export const ProfileTab: React.FC = () => {
                       className="accent-emerald-400 w-4 h-4 cursor-pointer"
                     />
                   </div>
+
+                  {/* Style Archetype Public Visibility toggle */}
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <div>
+                        <p className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>Show My Style Archetype on Profile</p>
+                        <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Allow or disallow archetype badge to be displayed publicly on your profile page</p>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={userProfile.preferences.showArchetypePublicly !== false}
+                      onChange={(e) => {
+                        updateUserProfile({
+                          preferences: {
+                            ...userProfile.preferences,
+                            showArchetypePublicly: e.target.checked,
+                          },
+                        });
+                        showToast(e.target.checked ? 'Archetype shown publicly' : 'Archetype hidden from profile', '', 'green');
+                      }}
+                      className="accent-emerald-400 w-4 h-4 cursor-pointer"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* 3. Account Details Section */}
-              <div className={`p-4 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border space-y-3`}>
-                <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider`}>
-                  Account Details
-                </h3>
-
+              {/* Relocated basic account details to popup modal */}
+              <div className={`p-4 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border flex items-center justify-between`}>
                 <div>
-                  <label className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} block mb-1`}>Display Name</label>
-                  <input
-                    type="text"
-                    value={userProfile.name}
-                    onChange={(e) => updateUserProfile({ name: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
-                  />
+                  <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider`}>
+                    Account Details
+                  </h3>
+                  <p className={`text-xs font-semibold ${isLight ? 'text-slate-800' : 'text-slate-200'} mt-0.5`}>
+                    {userProfile.name} • <span className="font-mono text-emerald-400">{userProfile.handle}</span>
+                  </p>
+                  <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'} line-clamp-1 mt-0.5`}>
+                    {userProfile.bio}
+                  </p>
                 </div>
-
-                <div>
-                  <label className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} block mb-1`}>Handle</label>
-                  <input
-                    type="text"
-                    value={userProfile.handle}
-                    onChange={(e) => updateUserProfile({ handle: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500 font-mono`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} block mb-1`}>Bio</label>
-                  <textarea
-                    rows={2}
-                    value={userProfile.bio}
-                    onChange={(e) => updateUserProfile({ bio: e.target.value })}
-                    className={`w-full px-3 py-2 rounded-xl ${isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border text-xs focus:outline-none focus:border-emerald-500`}
-                  />
-                </div>
+                <button
+                  onClick={() => {
+                    setEditName(userProfile.name);
+                    setEditHandle(userProfile.handle);
+                    setEditBio(userProfile.bio);
+                    setIsEditProfileOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400 transition-colors flex-shrink-0"
+                >
+                  Edit Profile
+                </button>
               </div>
             </div>
           )}
@@ -1814,6 +2339,343 @@ export const ProfileTab: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Simple Popup Modal */}
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 border ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-900'
+                : 'bg-slate-950 border-slate-700 text-white'
+            }`}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-emerald-400" />
+                <h3 className="font-extrabold text-base">Edit Profile</h3>
+              </div>
+              <button
+                onClick={() => setIsEditProfileOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Avatar & Photo Change */}
+            <div className="flex items-center gap-3.5 mb-5 p-3 rounded-2xl bg-slate-900/60 border border-slate-800">
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-emerald-500/60 bg-slate-800 flex-shrink-0 relative">
+                {userProfile.avatarUrl ? (
+                  <img
+                    src={userProfile.avatarUrl}
+                    alt={userProfile.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-700 flex items-center justify-center text-slate-300 font-bold text-lg">
+                    {userProfile.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Change Photo</span>
+                </button>
+                <p className="text-[10px] text-slate-400 mt-1">Tap to upload a new profile picture</p>
+              </div>
+            </div>
+
+            {/* Form Fields: Name, Handle, Bio */}
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Your Name"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                  Username Handle
+                </label>
+                <input
+                  type="text"
+                  value={editHandle}
+                  onChange={(e) => setEditHandle(e.target.value)}
+                  placeholder="@handle"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-emerald-400 focus:outline-none focus:border-emerald-500 font-mono font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-300 block mb-1">
+                  Bio & Style Philosophy
+                </label>
+                <textarea
+                  rows={3}
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  placeholder="Share a short bio about your personal style..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 resize-none font-medium leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2.5 mt-5 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsEditProfileOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  updateUserProfile({
+                    name: editName.trim() || userProfile.name,
+                    handle: editHandle.trim() || userProfile.handle,
+                    bio: editBio.trim(),
+                  });
+                  setIsEditProfileOpen(false);
+                  showToast('Profile updated!', '', 'green');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-colors shadow-lg shadow-emerald-500/25"
+              >
+                Save Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Friend Profile Modal / Page */}
+      {selectedFriend && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 page-slide-forward">
+          <div
+            className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl border ${
+              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
+            } shadow-2xl relative scrollbar-none`}
+          >
+            {/* Friend Cover Banner */}
+            <div className="relative h-36 w-full overflow-hidden bg-slate-900">
+              <img
+                src={selectedFriend.coverImage}
+                alt={selectedFriend.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
+              <button
+                onClick={() => setSelectedFriend(null)}
+                className="absolute top-3 right-3 p-1.5 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-sm border border-white/20 text-white transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-5 pb-6">
+              {/* Avatar overlapping banner */}
+              <div className="flex items-end justify-between -mt-10 mb-2">
+                <div className="w-20 h-20 rounded-full border-4 border-black overflow-hidden bg-slate-800 shadow-xl">
+                  <img
+                    src={selectedFriend.avatar}
+                    alt={selectedFriend.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    showToast(`Fit recommendation sent to ${selectedFriend.name}!`, '', 'green');
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-colors shadow-sm"
+                >
+                  Send Fit
+                </button>
+              </div>
+
+              {/* Friend Info */}
+              <div>
+                <h3 className="text-lg font-black">{selectedFriend.name}</h3>
+                <p className="text-xs font-mono text-emerald-400">{selectedFriend.handle}</p>
+                <p className={`text-xs ${isLight ? 'text-slate-700' : 'text-slate-300'} mt-2 leading-relaxed`}>
+                  {selectedFriend.bio}
+                </p>
+              </div>
+
+              {/* Subheader Counts & Stats */}
+              <div className="grid grid-cols-4 gap-1.5 my-3.5 text-center">
+                <div className={`p-2 rounded-xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/80 border-slate-800'} border`}>
+                  <span className="text-xs font-bold text-emerald-400 block font-mono">
+                    {selectedFriend.matchScore}%
+                  </span>
+                  <span className="text-[9px] text-slate-400 uppercase">Match</span>
+                </div>
+                <div className={`p-2 rounded-xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/80 border-slate-800'} border`}>
+                  <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} block font-mono`}>
+                    {selectedFriend.outfitsCount}
+                  </span>
+                  <span className="text-[9px] text-slate-400 uppercase">Outfits</span>
+                </div>
+                <div className={`p-2 rounded-xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/80 border-slate-800'} border`}>
+                  <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} block font-mono`}>
+                    {selectedFriend.friendsCount}
+                  </span>
+                  <span className="text-[9px] text-slate-400 uppercase">Friends</span>
+                </div>
+                <div className={`p-2 rounded-xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/80 border-slate-800'} border`}>
+                  <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} block font-mono`}>
+                    {selectedFriend.sharedItems}
+                  </span>
+                  <span className="text-[9px] text-slate-400 uppercase">Saves</span>
+                </div>
+              </div>
+
+              {/* Style Archetype Badge */}
+              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-emerald-300 block">Style Archetype</span>
+                    <span className="text-xs font-bold text-white">{selectedFriend.styleArchetype}</span>
+                  </div>
+                </div>
+                <span className="text-[10px] text-slate-400">Fav: {selectedFriend.favoriteBrand}</span>
+              </div>
+
+              {/* Friend's Curated Moodboards */}
+              <div className="space-y-3">
+                <h4 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider`}>
+                  Curated Moodboards ({selectedFriend.moodboards.length})
+                </h4>
+                {selectedFriend.moodboards.map((mb: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/90 border-slate-800'} border space-y-2`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <h5 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{mb.title}</h5>
+                      <span className="text-[10px] text-emerald-400 font-mono">{mb.items.length} pieces</span>
+                    </div>
+                    <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{mb.description}</p>
+                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                      {mb.items.map((item: ClothingItem, iIdx: number) => (
+                        <div
+                          key={iIdx}
+                          onClick={() => setInspectItem(item)}
+                          className="aspect-square rounded-xl overflow-hidden bg-slate-950 border border-slate-800 relative cursor-pointer group"
+                          title={`View ${item.name}`}
+                        >
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inspect Item Modal */}
+      {inspectItem && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 page-slide-forward">
+          <div
+            className={`w-full max-w-sm rounded-3xl p-5 border ${
+              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
+            } shadow-2xl space-y-4`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-mono tracking-widest text-emerald-400 font-bold">
+                  {inspectItem.brand}
+                </span>
+                <h3 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  {inspectItem.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setInspectItem(null)}
+                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
+              <img
+                src={inspectItem.image}
+                alt={inspectItem.name}
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-emerald-400">
+                ${inspectItem.price}
+              </span>
+            </div>
+
+            <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-300'} leading-relaxed`}>
+              {inspectItem.description}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className={`p-2.5 rounded-xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border`}>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Material</span>
+                <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{inspectItem.material}</span>
+              </div>
+              <div className={`p-2.5 rounded-xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border`}>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Silhouette Fit</span>
+                <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{inspectItem.fit}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  addToCart(inspectItem);
+                  showToast('Added to Cart', `${inspectItem.name} (${inspectItem.brand})`, 'green');
+                  setInspectItem(null);
+                }}
+                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add to Cart (${inspectItem.price})</span>
+              </button>
+              <button
+                onClick={() => {
+                  toggleWishlist(inspectItem);
+                }}
+                className={`p-3 rounded-xl border transition-colors ${
+                  isItemInWishlist(inspectItem.id)
+                    ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white'
+                }`}
+                title="Toggle Wishlist"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

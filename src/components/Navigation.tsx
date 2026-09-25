@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { TabType } from '../types';
 
 export const Navigation: React.FC = () => {
-  const { activeTab, setActiveTab, cartCount, wishlistItems } = useApp();
+  const { activeTab, setActiveTab, resetActiveTab, cartCount, wishlistItems } = useApp();
 
   const navItems: Array<{
     id: TabType;
@@ -53,7 +53,10 @@ export const Navigation: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                resetActiveTab(item.id);
+              }}
               className={`relative flex flex-col items-center justify-center py-1 px-2.5 transition-all duration-200 group ${
                 isActive ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
               }`}
