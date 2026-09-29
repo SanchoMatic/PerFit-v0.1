@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Settings,
+  SlidersHorizontal,
   ShoppingBag,
   Trash2,
   ArrowUpDown,
@@ -25,6 +25,7 @@ export const WishlistTab: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedItemForAction, setSelectedItemForAction] = useState<ClothingItem | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'price-asc' | 'price-desc' | 'match'>('match');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   // Return to main wishlist page when tab is tapped
   useEffect(() => {
@@ -32,8 +33,13 @@ export const WishlistTab: React.FC = () => {
     setSelectedItemForAction(null);
   }, [activeTab, tabResetTimestamp]);
 
-  // Sorted items
-  const sortedItems = [...wishlistItems].sort((a, b) => {
+  // Filter and sort items
+  const filteredItems = wishlistItems.filter((item) => {
+    if (categoryFilter === 'all') return true;
+    return item.category.toLowerCase() === categoryFilter.toLowerCase();
+  });
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
     if (sortBy === 'price-asc') return a.price - b.price;
     if (sortBy === 'price-desc') return b.price - a.price;
     if (sortBy === 'match') return (b.matchScore || 0) - (a.matchScore || 0);
@@ -42,28 +48,28 @@ export const WishlistTab: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-3 max-w-md mx-auto">
-      {/* Top Header - Large title filling top-left with sleek underline & Gear icon */}
-      <div className="flex items-end justify-between mb-5 pt-1">
+      {/* Top Header - Large title filling top-left with sleek underline */}
+      <div className="flex items-end justify-between mb-4 pt-1">
         <div className="relative">
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white leading-none">
             Wishlist
           </h1>
           <div className="mt-2 h-1 w-24 bg-gradient-to-r from-pink-400 via-pink-300 to-transparent rounded-full shadow-[0_0_10px_rgba(244,114,182,0.6)]" />
         </div>
-
-        {/* Gear Icon (matching sketch 1 right top) */}
-        <button
-          onClick={() => setIsSettingsOpen(true)}
-          className="p-2.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors shadow-sm mb-1"
-          title="Wishlist Settings"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
       </div>
 
-      {/* Bulk action toolbar - ('curated pieces' text removed as requested) */}
-      {wishlistItems.length > 0 && (
-        <div className="flex items-center justify-end px-1 mb-3 text-xs">
+      {/* Action toolbar with Filters button & Add All to Cart */}
+      <div className="flex items-center justify-between px-1 mb-3 text-xs">
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 text-[11px] font-bold transition-colors shadow-sm"
+          title="Wishlist Filters"
+        >
+          <SlidersHorizontal className="w-3 h-3 text-slate-400" />
+          <span>Filters{categoryFilter !== 'all' ? ` (${categoryFilter})` : ''}</span>
+        </button>
+
+        {wishlistItems.length > 0 && (
           <button
             onClick={addAllWishlistToCart}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[11px] font-bold hover:bg-emerald-500 hover:text-black transition-colors shadow-sm"
@@ -71,8 +77,8 @@ export const WishlistTab: React.FC = () => {
             <ShoppingBag className="w-3 h-3" />
             <span>Add All to Cart</span>
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 3x3 Grid matching the exact sketch from IMG_0313 (right) with silver border frames! */}
       {sortedItems.length > 0 ? (
@@ -252,7 +258,32 @@ export const WishlistTab: React.FC = () => {
             </button>
 
             <div className="flex items-center pb-2 border-b border-slate-800 pr-10">
-              <h3 className="text-sm font-extrabold text-white">Wishlist Settings</h3>
+              <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-pink-300" />
+                <span>Wishlist Filters</span>
+              </h3>
+            </div>
+
+            {/* Category Filter */}
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                Category
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {['all', 'outerwear', 'tops', 'bottoms', 'footwear', 'accessories'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border capitalize transition-all ${
+                      categoryFilter === cat
+                        ? 'border-pink-400 bg-pink-950/50 text-pink-300 font-bold'
+                        : 'border-slate-800 bg-slate-900 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -287,7 +318,7 @@ export const WishlistTab: React.FC = () => {
                   addAllWishlistToCart();
                   setIsSettingsOpen(false);
                 }}
-                className="w-full py-2.5 rounded-xl bg-pink-300 text-black text-xs font-black hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold transition-colors shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
               >
                 Move All ({wishlistItems.length}) to Cart
               </button>

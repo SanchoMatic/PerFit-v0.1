@@ -184,10 +184,10 @@ export const CartTab: React.FC = () => {
                   )}
                 </div>
 
-                {/* Red Square Trash Button */}
+                {/* Trash Button without outline */}
                 <button
                   onClick={() => removeFromCart(ci.item.id, ci.selectedSize)}
-                  className="w-9 h-9 rounded-xl border-2 border-red-500/80 bg-red-950/30 text-red-400 hover:bg-red-900/60 hover:text-red-200 hover:border-red-400 transition-all flex items-center justify-center flex-shrink-0 shadow-sm"
+                  className="w-9 h-9 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/70 hover:text-red-200 transition-all flex items-center justify-center flex-shrink-0 shadow-sm"
                   title="Remove Item"
                 >
                   <Trash2 className="w-4 h-4" strokeWidth={2.2} />
@@ -413,7 +413,7 @@ export const CartTab: React.FC = () => {
                   addToCart(inspectItem);
                   setInspectItem(null);
                 }}
-                className="flex-1 py-3 rounded-xl bg-pink-300 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
+                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Add Another (${inspectItem.price})</span>

@@ -67,6 +67,8 @@ export const ProfileTab: React.FC = () => {
     resetAlgorithm,
     collections,
     createCollection,
+    updateCollection,
+    deleteCollection,
     wishlistItems,
     purchasedItems,
     addToCart,
@@ -90,8 +92,35 @@ export const ProfileTab: React.FC = () => {
   const [isQuizOpen, setIsQuizOpen] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<any | null>(null);
 
+  // Selected Detail Page for exact moodboard or exact outfit
+  const [selectedOutfitDetail, setSelectedOutfitDetail] = useState<{
+    id: string;
+    title: string;
+    aesthetic: string;
+    items: ClothingItem[];
+    description: string;
+  } | null>(null);
+  const [selectedMoodboardDetail, setSelectedMoodboardDetail] = useState<any | null>(null);
+
+  // Edit outfit states (when viewing own profile)
+  const [isEditingOutfit, setIsEditingOutfit] = useState(false);
+  const [editOutfitTitle, setEditOutfitTitle] = useState('');
+  const [editOutfitAesthetic, setEditOutfitAesthetic] = useState('');
+  const [editOutfitDesc, setEditOutfitDesc] = useState('');
+
+  // Create outfit states
+  const [isCreatingOutfit, setIsCreatingOutfit] = useState(false);
+  const [newOutfitTitle, setNewOutfitTitle] = useState('');
+  const [newOutfitAesthetic, setNewOutfitAesthetic] = useState('');
+  const [newOutfitDesc, setNewOutfitDesc] = useState('');
+
+  // Edit moodboard states (when viewing own profile)
+  const [isEditingMoodboard, setIsEditingMoodboard] = useState(false);
+  const [editMoodboardTitle, setEditMoodboardTitle] = useState('');
+  const [editMoodboardDesc, setEditMoodboardDesc] = useState('');
+
   // Generate curated outfits built out of items from user's saved list (wishlist) and order history (purchasedItems)
-  const userOutfits = React.useMemo(() => {
+  const defaultOutfits = React.useMemo(() => {
     const pool = [...wishlistItems, ...purchasedItems];
     const source = pool.length >= 2 ? pool : [...pool, ...INITIAL_CATALOG.slice(0, 6)];
 
@@ -120,6 +149,69 @@ export const ProfileTab: React.FC = () => {
     ];
   }, [wishlistItems, purchasedItems]);
 
+  const [outfitsList, setOutfitsList] = useState<Array<{
+    id: string;
+    title: string;
+    aesthetic: string;
+    items: ClothingItem[];
+    description: string;
+  }>>([]);
+
+  useEffect(() => {
+    if (outfitsList.length === 0 && defaultOutfits.length > 0) {
+      setOutfitsList(defaultOutfits);
+    }
+  }, [defaultOutfits]);
+
+  // Swipeable profile tabs gesture state
+  const PROFILE_TABS = ['outfits', 'moodboards', 'collection'] as const;
+  const activeTabIndex = PROFILE_TABS.indexOf(profileTab);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwipingTabs, setIsSwipingTabs] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const tabContentRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    };
+    setIsSwipingTabs(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const diffX = e.touches[0].clientX - touchStartRef.current.x;
+    const diffY = e.touches[0].clientY - touchStartRef.current.y;
+
+    // Do not intercept vertical scrolling
+    if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffX) < 12) {
+      return;
+    }
+
+    let clamped = diffX;
+    if ((activeTabIndex === 0 && diffX > 0) || (activeTabIndex === 2 && diffX < 0)) {
+      clamped = diffX * 0.25;
+    }
+    setSwipeOffset(clamped);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartRef.current) return;
+    if (swipeOffset < -50 && activeTabIndex < 2) {
+      setProfileTab(PROFILE_TABS[activeTabIndex + 1]);
+    } else if (swipeOffset > 50 && activeTabIndex > 0) {
+      setProfileTab(PROFILE_TABS[activeTabIndex - 1]);
+    }
+    setSwipeOffset(0);
+    setIsSwipingTabs(false);
+    touchStartRef.current = null;
+  };
+
+  const containerWidth = tabContentRef.current?.offsetWidth || 380;
+  const progressRatio = -swipeOffset / containerWidth;
+  const visualProgress = Math.max(0, Math.min(2, activeTabIndex + progressRatio));
+
   // Edit Profile Popup state (relocated name, handle, bio)
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editName, setEditName] = useState(userProfile.name);
@@ -137,12 +229,17 @@ export const ProfileTab: React.FC = () => {
     setActiveSubView('none');
     setActiveCollectionDetailId(null);
     setIsCreatingCollection(false);
+    setIsCreatingOutfit(false);
     setIsQuizOpen(false);
     setIsFeedbackOpen(false);
     setIsEditProfileOpen(false);
     setShowResetConfirm(false);
     setSelectedFriend(null);
     setInspectItem(null);
+    setSelectedOutfitDetail(null);
+    setSelectedMoodboardDetail(null);
+    setIsEditingOutfit(false);
+    setIsEditingMoodboard(false);
   }, [activeTab, tabResetTimestamp]);
 
   // Reset taste confirmation state
@@ -235,7 +332,7 @@ export const ProfileTab: React.FC = () => {
       sharedItems: 12,
       outfitsCount: 18,
       friendsCount: 42,
-      joinedDate: 'Joined Jan 2024',
+      joinedDate: 'Jan 2024',
       moodboards: [
         {
           title: 'Alpine Technical Storm Shells',
@@ -272,7 +369,7 @@ export const ProfileTab: React.FC = () => {
       sharedItems: 8,
       outfitsCount: 24,
       friendsCount: 58,
-      joinedDate: 'Joined Aug 2023',
+      joinedDate: 'Aug 2023',
       moodboards: [
         {
           title: 'Soft Mohair & Sculptural Pleats',
@@ -301,7 +398,7 @@ export const ProfileTab: React.FC = () => {
       sharedItems: 5,
       outfitsCount: 14,
       friendsCount: 31,
-      joinedDate: 'Joined Nov 2023',
+      joinedDate: 'Nov 2023',
       moodboards: [
         {
           title: 'Dark Brutalist Uniform',
@@ -420,7 +517,466 @@ export const ProfileTab: React.FC = () => {
         className="hidden"
       />
 
-      {activeSubView === 'none' ? (
+      {selectedOutfitDetail ? (
+        <div className="page-slide-forward space-y-4">
+          {/* Header Bar with Back Button and Small Simple Edit Button */}
+          <div
+            className={`flex items-center justify-between pb-3 border-b ${
+              isLight ? 'border-slate-200' : 'border-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setSelectedOutfitDetail(null);
+                  setIsEditingOutfit(false);
+                }}
+                className={`p-2 rounded-full ${
+                  isLight
+                    ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
+                    : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+                } border transition-colors shadow-sm`}
+                title="Back to Outfits"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <span className="text-[10px] font-mono uppercase text-pink-300 font-bold block">
+                  {selectedOutfitDetail.aesthetic}
+                </span>
+                <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  {selectedOutfitDetail.title}
+                </h2>
+              </div>
+            </div>
+
+            {/* Small simple edit button near the top */}
+            <button
+              onClick={() => {
+                if (!isEditingOutfit) {
+                  setEditOutfitTitle(selectedOutfitDetail.title);
+                  setEditOutfitAesthetic(selectedOutfitDetail.aesthetic);
+                  setEditOutfitDesc(selectedOutfitDetail.description);
+                }
+                setIsEditingOutfit(!isEditingOutfit);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+                isEditingOutfit
+                  ? 'bg-pink-300 text-black border-pink-400'
+                  : isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200'
+              }`}
+              title="Edit Outfit"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>{isEditingOutfit ? 'Done' : 'Edit'}</span>
+            </button>
+          </div>
+
+          {/* Description or Edit Form */}
+          {isEditingOutfit ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const updated = {
+                  ...selectedOutfitDetail,
+                  title: editOutfitTitle.trim() || selectedOutfitDetail.title,
+                  aesthetic: editOutfitAesthetic.trim() || selectedOutfitDetail.aesthetic,
+                  description: editOutfitDesc.trim() || selectedOutfitDetail.description,
+                };
+                setSelectedOutfitDetail(updated);
+                setOutfitsList((prev) =>
+                  prev.map((o) => (o.id === updated.id ? updated : o))
+                );
+                setIsEditingOutfit(false);
+                showToast('Outfit updated', '', 'green');
+              }}
+              className={`p-4 rounded-2xl ${
+                isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-900 border-slate-700'
+              } border space-y-3`}
+            >
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Outfit Title
+                </label>
+                <input
+                  type="text"
+                  value={editOutfitTitle}
+                  onChange={(e) => setEditOutfitTitle(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl text-xs ${
+                    isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                  } border focus:outline-none focus:border-pink-400`}
+                  placeholder="Outfit title"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Aesthetic Style
+                </label>
+                <input
+                  type="text"
+                  value={editOutfitAesthetic}
+                  onChange={(e) => setEditOutfitAesthetic(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl text-xs ${
+                    isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                  } border focus:outline-none focus:border-pink-400`}
+                  placeholder="e.g. Minimalist Sartorial"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Description / Styling Notes
+                </label>
+                <input
+                  type="text"
+                  value={editOutfitDesc}
+                  onChange={(e) => setEditOutfitDesc(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl text-xs ${
+                    isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                  } border focus:outline-none focus:border-pink-400`}
+                  placeholder="Styling notes..."
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-pink-300 text-black text-xs font-bold hover:bg-pink-200 transition-colors shadow-sm"
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingOutfit(false)}
+                  className={`px-3 py-2 rounded-xl border ${
+                    isLight ? 'border-slate-300 text-slate-600' : 'border-slate-700 text-slate-400 hover:text-white'
+                  } text-xs`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            selectedOutfitDetail.description && (
+              <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} leading-relaxed`}>
+                {selectedOutfitDetail.description}
+              </p>
+            )
+          )}
+
+          {/* All contents of this outfit */}
+          <div className="space-y-3">
+            {selectedOutfitDetail.items.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => setInspectItem(item)}
+                className={`p-3 rounded-2xl ${
+                  isLight ? 'bg-slate-100 hover:bg-slate-200/80 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800'
+                } border flex items-center justify-between cursor-pointer group transition-all shadow-sm`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex-shrink-0 relative">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-pink-300 font-bold block">
+                      {item.brand}
+                    </span>
+                    <h4 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} line-clamp-1`}>
+                      {item.name}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 capitalize">
+                      {item.category} • {item.fit}
+                    </p>
+                    <span className="text-xs font-mono font-bold text-pink-300">
+                      ${item.price}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  {isEditingOutfit && selectedOutfitDetail.items.length > 1 && (
+                    <button
+                      onClick={() => {
+                        const updatedItems = selectedOutfitDetail.items.filter((it) => it.id !== item.id);
+                        const updated = { ...selectedOutfitDetail, items: updatedItems };
+                        setSelectedOutfitDetail(updated);
+                        setOutfitsList((prev) =>
+                          prev.map((o) => (o.id === updated.id ? updated : o))
+                        );
+                      }}
+                      className="p-2 rounded-xl bg-red-600/90 hover:bg-red-500 text-white transition-colors shadow-sm"
+                      title="Remove piece"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      addToCart(item);
+                      showToast(`Added ${item.name} to cart`, '', 'green');
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center gap-1 transition-colors shadow-sm active:scale-95"
+                  >
+                    <ShoppingBag className="w-3 h-3" />
+                    <span>Cart</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Outfit to Cart Button */}
+          <div className="pt-2">
+            <button
+              onClick={() => {
+                selectedOutfitDetail.items.forEach((it) => addToCart(it));
+                showToast(`Added ${selectedOutfitDetail.title} to cart!`, `${selectedOutfitDetail.items.length} pieces added`, 'green');
+              }}
+              className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Add Outfit to Cart (${selectedOutfitDetail.items.reduce((acc, it) => acc + it.price, 0)})</span>
+            </button>
+          </div>
+        </div>
+      ) : selectedMoodboardDetail ? (
+        <div className="page-slide-forward space-y-4">
+          {/* Header Bar with Back Button and Small Simple Edit Button */}
+          <div
+            className={`flex items-center justify-between pb-3 border-b ${
+              isLight ? 'border-slate-200' : 'border-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setSelectedMoodboardDetail(null);
+                  setIsEditingMoodboard(false);
+                }}
+                className={`p-2 rounded-full ${
+                  isLight
+                    ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
+                    : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+                } border transition-colors shadow-sm`}
+                title="Back to Moodboards"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  {selectedMoodboardDetail.title}
+                </h2>
+                <span className="text-[11px] text-pink-300 font-mono font-medium">
+                  {selectedMoodboardDetail.items?.length || (selectedMoodboardDetail.itemIds ? selectedMoodboardDetail.itemIds.length : 0)} pieces in board
+                </span>
+              </div>
+            </div>
+
+            {/* Small simple edit button near the top (Only on own profile) */}
+            {!selectedMoodboardDetail.isFriend && (
+              <button
+                onClick={() => {
+                  if (!isEditingMoodboard) {
+                    setEditMoodboardTitle(selectedMoodboardDetail.title);
+                    setEditMoodboardDesc(selectedMoodboardDetail.description || '');
+                  }
+                  setIsEditingMoodboard(!isEditingMoodboard);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+                  isEditingMoodboard
+                    ? 'bg-pink-300 text-black border-pink-400'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+                    : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200'
+                }`}
+                title="Edit Moodboard"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>{isEditingMoodboard ? 'Done' : 'Edit'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Description or Edit Form */}
+          {isEditingMoodboard ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateCollection(selectedMoodboardDetail.id, {
+                  title: editMoodboardTitle.trim() || selectedMoodboardDetail.title,
+                  description: editMoodboardDesc.trim(),
+                });
+                setSelectedMoodboardDetail({
+                  ...selectedMoodboardDetail,
+                  title: editMoodboardTitle.trim() || selectedMoodboardDetail.title,
+                  description: editMoodboardDesc.trim(),
+                });
+                setIsEditingMoodboard(false);
+              }}
+              className={`p-4 rounded-2xl ${
+                isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-900 border-slate-700'
+              } border space-y-3`}
+            >
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Moodboard Title
+                </label>
+                <input
+                  type="text"
+                  value={editMoodboardTitle}
+                  onChange={(e) => setEditMoodboardTitle(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl text-xs ${
+                    isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                  } border focus:outline-none focus:border-pink-400`}
+                  placeholder="Moodboard title"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                  Aesthetic Notes
+                </label>
+                <input
+                  type="text"
+                  value={editMoodboardDesc}
+                  onChange={(e) => setEditMoodboardDesc(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl text-xs ${
+                    isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                  } border focus:outline-none focus:border-pink-400`}
+                  placeholder="Aesthetic description..."
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-pink-300 text-black text-xs font-bold hover:bg-pink-200 transition-colors shadow-sm"
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingMoodboard(false)}
+                  className={`px-3 py-2 rounded-xl border ${
+                    isLight ? 'border-slate-300 text-slate-600' : 'border-slate-700 text-slate-400 hover:text-white'
+                  } text-xs`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            selectedMoodboardDetail.description && (
+              <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} italic`}>
+                "{selectedMoodboardDetail.description}"
+              </p>
+            )
+          )}
+
+          {/* ONLY the contents of that exact board */}
+          {(() => {
+            const pool: ClothingItem[] = [...wishlistItems, ...purchasedItems, ...INITIAL_CATALOG];
+            const exactItems: ClothingItem[] = (selectedMoodboardDetail.items && selectedMoodboardDetail.items.length > 0)
+              ? (selectedMoodboardDetail.items as ClothingItem[])
+              : ((selectedMoodboardDetail.itemIds || []) as string[])
+                  .map((id: string) => pool.find((item: ClothingItem) => item.id === id))
+                  .filter((it: ClothingItem | undefined): it is ClothingItem => Boolean(it));
+            if (exactItems.length === 0) {
+              return (
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center mt-4">
+                  <FolderHeart className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-white mb-1">No items in this moodboard</p>
+                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto mb-4">
+                    Add items by liking pieces in the Swipe tab or from your saved pieces.
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {exactItems.map((item: ClothingItem) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setInspectItem(item)}
+                      className={`p-2.5 rounded-2xl ${
+                        isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800'
+                      } border transition-all cursor-pointer group flex flex-col justify-between`}
+                    >
+                      <div className="aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 mb-2 relative">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-black/85 backdrop-blur-sm text-[10px] font-mono font-bold text-pink-300 border border-pink-400/30">
+                          ${item.price}
+                        </span>
+                        {isEditingMoodboard && !selectedMoodboardDetail.isFriend && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const nextIds = (selectedMoodboardDetail.itemIds || []).filter((id: string) => id !== item.id);
+                              const nextItems = (selectedMoodboardDetail.items || []).filter((it: ClothingItem) => it.id !== item.id);
+                              updateCollection(selectedMoodboardDetail.id, { itemIds: nextIds });
+                              setSelectedMoodboardDetail({
+                                ...selectedMoodboardDetail,
+                                itemIds: nextIds,
+                                items: nextItems,
+                              });
+                            }}
+                            className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-red-600/90 hover:bg-red-500 text-white shadow-md transition-colors"
+                            title="Remove from moodboard"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>
+                          {item.name}
+                        </p>
+                        <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} truncate`}>
+                          {item.brand}
+                        </p>
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => {
+                            addToCart(item);
+                            showToast(`Added ${item.name} to cart`, '', 'green');
+                          }}
+                          className="w-full py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95"
+                        >
+                          <ShoppingBag className="w-3 h-3" />
+                          <span>Cart</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add All Pieces from Moodboard to Cart (Green) */}
+                <button
+                  onClick={() => {
+                    exactItems.forEach((it: ClothingItem) => addToCart(it));
+                    showToast(`Added all ${exactItems.length} moodboard pieces to cart!`, '', 'green');
+                  }}
+                  className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Add All Moodboard Pieces to Cart (${exactItems.reduce((acc: number, it: ClothingItem) => acc + it.price, 0)})</span>
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      ) : activeSubView === 'none' ? (
         <div className="page-slide-forward -mx-4 -mt-4">
           {/* 1. Header Background Banner Image (Shortened by 25% to h-32, layered z-0 behind avatar) */}
           <div className="relative z-0 h-32 w-full overflow-hidden bg-slate-900 border-b border-slate-800">
@@ -571,7 +1127,7 @@ export const ProfileTab: React.FC = () => {
                 } border text-xs`}
               >
                 <Layers className="w-3.5 h-3.5 text-slate-400" />
-                <span className="font-extrabold font-mono">{userOutfits.length}</span>
+                <span className="font-extrabold font-mono">{outfitsList.length}</span>
                 <span className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Outfits</span>
               </div>
 
@@ -582,100 +1138,198 @@ export const ProfileTab: React.FC = () => {
                 } border text-xs`}
               >
                 <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-[11px] font-medium">{userProfile.joinedDate || 'Joined May 2024'}</span>
+                <span className="text-[11px] font-medium">
+                  {(userProfile.joinedDate || 'May 2024').replace(/^joined\s*/i, '')}
+                </span>
               </div>
             </div>
 
-            {/* 5. Instagram / Twitter Style Swipable Tabs: outfits, moodboards, collection */}
-            <div className="grid grid-cols-3 border-b border-slate-800 mt-3 mb-4">
-              <button
-                onClick={() => setProfileTab('outfits')}
-                className={`pb-2.5 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-all relative ${
-                  profileTab === 'outfits'
-                    ? 'text-pink-300'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Layers className="w-4 h-4" />
-                  <span>Outfits</span>
-                </div>
-                {profileTab === 'outfits' && (
-                  <div className="absolute bottom-0 inset-x-3 h-0.5 bg-pink-300 rounded-full" />
-                )}
-              </button>
+            {/* 5. Swipable Tabs with Live Glowing Indicator following user swipe */}
+            <div className="relative border-b border-slate-800 mt-3 mb-4 select-none">
+              <div className="grid grid-cols-3">
+                {PROFILE_TABS.map((tab, idx) => {
+                  const proximity = Math.max(0, 1 - Math.abs(visualProgress - idx));
+                  const Icon = tab === 'outfits' ? Layers : tab === 'moodboards' ? FolderHeart : ShoppingBag;
+                  const label = tab === 'outfits' ? 'Outfits' : tab === 'moodboards' ? 'Moodboards' : 'Collection';
 
-              <button
-                onClick={() => setProfileTab('moodboards')}
-                className={`pb-2.5 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-all relative ${
-                  profileTab === 'moodboards'
-                    ? 'text-pink-300'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <FolderHeart className="w-4 h-4" />
-                  <span>Moodboards</span>
-                </div>
-                {profileTab === 'moodboards' && (
-                  <div className="absolute bottom-0 inset-x-3 h-0.5 bg-pink-300 rounded-full" />
-                )}
-              </button>
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setProfileTab(tab)}
+                      className="pb-2.5 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-all relative"
+                      style={{
+                        color: proximity > 0.4 ? '#f472b6' : isLight ? '#64748b' : '#94a3b8',
+                        textShadow:
+                          proximity > 0.3
+                            ? `0 0 ${proximity * 14}px rgba(244, 114, 182, ${proximity * 0.95})`
+                            : 'none',
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Icon
+                          className="w-4 h-4 transition-transform duration-150"
+                          style={{
+                            filter:
+                              proximity > 0.3
+                                ? `drop-shadow(0 0 ${proximity * 6}px rgba(244,114,182,0.85))`
+                                : 'none',
+                            transform: `scale(${1 + proximity * 0.08})`,
+                          }}
+                        />
+                        <span className="capitalize">{label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-              <button
-                onClick={() => setProfileTab('collection')}
-                className={`pb-2.5 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-all relative ${
-                  profileTab === 'collection'
-                    ? 'text-pink-300'
-                    : 'text-slate-400 hover:text-slate-200'
+              {/* Glowing active indicator bar tracking user's swipe progression */}
+              <div
+                className={`absolute bottom-0 h-0.5 bg-pink-300 rounded-full shadow-[0_0_12px_rgba(244,114,182,0.95)] ${
+                  isSwipingTabs ? 'transition-none' : 'transition-transform duration-300 ease-out'
                 }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Collection</span>
-                </div>
-                {profileTab === 'collection' && (
-                  <div className="absolute bottom-0 inset-x-3 h-0.5 bg-pink-300 rounded-full" />
-                )}
-              </button>
+                style={{
+                  width: '33.333%',
+                  transform: `translateX(${visualProgress * 100}%)`,
+                }}
+              />
             </div>
 
-            {/* TAB CONTENT */}
+            {/* TAB CONTENT CAROUSEL WITH SWIPABLE HORIZONTAL GESTURES */}
+            <div
+              ref={tabContentRef}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="w-full overflow-hidden"
+            >
+              <div
+                className={`flex w-[300%] ${
+                  isSwipingTabs ? 'transition-none' : 'transition-transform duration-300 ease-out'
+                }`}
+                style={{
+                  transform: `translateX(-${(visualProgress / 3) * 100}%)`,
+                }}
+              >
+                {/* 1. OUTFITS TAB */}
+                <div className="w-1/3 flex-shrink-0 px-0.5 space-y-3.5">
+                  {/* Create Outfit Form */}
+                  {isCreatingOutfit && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!newOutfitTitle.trim()) return;
+                        const pool = [...wishlistItems, ...purchasedItems, ...INITIAL_CATALOG];
+                        const selectedGarments = pool.slice(0, 3);
+                        const newFit = {
+                          id: `fit-${Date.now()}`,
+                          title: newOutfitTitle.trim(),
+                          aesthetic: newOutfitAesthetic.trim() || 'Curated Aesthetic',
+                          description: newOutfitDesc.trim() || 'Custom styled ensemble curated from your wardrobe.',
+                          items: selectedGarments,
+                        };
+                        setOutfitsList([newFit, ...outfitsList]);
+                        setIsCreatingOutfit(false);
+                        setNewOutfitTitle('');
+                        setNewOutfitAesthetic('');
+                        setNewOutfitDesc('');
+                        showToast(`Created outfit "${newFit.title}"`, '', 'green');
+                      }}
+                      className={`p-4 rounded-2xl ${
+                        isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-900 border-slate-700'
+                      } border space-y-3 animate-in fade-in duration-150`}
+                    >
+                      <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
+                        New Coordinated Outfit
+                      </h4>
+                      <input
+                        type="text"
+                        placeholder="Outfit Name (e.g. Autumn Technical Layers)"
+                        value={newOutfitTitle}
+                        onChange={(e) => setNewOutfitTitle(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-xl ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        } border text-xs focus:outline-none focus:border-pink-400`}
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Aesthetic (e.g. Gorpcore, Minimalist Sartorial)"
+                        value={newOutfitAesthetic}
+                        onChange={(e) => setNewOutfitAesthetic(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-xl ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        } border text-xs focus:outline-none focus:border-pink-400`}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Styling notes / description"
+                        value={newOutfitDesc}
+                        onChange={(e) => setNewOutfitDesc(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-xl ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        } border text-xs focus:outline-none focus:border-pink-400`}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="px-4 py-2 rounded-xl bg-pink-300 text-black text-xs font-bold hover:bg-pink-200 transition-colors shadow-sm"
+                        >
+                          Save Outfit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsCreatingOutfit(false)}
+                          className={`px-3 py-2 rounded-xl border ${
+                            isLight ? 'border-slate-300 text-slate-600' : 'border-slate-700 text-slate-400 hover:text-white'
+                          } text-xs`}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
 
-            {/* TAB 1: OUTFITS (Built out of saved list and/or order history) */}
-            {profileTab === 'outfits' && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className={`text-xs font-extrabold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-300'} flex items-center gap-1.5`}>
-                      <Layers className="w-3.5 h-3.5 text-pink-300" />
-                      <span>Coordinated Outfits ({userOutfits.length})</span>
-                    </h3>
-                    <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Styled combinations built from your saved pieces and orders
-                    </p>
+                  {/* Greyed-out "New Outfit" card with little + symbol */}
+                  <div
+                    onClick={() => setIsCreatingOutfit(true)}
+                    className={`p-4 rounded-2xl border-2 border-dashed ${
+                      isLight
+                        ? 'border-slate-300 bg-slate-100/60 hover:bg-slate-200/60 text-slate-500'
+                        : 'border-slate-800 bg-slate-900/40 hover:bg-slate-900/70 text-slate-400'
+                    } hover:border-pink-300/60 transition-all cursor-pointer group flex flex-col items-center justify-center text-center py-6 shadow-sm`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-pink-300 group-hover:border-pink-300/60 transition-colors mb-2">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-bold group-hover:text-pink-300 transition-colors">
+                      New Outfit
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">
+                      Curate pieces into a look
+                    </span>
                   </div>
-                </div>
 
-                <div className="space-y-3.5">
-                  {userOutfits.map((outfit) => {
+                  {/* Outfit cards */}
+                  {outfitsList.map((outfit) => {
                     const totalOutfitPrice = outfit.items.reduce((acc, it) => acc + it.price, 0);
                     return (
                       <div
                         key={outfit.id}
+                        onClick={() => setSelectedOutfitDetail(outfit)}
                         className={`p-3.5 rounded-2xl ${
-                          isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/90 border-slate-800'
-                        } border shadow-sm space-y-3`}
+                          isLight ? 'bg-slate-100 hover:bg-slate-200/80 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800'
+                        } border shadow-sm space-y-3 cursor-pointer group transition-all`}
                       >
                         <div className="flex items-start justify-between">
                           <div>
                             <span className="text-[10px] font-mono uppercase text-pink-300 font-bold block">
                               {outfit.aesthetic}
                             </span>
-                            <h4 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            <h4 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'} group-hover:text-pink-300 transition-colors`}>
                               {outfit.title}
                             </h4>
-                            <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'} mt-0.5`}>
+                            <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'} mt-0.5 line-clamp-1`}>
                               {outfit.description}
                             </p>
                           </div>
@@ -692,15 +1346,18 @@ export const ProfileTab: React.FC = () => {
                           {outfit.items.map((item) => (
                             <div
                               key={item.id}
-                              onClick={() => setInspectItem(item)}
-                              className="group rounded-xl overflow-hidden bg-slate-950 border border-slate-800 p-1 flex flex-col justify-between cursor-pointer hover:border-pink-300 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInspectItem(item);
+                              }}
+                              className="group/item rounded-xl overflow-hidden bg-slate-950 border border-slate-800 p-1 flex flex-col justify-between cursor-pointer hover:border-pink-300 transition-colors"
                               title={`View ${item.name}`}
                             >
                               <div className="aspect-square rounded-lg overflow-hidden bg-slate-900 mb-1 relative">
                                 <img
                                   src={item.image}
                                   alt={item.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                  className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-200"
                                 />
                                 <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 font-mono text-[9px] font-bold text-pink-300">
                                   ${item.price}
@@ -716,234 +1373,217 @@ export const ProfileTab: React.FC = () => {
                           ))}
                         </div>
 
-                        {/* Add entire outfit look to cart */}
+                        {/* Add Outfit to Cart Button (Green, labeled 'Add Outfit to Cart') */}
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             outfit.items.forEach((it) => addToCart(it));
                             showToast(`Added ${outfit.title} to cart!`, `${outfit.items.length} pieces added`, 'green');
                           }}
-                          className="w-full py-2 rounded-xl bg-pink-300 hover:bg-pink-200 text-black text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-pink-300/20 active:scale-[0.99]"
+                          className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.99]"
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Add Entire Outfit to Cart (${totalOutfitPrice})</span>
+                          <span>Add Outfit to Cart (${totalOutfitPrice})</span>
                         </button>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
 
-            {/* TAB 2: MOODBOARDS (Draws from items swiped right on or added to saved list) */}
-            {profileTab === 'moodboards' && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className={`text-xs font-extrabold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-300'} flex items-center gap-1.5`}>
-                      <FolderHeart className="w-3.5 h-3.5 text-pink-300" />
-                      <span>Moodboard Capsules</span>
-                    </h3>
-                    <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Drawn from your liked items and saved aesthetics
-                    </p>
+                {/* 2. MOODBOARDS TAB */}
+                <div className="w-1/3 flex-shrink-0 px-0.5 space-y-4">
+                  {/* Inline Create Moodboard Form */}
+                  {isCreatingCollection && (
+                    <form
+                      onSubmit={handleCreateCollectionSubmit}
+                      className={`p-4 rounded-2xl ${
+                        isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-900 border-slate-700'
+                      } border space-y-3 animate-in fade-in duration-150`}
+                    >
+                      <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
+                        New Moodboard Collection
+                      </h4>
+                      <input
+                        type="text"
+                        placeholder="Collection Name (e.g. Winter Gorpcore)"
+                        value={newCollectionTitle}
+                        onChange={(e) => setNewCollectionTitle(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-xl ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        } border text-xs focus:outline-none focus:border-pink-400`}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Aesthetic notes / description"
+                        value={newCollectionDesc}
+                        onChange={(e) => setNewCollectionDesc(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-xl ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        } border text-xs focus:outline-none focus:border-pink-400`}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="px-4 py-2 rounded-xl bg-pink-300 text-black text-xs font-bold hover:bg-pink-200 transition-colors"
+                        >
+                          Save Moodboard
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsCreatingCollection(false)}
+                          className={`px-3 py-2 rounded-xl border ${
+                            isLight ? 'border-slate-300 text-slate-600' : 'border-slate-700 text-slate-400 hover:text-white'
+                          } text-xs`}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* Moodboards Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Greyed-out "New Moodboard" card with little + symbol */}
+                    <div
+                      onClick={() => setIsCreatingCollection(true)}
+                      className={`p-3 rounded-2xl border-2 border-dashed ${
+                        isLight
+                          ? 'border-slate-300 bg-slate-100/60 hover:bg-slate-200/60 text-slate-500'
+                          : 'border-slate-800 bg-slate-900/40 hover:bg-slate-900/70 text-slate-400'
+                      } hover:border-pink-300/60 transition-all cursor-pointer group flex flex-col items-center justify-center aspect-square text-center shadow-sm`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-pink-300 group-hover:border-pink-300/60 transition-colors mb-2">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold group-hover:text-pink-300 transition-colors">
+                        New Moodboard
+                      </span>
+                      <span className="text-[10px] text-slate-500 mt-0.5">
+                        Organize saves
+                      </span>
+                    </div>
+
+                    {collections.map((col) => {
+                      const colItems = wishlistItems.filter((i) => col.itemIds.includes(i.id));
+                      const displayItems = colItems.length > 0 ? colItems : INITIAL_CATALOG.slice(0, 4);
+                      return (
+                        <div
+                          key={col.id}
+                          onClick={() => setSelectedMoodboardDetail(col)}
+                          className={`p-3 rounded-2xl ${
+                            isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800'
+                          } border transition-all cursor-pointer group flex flex-col justify-between space-y-2.5 shadow-sm`}
+                        >
+                          {/* 4-Image Mosaic Preview */}
+                          <div className="grid grid-cols-2 gap-1 aspect-square rounded-xl overflow-hidden bg-slate-950/80 p-1">
+                            {displayItems.slice(0, 4).map((item, idx) => (
+                              <div
+                                key={idx}
+                                className={`rounded-lg overflow-hidden bg-slate-800 relative ${
+                                  displayItems.length === 1 ? 'col-span-2 row-span-2' : ''
+                                }`}
+                              >
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          <div>
+                            <h4
+                              className={`text-xs font-bold ${
+                                isLight ? 'text-slate-900' : 'text-white'
+                              } group-hover:text-pink-300 transition-colors line-clamp-1`}
+                            >
+                              {col.title}
+                            </h4>
+                            <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} line-clamp-1`}>
+                              {col.description}
+                            </p>
+                            <span className="text-[10px] text-pink-300 font-mono font-semibold mt-1 inline-block">
+                              {colItems.length} pieces
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <button
-                    onClick={() => setIsCreatingCollection(true)}
-                    className="px-3 py-1.5 rounded-xl bg-pink-300 hover:bg-pink-200 text-black text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>New Moodboard</span>
-                  </button>
                 </div>
 
-                {/* Inline Create Moodboard Form */}
-                {isCreatingCollection && (
-                  <form
-                    onSubmit={handleCreateCollectionSubmit}
-                    className={`p-4 rounded-2xl ${
-                      isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-900 border-slate-700'
-                    } border space-y-3 animate-in fade-in duration-150`}
-                  >
-                    <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
-                      New Moodboard Collection
-                    </h4>
-                    <input
-                      type="text"
-                      placeholder="Collection Name (e.g. Winter Gorpcore)"
-                      value={newCollectionTitle}
-                      onChange={(e) => setNewCollectionTitle(e.target.value)}
-                      className={`w-full px-3 py-2 rounded-xl ${
-                        isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                      } border text-xs focus:outline-none focus:border-pink-400`}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Aesthetic notes / description"
-                      value={newCollectionDesc}
-                      onChange={(e) => setNewCollectionDesc(e.target.value)}
-                      className={`w-full px-3 py-2 rounded-xl ${
-                        isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                      } border text-xs focus:outline-none focus:border-pink-400`}
-                    />
-                    <div className="flex gap-2">
+                {/* 3. COLLECTION TAB */}
+                <div className="w-1/3 flex-shrink-0 px-0.5 space-y-4">
+                  {purchasedItems.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {purchasedItems.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => setInspectItem(item)}
+                          className={`p-2.5 rounded-2xl ${
+                            isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800'
+                          } border transition-all cursor-pointer group flex flex-col justify-between`}
+                        >
+                          <div className="aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 mb-2 relative">
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-black/85 backdrop-blur-sm text-[10px] font-mono font-bold text-pink-300 border border-pink-400/30">
+                              ${item.price}
+                            </span>
+                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-pink-400/20 backdrop-blur-md text-[9px] font-extrabold text-pink-300 border border-pink-400/40">
+                              Purchased
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <p className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>
+                              {item.name}
+                            </p>
+                            <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} truncate`}>
+                              {item.brand}
+                            </p>
+                          </div>
+
+                          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                            <span className="text-[9px] text-pink-300 font-semibold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-pink-300" />
+                              <span>In Wardrobe</span>
+                            </span>
+                            <button
+                              onClick={() => {
+                                addToCart(item);
+                                showToast(`Added ${item.name} to cart`, 'Ready to reorder', 'green');
+                              }}
+                              className="px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold transition-colors shadow-sm active:scale-95"
+                            >
+                              Buy Again
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-center">
+                      <ShoppingBag className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-white mb-1">No purchased items yet</p>
+                      <p className="text-[11px] text-slate-400 mb-3">
+                        Pieces you check out with on PerFit will automatically appear in your collection tab.
+                      </p>
                       <button
-                        type="submit"
-                        className="px-4 py-2 rounded-xl bg-pink-300 text-black text-xs font-bold hover:bg-pink-200 transition-colors"
+                        onClick={() => setActiveTab('swipe')}
+                        className="px-4 py-1.5 rounded-xl bg-pink-300 text-black text-xs font-bold"
                       >
-                        Save Moodboard
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsCreatingCollection(false)}
-                        className={`px-3 py-2 rounded-xl border ${
-                          isLight ? 'border-slate-300 text-slate-600' : 'border-slate-700 text-slate-400 hover:text-white'
-                        } text-xs`}
-                      >
-                        Cancel
+                        Browse Swipe Feed
                       </button>
                     </div>
-                  </form>
-                )}
-
-                {/* Moodboards Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  {collections.map((col) => {
-                    const colItems = wishlistItems.filter((i) => col.itemIds.includes(i.id));
-                    const displayItems = colItems.length > 0 ? colItems : INITIAL_CATALOG.slice(0, 4);
-                    return (
-                      <div
-                        key={col.id}
-                        onClick={() => {
-                          setActiveCollectionDetailId(col.id);
-                          setActiveSubView('collections');
-                        }}
-                        className={`p-3 rounded-2xl ${
-                          isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800'
-                        } border transition-all cursor-pointer group flex flex-col justify-between space-y-2.5 shadow-sm`}
-                      >
-                        {/* 4-Image Mosaic Preview */}
-                        <div className="grid grid-cols-2 gap-1 aspect-square rounded-xl overflow-hidden bg-slate-950/80 p-1">
-                          {displayItems.slice(0, 4).map((item, idx) => (
-                            <div
-                              key={idx}
-                              className={`rounded-lg overflow-hidden bg-slate-800 relative ${
-                                displayItems.length === 1 ? 'col-span-2 row-span-2' : ''
-                              }`}
-                            >
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            </div>
-                          ))}
-                        </div>
-
-                        <div>
-                          <h4
-                            className={`text-xs font-bold ${
-                              isLight ? 'text-slate-900' : 'text-white'
-                            } group-hover:text-pink-300 transition-colors line-clamp-1`}
-                          >
-                            {col.title}
-                          </h4>
-                          <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} line-clamp-1`}>
-                            {col.description}
-                          </p>
-                          <span className="text-[10px] text-pink-300 font-mono font-semibold mt-1 inline-block">
-                            {colItems.length} pieces
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  )}
                 </div>
               </div>
-            )}
-
-            {/* TAB 3: COLLECTION (A list of items purchased on the app) */}
-            {profileTab === 'collection' && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className={`text-xs font-extrabold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-300'} flex items-center gap-1.5`}>
-                      <ShoppingBag className="w-3.5 h-3.5 text-pink-300" />
-                      <span>Purchased Collection ({purchasedItems.length})</span>
-                    </h3>
-                    <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Pieces ordered and verified on your PerFit account
-                    </p>
-                  </div>
-                </div>
-
-                {purchasedItems.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {purchasedItems.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => setInspectItem(item)}
-                        className={`p-2.5 rounded-2xl ${
-                          isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800'
-                        } border transition-all cursor-pointer group flex flex-col justify-between`}
-                      >
-                        <div className="aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 mb-2 relative">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-black/85 backdrop-blur-sm text-[10px] font-mono font-bold text-pink-300 border border-pink-400/30">
-                            ${item.price}
-                          </span>
-                          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-pink-400/20 backdrop-blur-md text-[9px] font-extrabold text-pink-300 border border-pink-400/40">
-                            Purchased
-                          </span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <p className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate`}>
-                            {item.name}
-                          </p>
-                          <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} truncate`}>
-                            {item.brand}
-                          </p>
-                        </div>
-
-                        <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                          <span className="text-[9px] text-pink-300 font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-pink-300" />
-                            <span>In Wardrobe</span>
-                          </span>
-                          <button
-                            onClick={() => {
-                              addToCart(item);
-                              showToast(`Added ${item.name} to cart`, 'Ready to reorder', 'green');
-                            }}
-                            className="px-2 py-1 rounded-lg bg-pink-300 hover:bg-pink-200 text-black text-[10px] font-bold transition-colors"
-                          >
-                            Buy Again
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 text-center">
-                    <ShoppingBag className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                    <p className="text-xs font-bold text-white mb-1">No purchased items yet</p>
-                    <p className="text-[11px] text-slate-400 mb-3">
-                      Pieces you check out with on PerFit will automatically appear in your collection tab.
-                    </p>
-                    <button
-                      onClick={() => setActiveTab('swipe')}
-                      className="px-4 py-1.5 rounded-xl bg-pink-300 text-black text-xs font-bold"
-                    >
-                      Browse Swipe Feed
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
           </div>
         </div>
       ) : activeSubView === 'menu' ? (
@@ -1052,22 +1692,6 @@ export const ProfileTab: React.FC = () => {
           {/* SUBVIEW: COLLECTIONS (Moved from Wishlist tab as requested) */}
           {activeSubView === 'collections' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-white">Your Moodboards</h3>
-                  <p className="text-[11px] text-slate-400">
-                    Organize saved pieces into aesthetic collections
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsCreatingCollection(true)}
-                  className="px-3 py-1.5 rounded-xl bg-pink-300 text-black text-xs font-bold flex items-center gap-1 hover:bg-pink-200 transition-colors shadow-sm"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>New Moodboard</span>
-                </button>
-              </div>
-
               {/* Create Collection Modal */}
               {isCreatingCollection && (
                 <form
@@ -1111,12 +1735,33 @@ export const ProfileTab: React.FC = () => {
 
               {/* Collection Cards List */}
               <div className="space-y-3">
+                {/* Greyed-out "New Moodboard" card with little + symbol */}
+                <div
+                  onClick={() => setIsCreatingCollection(true)}
+                  className={`p-4 rounded-2xl border-2 border-dashed ${
+                    isLight
+                      ? 'border-slate-300 bg-slate-100/60 hover:bg-slate-200/60 text-slate-500'
+                      : 'border-slate-800 bg-slate-900/40 hover:bg-slate-900/70 text-slate-400'
+                  } hover:border-pink-300/60 transition-all cursor-pointer group flex flex-col items-center justify-center text-center py-6 shadow-sm`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-400 group-hover:text-pink-300 group-hover:border-pink-300/60 transition-colors mb-2">
+                    <Plus className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold group-hover:text-pink-300 transition-colors">
+                    New Moodboard
+                  </span>
+                  <span className="text-[10px] text-slate-500 mt-0.5">
+                    Organize saves
+                  </span>
+                </div>
+
                 {collections.map((col) => {
                   const colItems = wishlistItems.filter((i) => col.itemIds.includes(i.id));
                   return (
                     <div
                       key={col.id}
-                      className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3"
+                      onClick={() => setSelectedMoodboardDetail(col)}
+                      className="p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 space-y-3 cursor-pointer group transition-all"
                     >
                       <div className="flex items-start justify-between">
                         <div>
@@ -2986,13 +3631,21 @@ export const ProfileTab: React.FC = () => {
 
               {/* Friend's Curated Moodboards */}
               <div className="space-y-3">
-                <h4 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider`}>
-                  Curated Moodboards ({selectedFriend.moodboards.length})
-                </h4>
                 {selectedFriend.moodboards.map((mb: any, idx: number) => (
                   <div
                     key={idx}
-                    className={`p-3 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/90 border-slate-800'} border space-y-2`}
+                    onClick={() => {
+                      setSelectedMoodboardDetail({
+                        id: `mb-friend-${idx}`,
+                        title: mb.title,
+                        description: mb.description,
+                        itemIds: mb.items.map((it: ClothingItem) => it.id),
+                        items: mb.items,
+                        isFriend: true,
+                      });
+                      setSelectedFriend(null);
+                    }}
+                    className={`p-3 rounded-2xl ${isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200' : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800'} border space-y-2 cursor-pointer transition-all`}
                   >
                     <div className="flex items-center justify-between">
                       <h5 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{mb.title}</h5>
@@ -3086,7 +3739,7 @@ export const ProfileTab: React.FC = () => {
                   showToast('Added to Cart', `${inspectItem.name} (${inspectItem.brand})`, 'green');
                   setInspectItem(null);
                 }}
-                className="flex-1 py-3 rounded-xl bg-pink-300 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
+                className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-500/20"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Add to Cart (${inspectItem.price})</span>

@@ -126,7 +126,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               showToast('Added to Cart', `${item.name} ($${item.price})`, 'green');
               onClose();
             }}
-            className="flex-1 py-3 rounded-xl bg-pink-300 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
+            className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
           >
             <ShoppingBag className="w-4 h-4" />
             <span>Add to Cart (${item.price})</span>

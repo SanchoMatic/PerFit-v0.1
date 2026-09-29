@@ -66,6 +66,8 @@ interface AppContextType {
   activeCollectionId: string;
   setActiveCollectionId: (id: string) => void;
   createCollection: (title: string, description: string, itemIds?: string[]) => void;
+  updateCollection: (id: string, updates: Partial<WishlistCollection>) => void;
+  deleteCollection: (id: string) => void;
   toggleWishlist: (item: ClothingItem) => void;
   isItemInWishlist: (itemId: string) => boolean;
   removeItemFromWishlist: (itemId: string) => void;
@@ -568,6 +570,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Created moodboard "${title}"`, `${itemIds?.length || 0} pieces added`, 'green');
   }, [showToast]);
 
+  const updateCollection = useCallback((id: string, updates: Partial<WishlistCollection>) => {
+    setCollections((prev) =>
+      prev.map((col) => (col.id === id ? { ...col, ...updates } : col))
+    );
+    showToast('Moodboard updated', '', 'green');
+  }, [showToast]);
+
+  const deleteCollection = useCallback((id: string) => {
+    setCollections((prev) => prev.filter((col) => col.id !== id));
+    showToast('Moodboard deleted', '', 'red');
+  }, [showToast]);
+
   const assignItemToCollection = useCallback((itemId: string, collectionId: string) => {
     setCollections((prev) =>
       prev.map((col) => {
@@ -1027,6 +1041,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeCollectionId,
         setActiveCollectionId,
         createCollection,
+        updateCollection,
+        deleteCollection,
         toggleWishlist,
         isItemInWishlist,
         removeItemFromWishlist,

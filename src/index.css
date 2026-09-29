@@ -14,19 +14,14 @@
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
-    overflow-y: scroll;
-  }
-
-  html {
-    scrollbar-gutter: stable;
   }
 }
 
-/* Hide scrollbars while allowing smooth scroll */
-.scrollbar-none::-webkit-scrollbar {
+/* Hide scrollbars completely across entire app for seamless mobile experience */
+*::-webkit-scrollbar {
   display: none;
 }
-.scrollbar-none {
+* {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
