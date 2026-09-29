@@ -96,27 +96,34 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-slate-950 border border-slate-700 rounded-3xl max-w-md w-full p-5 text-white shadow-2xl relative max-h-[92vh] flex flex-col justify-between overflow-hidden animate-in zoom-in-95">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-950 border border-slate-700 rounded-2xl max-w-md w-full p-5 text-white shadow-2xl relative max-h-[92vh] flex flex-col justify-between overflow-y-auto animate-in zoom-in-95 duration-200 cursor-default"
+      >
+        {/* Floating Close Button */}
+        <button
+          onClick={onClose}
+          className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+          title="Close Quiz"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Modal Top Bar */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-400">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-black tracking-tight text-white">
-                What's My Aesthetic?
-              </h2>
-              <p className="text-[10px] text-slate-400">20-Question Taste Discovery Quiz</p>
-            </div>
+        <div className="flex items-center gap-2 pb-3 border-b border-slate-800 pr-10">
+          <div className="p-1.5 rounded-xl bg-pink-400/20 text-pink-300">
+            <Sparkles className="w-4 h-4" />
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full bg-slate-900 border border-slate-700 text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div>
+            <h2 className="text-sm font-black tracking-tight text-white">
+              What's My Aesthetic?
+            </h2>
+            <p className="text-[10px] text-slate-400">20-Question Taste Discovery Quiz</p>
+          </div>
         </div>
 
         {!isFinished ? (
@@ -125,7 +132,7 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
             {/* Progress Header */}
             <div>
               <div className="flex items-center justify-between text-xs font-mono mb-2">
-                <span className="text-emerald-400 font-bold">
+                <span className="text-pink-300 font-bold">
                   Question {currentStep + 1} of {totalQuestions}
                 </span>
                 <span className="text-slate-400 text-[11px]">
@@ -135,7 +142,7 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
               {/* Progress Bar */}
               <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden mb-4 border border-slate-800">
                 <div
-                  className="h-full bg-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                  className="h-full bg-pink-300 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(244,114,182,0.8)]"
                   style={{ width: `${((currentStep + 1) / totalQuestions) * 100}%` }}
                 />
               </div>
@@ -161,14 +168,14 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
                     onClick={() => handleSelectOption(idx)}
                     className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-150 flex items-start gap-3 group ${
                       isSelected
-                        ? 'bg-emerald-950/60 border-emerald-500 text-white shadow-md shadow-emerald-950/50'
+                        ? 'bg-pink-950/60 border-pink-400 text-white shadow-md shadow-pink-950/50'
                         : 'bg-slate-900/80 border-slate-800 text-slate-200 hover:bg-slate-850 hover:border-slate-600'
                     }`}
                   >
                     <div
                       className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
                         isSelected
-                          ? 'border-emerald-400 bg-emerald-400 text-black'
+                          ? 'border-pink-300 bg-pink-300 text-black'
                           : 'border-slate-600 text-transparent group-hover:border-slate-400'
                       }`}
                     >
@@ -208,7 +215,7 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
           /* Results View */
           <div className="flex-1 flex flex-col justify-between py-3 overflow-y-auto space-y-4">
             <div className="text-center pt-2">
-              <div className="inline-flex p-3 rounded-full bg-emerald-500/20 text-emerald-400 mb-2 border border-emerald-500/30">
+              <div className="inline-flex p-3 rounded-full bg-pink-400/20 text-pink-300 mb-2 border border-pink-400/30">
                 <Sparkles className="w-7 h-7" />
               </div>
               <h3 className="text-lg font-black text-white">Your Aesthetic Profile</h3>
@@ -219,7 +226,7 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
 
             {/* Top 3 Aesthetic Highlights */}
             <div className="p-4 rounded-2xl bg-slate-900 border border-slate-700/80 space-y-3">
-              <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
                 Top Style Affinities
               </h4>
               <div className="space-y-2.5">
@@ -227,16 +234,16 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
                   <div key={res.name}>
                     <div className="flex justify-between text-xs font-bold mb-1">
                       <span className="text-white flex items-center gap-1.5">
-                        <span className="w-4 h-4 rounded-full bg-slate-800 text-[10px] font-mono text-emerald-400 flex items-center justify-center border border-slate-700">
+                        <span className="w-4 h-4 rounded-full bg-slate-800 text-[10px] font-mono text-pink-300 flex items-center justify-center border border-slate-700">
                           {i + 1}
                         </span>
                         {res.name}
                       </span>
-                      <span className="text-emerald-400 font-mono">{res.score}% Match</span>
+                      <span className="text-pink-300 font-mono">{res.score}% Match</span>
                     </div>
                     <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-emerald-400 rounded-full transition-all duration-700"
+                        className="h-full bg-pink-300 rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(244,114,182,0.8)]"
                         style={{ width: `${res.score}%` }}
                       />
                     </div>
@@ -260,7 +267,7 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
               </button>
               <button
                 onClick={handleApplyResults}
-                className="flex-1 py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all"
+                className="flex-1 py-3.5 px-4 rounded-2xl bg-pink-300 hover:bg-pink-200 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-pink-300/25 transition-all"
               >
                 <span>Apply to Recommendations</span>
                 <ArrowRight className="w-4 h-4" />

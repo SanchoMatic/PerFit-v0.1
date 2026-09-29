@@ -29,6 +29,7 @@ export const CartTab: React.FC = () => {
     addToCart,
     isItemInWishlist,
     toggleWishlist,
+    addPurchasedItems,
     activeTab,
     tabResetTimestamp,
   } = useApp();
@@ -56,20 +57,24 @@ export const CartTab: React.FC = () => {
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
     const code = promoCode.trim().toUpperCase();
-    if (code === 'GREEN20' || code === 'PERFIT20' || code === 'KLOSET20') {
+    if (code === 'PINK20' || code === 'PERFIT20' || code === 'KLOSET20' || code === 'GREEN20') {
       setPromoDiscount(0.2);
       showToast('Promo Applied: 20% Off!', 'PerFit VIP discount active', 'green');
     } else if (code === 'FREESHIP') {
       setPromoDiscount(0.05);
       showToast('Free Express Shipping Applied', '', 'green');
     } else {
-      showToast('Invalid promo code', 'Try code GREEN20 for 20% off', 'red');
+      showToast('Invalid promo code', 'Try code PINK20 for 20% off', 'red');
     }
   };
 
   const handleCheckout = () => {
     setIsCheckingOut(true);
     setTimeout(() => {
+      // Record purchased items in user's collection
+      if (cartItems.length > 0) {
+        addPurchasedItems(cartItems.map((ci) => ci.item));
+      }
       setOrderId(`ORD-${Math.floor(100000 + Math.random() * 900000)}`);
       setOrderComplete(true);
       setIsCheckingOut(false);
@@ -83,9 +88,9 @@ export const CartTab: React.FC = () => {
       <div className="flex flex-col items-center justify-center my-3">
         {/* Silver-gray circle with shopping bag icon */}
         <div className={`w-16 h-16 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-600 text-slate-200'} border-2 flex items-center justify-center shadow-md mb-2 relative group`}>
-          <ShoppingBag className="w-8 h-8 text-emerald-500" strokeWidth={1.8} />
+          <ShoppingBag className="w-8 h-8 text-pink-400" strokeWidth={1.8} />
           {cartItems.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-emerald-500 text-black text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+            <span className="absolute -top-1 -right-1 bg-pink-300 text-black text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">
               {cartItems.reduce((acc, c) => acc + c.quantity, 0)}
             </span>
           )}
@@ -110,7 +115,7 @@ export const CartTab: React.FC = () => {
                 {/* Garment Image / Icon - Clickable to open more info */}
                 <div
                   onClick={() => setInspectItem(ci.item)}
-                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 relative shadow-md cursor-pointer hover:border-emerald-500 hover:scale-[1.02] transition-all"
+                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 relative shadow-md cursor-pointer hover:border-pink-400 hover:scale-[1.02] transition-all"
                   title="Click to view more info"
                 >
                   <img
@@ -132,10 +137,10 @@ export const CartTab: React.FC = () => {
                   className="flex-1 min-w-0 cursor-pointer group/details"
                   title="Click to view more info"
                 >
-                  <span className="text-[10px] uppercase font-bold text-emerald-500 block tracking-wider">
+                  <span className="text-[10px] uppercase font-bold text-pink-400 block tracking-wider">
                     {ci.item.brand}
                   </span>
-                  <h3 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} group-hover/details:text-emerald-400 transition-colors truncate mb-1`}>
+                  <h3 className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} group-hover/details:text-pink-300 transition-colors truncate mb-1`}>
                     {ci.item.name}
                   </h3>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400">
@@ -199,13 +204,13 @@ export const CartTab: React.FC = () => {
                 type="text"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
-                placeholder="Promo Code (e.g. GREEN20)"
-                className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 uppercase tracking-wider focus:outline-none focus:border-emerald-500"
+                placeholder="Promo Code (e.g. PINK20)"
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 uppercase tracking-wider focus:outline-none focus:border-pink-400"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-emerald-400 hover:bg-slate-700 transition-colors"
+              className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-pink-300 hover:bg-slate-700 transition-colors"
             >
               Apply
             </button>
@@ -219,7 +224,7 @@ export const CartTab: React.FC = () => {
             </div>
 
             {promoDiscount > 0 && (
-              <div className="flex justify-between text-emerald-400 font-semibold">
+              <div className="flex justify-between text-pink-300 font-semibold">
                 <span>VIP Discount (20%)</span>
                 <span className="font-mono">-${discountAmount}</span>
               </div>
@@ -228,13 +233,13 @@ export const CartTab: React.FC = () => {
             <div className="flex justify-between text-slate-400">
               <span>Estimated Shipping</span>
               <span className="text-white font-mono">
-                {shipping === 0 ? <span className="text-emerald-400 font-semibold">FREE</span> : `$${shipping}`}
+                {shipping === 0 ? <span className="text-pink-300 font-semibold">FREE</span> : `$${shipping}`}
               </span>
             </div>
 
             <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline text-sm">
               <span className="font-extrabold text-white">Total</span>
-              <span className="text-lg font-black text-emerald-400 font-mono">
+              <span className="text-lg font-black text-pink-300 font-mono">
                 ${finalTotal}
               </span>
             </div>
@@ -244,7 +249,7 @@ export const CartTab: React.FC = () => {
           <button
             onClick={handleCheckout}
             disabled={isCheckingOut}
-            className="w-full mt-4 py-3.5 rounded-2xl bg-emerald-500 text-black font-extrabold text-sm tracking-wide flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all shadow-xl shadow-emerald-500/25 active:scale-[0.99] disabled:opacity-60"
+            className="w-full mt-4 py-3.5 rounded-2xl bg-pink-300 text-black font-black text-sm tracking-wide flex items-center justify-center gap-2 hover:bg-pink-200 transition-all shadow-xl shadow-pink-300/25 active:scale-[0.99] disabled:opacity-60"
           >
             {isCheckingOut ? (
               <div className="flex items-center gap-2">
@@ -260,13 +265,13 @@ export const CartTab: React.FC = () => {
           </button>
 
           <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-slate-500">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-pink-300" />
             <span>Encrypted checkout • Free 30-day returns • Guaranteed Authentic</span>
           </div>
         </div>
       ) : (
         /* Empty Cart State */
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-8 text-center mt-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center mt-6">
           <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3 text-slate-400">
             <ShoppingBag className="w-7 h-7 text-slate-400" />
           </div>
@@ -276,7 +281,7 @@ export const CartTab: React.FC = () => {
           </p>
           <button
             onClick={() => setActiveTab('swipe')}
-            className="px-5 py-2.5 rounded-full bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+            className="px-5 py-2.5 rounded-full bg-pink-300 text-black text-xs font-black hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
           >
             Start Swiping Clothes
           </button>
@@ -285,13 +290,34 @@ export const CartTab: React.FC = () => {
 
       {/* Order Complete Modal */}
       {orderComplete && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white text-center shadow-2xl animate-in zoom-in-95">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center mx-auto mb-4 text-emerald-400">
+        <div
+          onClick={() => {
+            setOrderComplete(false);
+            setActiveTab('swipe');
+          }}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-950 border border-slate-700 rounded-2xl max-w-sm w-full p-6 text-white text-center shadow-2xl animate-in zoom-in-95 duration-200 cursor-default relative"
+          >
+            {/* Floating Close Button */}
+            <button
+              onClick={() => {
+                setOrderComplete(false);
+                setActiveTab('swipe');
+              }}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-16 h-16 rounded-full bg-pink-400/20 border border-pink-400/50 flex items-center justify-center mx-auto mb-4 text-pink-300">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
-            <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">
+            <span className="text-[10px] uppercase font-bold text-pink-300 tracking-wider">
               Payment Successful
             </span>
             <h2 className="text-lg font-extrabold text-white mt-1 mb-1">
@@ -312,7 +338,7 @@ export const CartTab: React.FC = () => {
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Taste Profile</span>
-                <span className="text-emerald-400 font-semibold">+25 XP Style Boost</span>
+                <span className="text-pink-300 font-semibold">+25 XP Style Boost</span>
               </div>
             </div>
 
@@ -321,7 +347,7 @@ export const CartTab: React.FC = () => {
                 setOrderComplete(false);
                 setActiveTab('swipe');
               }}
-              className="w-full py-3 rounded-2xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+              className="w-full py-3 rounded-xl bg-pink-300 text-black font-black text-xs hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
             >
               Continue Exploring
             </button>
@@ -329,38 +355,39 @@ export const CartTab: React.FC = () => {
         </div>
       )}
 
-      {/* Garment Details Modal (Similar to Swipe tab's 3-line inspect modal) */}
+      {/* Garment Details Modal */}
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in zoom-in-95"
+            className="bg-slate-950 border border-slate-700 rounded-2xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto cursor-default relative"
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase text-emerald-400 tracking-wider">
-                  {inspectItem.brand}
-                </span>
-                <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
-              </div>
-              <button
-                onClick={() => setInspectItem(null)}
-                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            {/* Floating Close Button */}
+            <button
+              onClick={() => setInspectItem(null)}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close window"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="pr-10">
+              <span className="text-[10px] font-extrabold uppercase text-pink-300 tracking-wider">
+                {inspectItem.brand}
+              </span>
+              <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
             </div>
 
-            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
+            <div className="rounded-xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
               <img
                 src={inspectItem.image}
                 alt={inspectItem.name}
                 className="w-full h-full object-cover"
               />
-              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-emerald-400">
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-pink-300 border border-pink-400/20">
                 ${inspectItem.price}
               </span>
             </div>
@@ -386,7 +413,7 @@ export const CartTab: React.FC = () => {
                   addToCart(inspectItem);
                   setInspectItem(null);
                 }}
-                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                className="flex-1 py-3 rounded-xl bg-pink-300 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Add Another (${inspectItem.price})</span>
@@ -397,12 +424,12 @@ export const CartTab: React.FC = () => {
                 }}
                 className={`p-3 rounded-xl border transition-colors ${
                   isItemInWishlist(inspectItem.id)
-                    ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
+                    ? 'border-pink-400 bg-pink-950/60 text-pink-300'
                     : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white'
                 }`}
-                title="Toggle Wishlist"
+                title="Save to Wishlist"
               >
-                <Heart className="w-4 h-4" />
+                <Heart className={`w-4 h-4 ${isItemInWishlist(inspectItem.id) ? 'fill-pink-300 text-pink-300' : ''}`} />
               </button>
             </div>
           </div>

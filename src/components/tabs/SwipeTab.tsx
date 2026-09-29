@@ -9,6 +9,7 @@ import {
   Check,
   ShoppingBag,
   Heart,
+  Bookmark,
   X,
   AlertCircle,
   TrendingUp,
@@ -66,6 +67,7 @@ export const SwipeTab: React.FC = () => {
   }, [activeTab, tabResetTimestamp]);
 
   const startPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isMovedRef = useRef<boolean>(false);
   const currentItem = filteredCatalog[0];
   const nextItem = filteredCatalog[1];
 
@@ -152,6 +154,7 @@ export const SwipeTab: React.FC = () => {
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (hasReachedDailyLimit || tossState) return;
     setIsDragging(true);
+    isMovedRef.current = false;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     startPos.current = { x: clientX, y: clientY };
@@ -161,15 +164,29 @@ export const SwipeTab: React.FC = () => {
     if (!isDragging || hasReachedDailyLimit || tossState) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const dx = clientX - startPos.current.x;
+    const dy = clientY - startPos.current.y;
+    if (Math.hypot(dx, dy) > 8) {
+      isMovedRef.current = true;
+    }
     setDragOffset({
-      x: clientX - startPos.current.x,
-      y: clientY - startPos.current.y,
+      x: dx,
+      y: dy,
     });
   };
 
   const handleTouchEnd = () => {
     if (!isDragging || tossState) return;
     setIsDragging(false);
+
+    if (!isMovedRef.current) {
+      // Tap detected on the product card: open more info modal
+      if (currentItem) {
+        setInspectItem(currentItem);
+      }
+      setDragOffset({ x: 0, y: 0 });
+      return;
+    }
 
     if (dragOffset.x > 80) {
       triggerLike();
@@ -205,23 +222,23 @@ export const SwipeTab: React.FC = () => {
         }}
       />
 
-      {/* Top Header - Exact sketch layout with Brands pill in center & Filter icon on right */}
-      <header className="flex items-center justify-between z-20 mb-2">
-        <div className="flex items-center min-w-[70px]">
-          {/* Brand logo/mark updated to PerFit - larger font matching the reach/height of Brands pill */}
-          <span className="text-xl font-black tracking-wider text-emerald-400 font-mono leading-none flex items-center">
+      {/* Top Header - Brands pill perfectly centered in 3-column layout */}
+      <header className="grid grid-cols-3 items-center w-full z-20 mb-2">
+        <div className="justify-self-start flex items-center">
+          {/* Brand logo/mark */}
+          <span className="text-xl font-black tracking-wider text-pink-300 font-mono leading-none">
             PerFit
           </span>
         </div>
 
-        {/* Center "Brands" Pill dropdown (updated to say Brands as requested) */}
-        <div className="relative">
+        {/* Center "Brands" Pill dropdown - Guaranteed centered on header */}
+        <div className="justify-self-center relative flex justify-center">
           <button
             onClick={() => setIsBrandMenuOpen(!isBrandMenuOpen)}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-slate-700 bg-black/80 text-white text-sm font-semibold tracking-wide shadow-sm hover:border-slate-500 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-700 bg-black/80 text-white text-xs font-semibold tracking-wide shadow-sm hover:border-slate-500 transition-colors max-w-[130px]"
           >
-            <span>{brandFilter === 'all' ? 'Brands' : brandFilter}</span>
-            <ChevronDown className="w-4 h-4 text-emerald-400" />
+            <span className="truncate">{brandFilter === 'all' ? 'Brands' : brandFilter}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-pink-300 flex-shrink-0" />
           </button>
 
           {isBrandMenuOpen && (
@@ -230,7 +247,7 @@ export const SwipeTab: React.FC = () => {
                 className="fixed inset-0 z-30"
                 onClick={() => setIsBrandMenuOpen(false)}
               />
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-2 z-40 max-h-64 overflow-y-auto">
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-44 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-2 z-40 max-h-64 overflow-y-auto">
                 {availableBrands.map((b) => (
                   <button
                     key={b}
@@ -238,12 +255,12 @@ export const SwipeTab: React.FC = () => {
                       setBrandFilter(b);
                       setIsBrandMenuOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-slate-800 transition-colors flex items-center justify-between ${
-                      brandFilter === b ? 'text-emerald-400 font-bold bg-slate-800/60' : 'text-slate-300'
+                    className={`w-full text-left px-3.5 py-2 text-xs font-medium hover:bg-slate-800 transition-colors flex items-center justify-between ${
+                      brandFilter === b ? 'text-pink-300 font-bold bg-slate-800/60' : 'text-slate-300'
                     }`}
                   >
-                    <span>{b === 'all' ? 'All Brands' : b}</span>
-                    {brandFilter === b && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                    <span className="truncate">{b === 'all' ? 'All Brands' : b}</span>
+                    {brandFilter === b && <Check className="w-3.5 h-3.5 text-pink-300 flex-shrink-0 ml-1" />}
                   </button>
                 ))}
               </div>
@@ -251,21 +268,23 @@ export const SwipeTab: React.FC = () => {
           )}
         </div>
 
-        {/* Filter Sliders Button (matching sketch 1 top right) */}
-        <button
-          onClick={() => setIsFilterModalOpen(true)}
-          className={`p-2 rounded-full border transition-colors relative ${
-            categoryFilter !== 'all' || aestheticFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
-              ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
-              : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white'
-          }`}
-          title="Filter Preferences"
-        >
-          <SlidersHorizontal className="w-4 h-4" />
-          {(categoryFilter !== 'all' || aestheticFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-black" />
-          )}
-        </button>
+        {/* Filter Sliders Button */}
+        <div className="justify-self-end flex items-center">
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className={`p-2 rounded-full border transition-colors relative ${
+              categoryFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
+                ? 'border-pink-400 bg-pink-950/60 text-pink-300'
+                : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white'
+            }`}
+            title="Filter Preferences"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            {(categoryFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-pink-300 rounded-full ring-2 ring-black" />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Main Tinder Card Deck Canvas - Hard limit on height so it never overlaps buttons or header */}
@@ -283,7 +302,7 @@ export const SwipeTab: React.FC = () => {
               </div>
             )}
 
-            {/* Active Front Card - Highlighting product only without human model focus */}
+            {/* Active Front Card - Highlighting product only without human model focus. Tapping opens more info */}
             <div
               onMouseDown={handleTouchStart}
               onMouseMove={handleTouchMove}
@@ -291,10 +310,15 @@ export const SwipeTab: React.FC = () => {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
+              onClick={() => {
+                if (!isMovedRef.current && currentItem) {
+                  setInspectItem(currentItem);
+                }
+              }}
               style={{
                 transform: `translate3d(${cardTranslateX}px, ${cardTranslateY}px, 0) rotate(${rotation}deg)`,
                 opacity: cardOpacity,
-                cursor: isDragging ? 'grabbing' : 'grab',
+                cursor: isDragging ? 'grabbing' : 'pointer',
                 transition: tossState
                   ? 'transform 280ms cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 280ms ease-out'
                   : isDragging
@@ -321,7 +345,7 @@ export const SwipeTab: React.FC = () => {
                 {/* Dark Vignette Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
 
-                {/* LIKE Stamp on Drag Right / Like Click */}
+                {/* LIKE Stamp on Drag Right / Like Click (Restored to Green) */}
                 <div
                   style={{
                     opacity: effectiveLikeOpacity,
@@ -354,7 +378,7 @@ export const SwipeTab: React.FC = () => {
                 <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
                   <div className="flex items-center gap-1.5">
                     {currentItem.isBundle ? (
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-500 text-black text-[10px] font-black tracking-wider uppercase shadow-md">
+                      <span className="px-2.5 py-1 rounded-full bg-pink-300 text-black text-[10px] font-black tracking-wider uppercase shadow-md">
                         Outfit Bundle
                       </span>
                     ) : (
@@ -365,8 +389,8 @@ export const SwipeTab: React.FC = () => {
                   </div>
 
                   {currentItem.matchScore && (
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-emerald-500/60 text-emerald-300 text-xs font-mono font-bold shadow-md">
-                      <Sparkles className="w-3 h-3 text-emerald-400" />
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-pink-400/60 text-pink-300 text-xs font-mono font-bold shadow-md">
+                      <Sparkles className="w-3 h-3 text-pink-300" />
                       <span>{currentItem.matchScore}% Match</span>
                     </div>
                   )}
@@ -375,7 +399,7 @@ export const SwipeTab: React.FC = () => {
                 {/* Brand & Garment Headline Overlay */}
                 <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
                   <div className="flex items-baseline justify-between mb-1">
-                    <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-400 drop-shadow">
+                    <span className="text-xs font-extrabold uppercase tracking-widest text-pink-300 drop-shadow">
                       {currentItem.brand}
                     </span>
                     <div className="flex items-baseline gap-2">
@@ -420,7 +444,7 @@ export const SwipeTab: React.FC = () => {
                     e.stopPropagation();
                     addToCart(currentItem);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-bold hover:bg-emerald-500 hover:text-black transition-colors flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-extrabold transition-colors flex items-center gap-1 shadow-sm active:scale-95"
                 >
                   <ShoppingBag className="w-3 h-3" />
                   <span>Cart</span>
@@ -430,8 +454,8 @@ export const SwipeTab: React.FC = () => {
           </div>
         ) : (
           /* Empty Deck State */
-          <div className="w-full h-96 rounded-3xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 text-emerald-400">
+          <div className="w-full h-96 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 text-pink-300">
               <Sparkles className="w-8 h-8" />
             </div>
             <h3 className="text-base font-bold text-white mb-1">You've reached the end!</h3>
@@ -441,19 +465,18 @@ export const SwipeTab: React.FC = () => {
             <div className="flex flex-col gap-2 w-full max-w-xs">
               <button
                 onClick={resetDeck}
-                className="px-5 py-2.5 rounded-full bg-emerald-500 text-black font-bold text-xs tracking-wide hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                className="px-5 py-2.5 rounded-full bg-pink-300 text-black font-bold text-xs tracking-wide hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
               >
                 Shuffle & Reset Deck
               </button>
-              {(brandFilter !== 'all' || categoryFilter !== 'all' || aestheticFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
+              {(brandFilter !== 'all' || categoryFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
                 <button
                   onClick={() => {
                     setBrandFilter('all');
                     setCategoryFilter('all');
-                    setAestheticFilter('all');
                     setItemTypeFilter('single');
                     setSizeFilter('all');
-                    setPriceRangeFilter({ min: 0, max: 600, active: false });
+                    setPriceRangeFilter({ min: 1, max: null, active: false });
                   }}
                   className="px-4 py-2.5 rounded-full border border-slate-700 text-slate-300 text-xs font-medium hover:text-white"
                 >
@@ -465,13 +488,15 @@ export const SwipeTab: React.FC = () => {
         )}
       </div>
 
-      {/* Bottom Swiping Controls - Exact matching sketch 1 left:
-          - Red hatching corner with thumbs down
-          - Center circle with lines (inspect item details / undo)
-          - Green hatching corner with thumbs up
+      {/* Bottom Swiping Controls:
+          From Left to Right:
+          1. Dislike (Pass / Swipe Left)
+          2. Undo (RotateCcw)
+          3. Save (Bookmark / Add to Wishlist)
+          4. Like (Thumbs Up / Swipe Right in Pastel Pink)
       */}
       <div className="relative z-20 flex items-center justify-between px-2 pt-1 flex-shrink-0">
-        {/* Red Dislike Corner Button */}
+        {/* 1. Red Dislike Corner Button */}
         <button
           onClick={triggerDislike}
           disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
@@ -484,12 +509,13 @@ export const SwipeTab: React.FC = () => {
           <ThumbsDown className="w-7 h-7 relative z-10" strokeWidth={2.2} />
         </button>
 
-        {/* Center Controls: Circular details button + Undo */}
+        {/* Center Controls: Undo + Save button */}
         <div className="flex items-center gap-2">
+          {/* 2. Undo Button */}
           <button
             onClick={handleUndo}
             disabled={!canUndo || tossState !== null}
-            className={`p-3 rounded-full border transition-all duration-300 shadow-md ${
+            className={`p-3.5 rounded-full border transition-all duration-300 shadow-md ${
               canUndo
                 ? 'border-amber-400 bg-amber-950/50 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-300 hover:text-amber-200 hover:scale-105 active:scale-95 animate-pulse'
                 : 'border-slate-800 bg-slate-900/60 text-slate-500 opacity-30 pointer-events-none'
@@ -499,26 +525,36 @@ export const SwipeTab: React.FC = () => {
             <RotateCcw className="w-4 h-4" />
           </button>
 
+          {/* 3. Save Button (Replaces 3-line button; adds items to wishlist) */}
           <button
-            onClick={() => currentItem && setInspectItem(currentItem)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (currentItem) {
+                toggleWishlist(currentItem);
+              }
+            }}
             disabled={!currentItem || tossState !== null}
-            className="p-3.5 rounded-full border-2 border-slate-600 bg-slate-950 text-white hover:border-slate-400 hover:scale-105 transition-all shadow-md flex items-center justify-center group"
-            title="Inspect garment details"
+            className={`p-3.5 rounded-full border-2 transition-all shadow-md flex items-center justify-center group ${
+              currentItem && isItemInWishlist(currentItem.id)
+                ? 'border-pink-300 bg-pink-950/70 text-pink-300 shadow-[0_0_15px_rgba(244,114,182,0.5)]'
+                : 'border-slate-700 bg-slate-950 text-slate-300 hover:border-pink-300 hover:text-pink-300 hover:scale-105 active:scale-95'
+            }`}
+            title={currentItem && isItemInWishlist(currentItem.id) ? 'Saved in Wishlist' : 'Save to Wishlist'}
           >
-            <div className="flex flex-col gap-1 items-center justify-center w-5 h-5">
-              <span className="w-4 h-0.5 bg-slate-300 rounded-full group-hover:bg-white transition-colors" />
-              <span className="w-3 h-0.5 bg-slate-300 rounded-full group-hover:bg-white transition-colors" />
-              <span className="w-4 h-0.5 bg-slate-300 rounded-full group-hover:bg-white transition-colors" />
-            </div>
+            <Bookmark
+              className={`w-4 h-4 transition-transform ${
+                currentItem && isItemInWishlist(currentItem.id) ? 'fill-pink-300 scale-110' : ''
+              }`}
+            />
           </button>
         </div>
 
-        {/* Green Like Corner Button */}
+        {/* 4. Green Like Corner Button (Restored as requested with green animations & glow) */}
         <button
           onClick={triggerLike}
           disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
-          className="relative group p-4 rounded-3xl bg-emerald-950/40 border-2 border-emerald-500 text-emerald-400 hover:bg-emerald-900/60 hover:text-emerald-300 hover:border-emerald-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-950/60 flex items-center justify-center disabled:opacity-40"
-          title="Like & Save to Wishlist (Swipe Right)"
+          className="relative group p-4 rounded-3xl bg-emerald-950/40 border-2 border-emerald-400 text-emerald-400 hover:bg-emerald-900/60 hover:text-emerald-300 hover:border-emerald-300 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-950/60 hover:shadow-[0_0_24px_rgba(16,185,129,0.45)] flex items-center justify-center disabled:opacity-40"
+          title="Like & Curate (Swipe Right)"
         >
           <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none opacity-25">
             <div className="w-full h-full bg-[repeating-linear-gradient(45deg,#10b981_0,#10b981_2px,transparent_0,transparent_8px)]" />
@@ -529,33 +565,48 @@ export const SwipeTab: React.FC = () => {
 
       {/* Daily Swipe Limit Modal (When user reaches their configured limit) */}
       {hasReachedDailyLimit && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-emerald-500/50 rounded-3xl max-w-sm w-full p-6 text-white text-center shadow-2xl space-y-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/60 flex items-center justify-center mx-auto text-emerald-400">
+        <div
+          onClick={() => bypassSwipeLimit()}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-950 border border-pink-400/50 rounded-2xl max-w-sm w-full p-6 text-white text-center shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 cursor-default relative"
+          >
+            {/* Floating Close Button */}
+            <button
+              onClick={() => bypassSwipeLimit()}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-full bg-pink-400/20 border border-pink-400/60 flex items-center justify-center mx-auto text-pink-300">
               <TrendingUp className="w-7 h-7" />
             </div>
 
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-pink-300">
                 Daily Goal Reached
               </span>
               <h3 className="text-lg font-black text-white mt-1">Daily Swipe Limit Reached</h3>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                You've curated <span className="text-emerald-400 font-bold">{swipesToday} pieces</span> today (your daily limit is set to {userProfile.preferences.dailySwipeLimit}).
+                You've curated <span className="text-pink-300 font-bold">{swipesToday} pieces</span> today (your daily limit is set to {userProfile.preferences.dailySwipeLimit}).
               </p>
             </div>
 
             <div className="space-y-2 pt-2">
               <button
                 onClick={bypassSwipeLimit}
-                className="w-full py-3 rounded-2xl bg-emerald-500 text-black font-extrabold text-xs hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                className="w-full py-3 rounded-xl bg-pink-300 text-black font-black text-xs hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
               >
                 Bypass Limit & Keep Swiping
               </button>
 
               <button
                 onClick={() => setActiveTab('wishlist')}
-                className="w-full py-2.5 rounded-2xl bg-slate-900 border border-slate-700 text-slate-300 font-bold text-xs hover:text-white"
+                className="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-bold text-xs hover:text-white"
               >
                 Review Saved Wishlist
               </button>
@@ -566,22 +617,29 @@ export const SwipeTab: React.FC = () => {
 
       {/* Filter Modal */}
       {isFilterModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white shadow-2xl animate-in slide-in-from-bottom-6 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-emerald-400" />
-                <h3 className="font-bold text-base">Filters & Preferences</h3>
-              </div>
-              <button
-                onClick={() => setIsFilterModalOpen(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div
+          onClick={() => setIsFilterModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 text-white shadow-2xl animate-in slide-in-from-bottom-6 duration-200 max-h-[85vh] overflow-y-auto cursor-default relative"
+          >
+            {/* Floating Close Button */}
+            <button
+              onClick={() => setIsFilterModalOpen(false)}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close Filters"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-800 mb-4 pr-10">
+              <SlidersHorizontal className="w-4 h-4 text-pink-300" />
+              <h3 className="font-bold text-base">Filters & Preferences</h3>
             </div>
 
-            {/* Item Type: Single Items (default) vs Bundles */}
+            {/* 1. Item Presentation: Single Items (default) vs Bundles */}
             <div className="mb-4">
               <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 block">
                 Item Presentation
@@ -597,7 +655,7 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setItemTypeFilter(t.id as typeof itemTypeFilter)}
                     className={`py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
                       itemTypeFilter === t.id
-                        ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                        ? 'bg-pink-300 text-black shadow-md shadow-pink-300/20'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
@@ -610,7 +668,34 @@ export const SwipeTab: React.FC = () => {
               </p>
             </div>
 
-            {/* Size Filter (Off by default) */}
+            {/* 2. Category selection: Moved right below Item Presentation and above Size Filter */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
+                  Category
+                </label>
+                <span className="text-[10px] text-pink-300 font-mono font-bold">
+                  {categoryFilter === 'all' ? 'All Categories' : categoryFilter}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {categories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategoryFilter(c)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+                      categoryFilter === c
+                        ? 'bg-pink-300 text-black font-bold shadow-sm'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {c === 'all' ? 'All' : c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Size Filter */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
@@ -627,7 +712,7 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setSizeFilter(s)}
                     className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors ${
                       sizeFilter === s
-                        ? 'bg-emerald-500 text-black font-bold'
+                        ? 'bg-pink-300 text-black font-bold'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
@@ -637,7 +722,7 @@ export const SwipeTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Gender / Target Fit Filter */}
+            {/* 4. Gender / Target Fit Filter */}
             <div className="mb-4">
               <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 block">
                 Target Fit / Gender
@@ -654,7 +739,7 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setGenderFilter(g.id as typeof genderFilter)}
                     className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                       genderFilter === g.id
-                        ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                        ? 'bg-pink-300 text-black shadow-md shadow-pink-300/20'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -664,120 +749,39 @@ export const SwipeTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Price Range Filter ($1 to Unlimited Slider) */}
-            <div className="mb-4 p-3 rounded-2xl bg-slate-950 border border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <label className="text-xs font-semibold uppercase text-slate-300 tracking-wider block">
-                    Price Range Slider
-                  </label>
-                  <span className="text-[10px] text-slate-400">
-                    {priceRangeFilter.active
-                      ? priceRangeFilter.max === null
-                        ? '$1 to Unlimited'
-                        : `$1 to $${priceRangeFilter.max}`
-                      : 'Off ($1 - Unlimited)'}
-                  </span>
-                </div>
-                <button
-                  onClick={() =>
-                    setPriceRangeFilter({
-                      ...priceRangeFilter,
-                      active: !priceRangeFilter.active,
-                    })
-                  }
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${
-                    priceRangeFilter.active
-                      ? 'bg-emerald-500 text-black'
-                      : 'bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  {priceRangeFilter.active ? 'Filter Active' : 'Off (All Prices)'}
-                </button>
-              </div>
-
-              {/* Interactive Range Slider from $1 to Unlimited */}
-              <div className="space-y-2 mt-2 pt-2 border-t border-slate-800">
-                <div className="flex justify-between text-xs font-mono text-emerald-400 font-bold">
-                  <span>$1</span>
-                  <span>
-                    {priceRangeFilter.max === null || (priceRangeFilter.max && priceRangeFilter.max >= 500)
-                      ? 'Unlimited (∞)'
-                      : `$${priceRangeFilter.max}`}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="500"
-                  step="10"
-                  value={priceRangeFilter.max === null ? 500 : priceRangeFilter.max}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    setPriceRangeFilter({
-                      min: 1,
-                      max: val >= 500 ? null : val,
-                      active: true,
-                    });
-                  }}
-                  className="w-full accent-emerald-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
-                />
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                  <span>$1</span>
-                  <span>$50</span>
-                  <span>$150</span>
-                  <span>$300</span>
-                  <span>Unlimited</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Category selection */}
+            {/* 5. Simplified Compact Price Slider (saves vertical space) */}
             <div className="mb-4">
-              <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 block">
-                Category
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {categories.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCategoryFilter(c)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      categoryFilter === c
-                        ? 'bg-emerald-500 text-black font-bold'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    {c === 'all' ? 'All' : c}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Aesthetic selection (25 Trending Aesthetics Bank) */}
-            <div className="mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider block">
-                  Aesthetic Vibe (25 Trends)
-                </label>
-                <span className="text-[10px] text-emerald-400 font-mono font-bold">
-                  {aestheticFilter === 'all' ? 'All Aesthetics' : aestheticFilter}
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="font-semibold text-slate-300 uppercase tracking-wider text-[11px]">
+                  Max Price
+                </span>
+                <span className="font-mono text-pink-300 font-bold text-xs">
+                  {priceRangeFilter.max === null || !priceRangeFilter.active || priceRangeFilter.max >= 500
+                    ? 'Any Price ($1 - ∞)'
+                    : `Up to $${priceRangeFilter.max}`}
                 </span>
               </div>
-              <div className="max-h-44 overflow-y-auto pr-1 flex flex-wrap gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800">
-                {aesthetics.map((a) => (
-                  <button
-                    key={a}
-                    onClick={() => setAestheticFilter(a)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                      aestheticFilter === a
-                        ? 'bg-emerald-500 text-black font-bold'
-                        : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                    }`}
-                  >
-                    {a === 'all' ? 'All Aesthetics' : a}
-                  </button>
-                ))}
+              <input
+                type="range"
+                min="20"
+                max="500"
+                step="20"
+                value={priceRangeFilter.active && priceRangeFilter.max !== null ? priceRangeFilter.max : 500}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  setPriceRangeFilter({
+                    min: 1,
+                    max: val >= 500 ? null : val,
+                    active: val < 500,
+                  });
+                }}
+                className="w-full accent-pink-300 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
+                <span>$20</span>
+                <span>$100</span>
+                <span>$250</span>
+                <span>Unlimited</span>
               </div>
             </div>
 
@@ -785,7 +789,6 @@ export const SwipeTab: React.FC = () => {
               <button
                 onClick={() => {
                   setCategoryFilter('all');
-                  setAestheticFilter('all');
                   setGenderFilter('all');
                   setItemTypeFilter('single');
                   setSizeFilter('all');
@@ -797,7 +800,7 @@ export const SwipeTab: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsFilterModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 shadow-md shadow-emerald-500/20"
+                className="flex-1 py-2.5 rounded-xl bg-pink-300 text-black font-black text-xs hover:bg-pink-200 shadow-md shadow-pink-300/20"
               >
                 Apply Filters
               </button>
@@ -806,32 +809,39 @@ export const SwipeTab: React.FC = () => {
         </div>
       )}
 
-      {/* Garment Details Modal (When tapping center inspector button) */}
+      {/* Garment Details Modal (Tapping product card opens this) */}
       {inspectItem && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in zoom-in-95">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase text-emerald-400 tracking-wider">
-                  {inspectItem.brand}
-                </span>
-                <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
-              </div>
-              <button
-                onClick={() => setInspectItem(null)}
-                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div
+          onClick={() => setInspectItem(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-950 border border-slate-700 rounded-2xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto cursor-default relative"
+          >
+            {/* Floating Close Button */}
+            <button
+              onClick={() => setInspectItem(null)}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close window"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="pr-10">
+              <span className="text-[10px] font-extrabold uppercase text-pink-300 tracking-wider">
+                {inspectItem.brand}
+              </span>
+              <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
             </div>
 
-            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
+            <div className="rounded-xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
               <img
                 src={inspectItem.image}
                 alt={inspectItem.name}
                 className="w-full h-full object-cover"
               />
-              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-emerald-400">
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-pink-300 border border-pink-400/20">
                 ${inspectItem.price}
               </span>
             </div>
@@ -857,7 +867,7 @@ export const SwipeTab: React.FC = () => {
                   addToCart(inspectItem);
                   setInspectItem(null);
                 }}
-                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Add to Cart (${inspectItem.price})</span>
@@ -865,15 +875,15 @@ export const SwipeTab: React.FC = () => {
               <button
                 onClick={() => {
                   toggleWishlist(inspectItem);
-                  setInspectItem(null);
                 }}
                 className={`p-3 rounded-xl border transition-colors ${
                   isItemInWishlist(inspectItem.id)
-                    ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
-                    : 'border-slate-700 bg-slate-900 text-slate-300'
+                    ? 'border-pink-400 bg-pink-950/60 text-pink-300'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white'
                 }`}
+                title="Save to Wishlist"
               >
-                <Heart className="w-4 h-4" />
+                <Heart className={`w-4 h-4 ${isItemInWishlist(inspectItem.id) ? 'fill-pink-300 text-pink-300' : ''}`} />
               </button>
             </div>
           </div>

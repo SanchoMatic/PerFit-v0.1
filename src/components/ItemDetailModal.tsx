@@ -25,42 +25,45 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
       onClick={onClose}
     >
       <div
-        className={`border rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 ${
+        className={`border rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto relative cursor-default ${
           isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between">
-          <div className="pr-2">
-            <span className="text-[10px] font-extrabold uppercase text-emerald-500 tracking-wider">
-              {item.brand}
-            </span>
-            <h3 className={`text-lg font-black leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-              {item.name}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className={`p-1.5 rounded-full transition-colors ${
-              isLight ? 'bg-slate-100 text-slate-500 hover:text-slate-900' : 'bg-slate-900 text-slate-400 hover:text-white'
-            }`}
-          >
-            <X className="w-5 h-5" />
-          </button>
+        {/* Floating Close Button */}
+        <button
+          onClick={onClose}
+          className={`sticky top-0 float-right z-30 p-2 rounded-full backdrop-blur-md shadow-lg transition-all ${
+            isLight
+              ? 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border border-slate-300'
+              : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700'
+          }`}
+          title="Close window"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="pr-8">
+          <span className="text-[10px] font-extrabold uppercase text-pink-400 tracking-wider">
+            {item.brand}
+          </span>
+          <h3 className={`text-lg font-black leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {item.name}
+          </h3>
         </div>
 
         {/* Product Image */}
-        <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
+        <div className="rounded-xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
           <img
             src={item.image}
             alt={item.name}
             className="w-full h-full object-cover"
           />
-          <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 font-mono text-sm font-bold text-emerald-400 border border-emerald-500/20">
+          <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 font-mono text-sm font-bold text-pink-300 border border-pink-400/20">
             ${item.price}
           </span>
           {item.gender && item.gender !== 'unisex' && (
@@ -108,9 +111,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${isLight ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
             {item.category}
           </span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${isLight ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-950/40 border-emerald-800 text-emerald-400'}`}>
-            {item.aesthetic}
-          </span>
+          {item.aesthetics?.map((aes) => (
+            <span key={aes} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${isLight ? 'bg-pink-50 border-pink-200 text-pink-700' : 'bg-pink-950/40 border-pink-800 text-pink-300'}`}>
+              {aes}
+            </span>
+          ))}
         </div>
 
         {/* Actions */}
@@ -121,7 +126,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               showToast('Added to Cart', `${item.name} ($${item.price})`, 'green');
               onClose();
             }}
-            className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+            className="flex-1 py-3 rounded-xl bg-pink-300 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
           >
             <ShoppingBag className="w-4 h-4" />
             <span>Add to Cart (${item.price})</span>
@@ -132,14 +137,14 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
             }}
             className={`p-3 rounded-xl border transition-colors ${
               inWishlist
-                ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
+                ? 'border-pink-400 bg-pink-950/60 text-pink-300'
                 : isLight
                 ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
                 : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800'
             }`}
             title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
           >
-            <Heart className={`w-4 h-4 ${inWishlist ? 'fill-emerald-400' : ''}`} />
+            <Heart className={`w-4 h-4 ${inWishlist ? 'fill-pink-300 text-pink-300' : ''}`} />
           </button>
         </div>
       </div>

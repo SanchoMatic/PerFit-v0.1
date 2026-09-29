@@ -65,14 +65,14 @@ interface AppContextType {
   collections: WishlistCollection[];
   activeCollectionId: string;
   setActiveCollectionId: (id: string) => void;
-  createCollection: (title: string, description: string) => void;
+  createCollection: (title: string, description: string, itemIds?: string[]) => void;
   toggleWishlist: (item: ClothingItem) => void;
   isItemInWishlist: (itemId: string) => boolean;
   removeItemFromWishlist: (itemId: string) => void;
   assignItemToCollection: (itemId: string, collectionId: string) => void;
   addAllWishlistToCart: () => void;
 
-  // Cart
+  // Cart & Purchases
   cartItems: CartItem[];
   addToCart: (item: ClothingItem, size?: string, color?: string) => void;
   removeFromCart: (itemId: string, size?: string) => void;
@@ -80,6 +80,8 @@ interface AppContextType {
   clearCart: () => void;
   cartTotal: number;
   cartCount: number;
+  purchasedItems: ClothingItem[];
+  addPurchasedItems: (items: ClothingItem[]) => void;
 
   // Algorithm & Profile
   algorithmProfile: AlgorithmProfile;
@@ -263,6 +265,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Cart
   const [cartItems, setCartItems] = useState<CartItem[]>(INITIAL_CART_ITEMS);
+  const [purchasedItems, setPurchasedItems] = useState<ClothingItem[]>(() => [
+    INITIAL_CATALOG[1], // Arc'teryx Beta LT Jacket
+    INITIAL_CATALOG[2], // Salomon XT-6 Expanse
+    INITIAL_CATALOG[4], // Issey Miyake Pleats Please
+  ]);
+
+  const addPurchasedItems = useCallback((items: ClothingItem[]) => {
+    setPurchasedItems((prev) => {
+      const existingIds = new Set(prev.map((i) => i.id));
+      const newlyAdded = items.filter((i) => !existingIds.has(i.id));
+      return [...newlyAdded, ...prev];
+    });
+  }, []);
 
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -272,9 +287,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     phone: '+1 (555) 234-5678',
     avatarUrl: '',
     coverImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80',
-    joinedDate: 'Joined May 2024',
+    joinedDate: 'May 2024',
     bio: 'Curating minimalist utilitarian staples, technical shells & sculptural silhouettes.',
     membership: 'Pro Style Member',
+    styleArchetype: 'Minimal Utilitarian / Gorpcore',
     paymentMethod: {
       cardNumber: '•••• •••• •••• 4128',
       cardHolder: 'Sanyi Aga',
@@ -300,6 +316,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dailySwipeLimit: null,
       preferredDepartment: 'both',
       showArchetypePublicly: true,
+      outfitsVisibility: 'anyone',
+      moodboardsVisibility: 'anyone',
+      collectionsVisibility: 'anyone',
+      profileDiscoverability: 'public',
       theme: 'dark',
       autoAdvance: true,
       highResImages: true,
@@ -536,16 +556,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Removed from Wishlist', '', 'red');
   }, [showToast]);
 
-  const createCollection = useCallback((title: string, description: string) => {
+  const createCollection = useCallback((title: string, description: string, itemIds?: string[]) => {
     const newCol: WishlistCollection = {
       id: `col-${Date.now()}`,
       title,
       description,
-      itemIds: [],
+      itemIds: itemIds || [],
       createdAt: new Date().toISOString().split('T')[0],
     };
     setCollections((prev) => [...prev, newCol]);
-    showToast(`Created collection "${title}"`, 'Add pieces to organize your wardrobe', 'green');
+    showToast(`Created moodboard "${title}"`, `${itemIds?.length || 0} pieces added`, 'green');
   }, [showToast]);
 
   const assignItemToCollection = useCallback((itemId: string, collectionId: string) => {
@@ -1019,6 +1039,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearCart,
         cartTotal,
         cartCount,
+        purchasedItems,
+        addPurchasedItems,
         algorithmProfile,
         updateAlgorithmWeight,
         applyQuizResults,

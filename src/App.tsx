@@ -30,8 +30,8 @@ const AppShell: React.FC = () => {
     <div
       className={`min-h-screen transition-colors duration-200 flex flex-col font-sans antialiased ${
         isLight
-          ? 'bg-white text-slate-900 selection:bg-emerald-500 selection:text-white'
-          : 'bg-black text-white selection:bg-emerald-500 selection:text-black'
+          ? 'bg-white text-slate-900 selection:bg-pink-300 selection:text-black'
+          : 'bg-black text-white selection:bg-pink-300 selection:text-black'
       }`}
     >
       <Toasts />

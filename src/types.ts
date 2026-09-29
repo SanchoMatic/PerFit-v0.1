@@ -96,6 +96,7 @@ export interface UserProfile {
   joinedDate?: string;
   bio: string;
   membership: string;
+  styleArchetype?: string;
   paymentMethod?: {
     cardNumber: string;
     cardHolder: string;
@@ -121,6 +122,10 @@ export interface UserProfile {
     dailySwipeLimit: number | null;
     preferredDepartment?: 'men' | 'women' | 'both';
     showArchetypePublicly?: boolean;
+    outfitsVisibility?: 'anyone' | 'friends' | 'none';
+    moodboardsVisibility?: 'anyone' | 'friends' | 'none';
+    collectionsVisibility?: 'anyone' | 'friends' | 'none';
+    profileDiscoverability?: 'public' | 'friends' | 'private';
     theme?: 'dark' | 'light' | 'system';
     autoAdvance?: boolean;
     highResImages?: boolean;

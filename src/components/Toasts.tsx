@@ -18,7 +18,7 @@ export const Toasts: React.FC = () => {
             key={toast.id}
             className={`pointer-events-auto flex items-center justify-between gap-3 p-3.5 rounded-2xl shadow-2xl backdrop-blur-lg border transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${
               isGreen
-                ? 'bg-black/95 border-emerald-500/50 text-white shadow-emerald-950/40'
+                ? 'bg-black/95 border-pink-400/50 text-white shadow-pink-950/40'
                 : isRed
                 ? 'bg-black/95 border-red-500/50 text-white shadow-red-950/40'
                 : 'bg-black/95 border-slate-700 text-white shadow-black/60'
@@ -28,7 +28,7 @@ export const Toasts: React.FC = () => {
               <div
                 className={`p-1.5 rounded-xl ${
                   isGreen
-                    ? 'bg-emerald-500/20 text-emerald-400'
+                    ? 'bg-pink-400/20 text-pink-300'
                     : isRed
                     ? 'bg-red-500/20 text-red-400'
                     : 'bg-slate-800 text-slate-300'

@@ -131,15 +131,15 @@ export const UploadTab: React.FC = () => {
         /* Empty / Initial State - Matching sketch from IMG_0314 (left) purely and simply:
            - Large `+` icon
            - Simple prompt lines
-           - Big green "Upload" button
+           - Big pastel pink "Upload" button
         */
         <div className="mt-4">
           <div
             onClick={handleTriggerUpload}
-            className="group relative flex flex-col items-center justify-center p-10 rounded-3xl border-2 border-dashed border-slate-700 bg-slate-900/60 hover:border-emerald-500 hover:bg-slate-900/90 transition-all duration-200 cursor-pointer text-center shadow-xl shadow-black/50"
+            className="group relative flex flex-col items-center justify-center p-10 rounded-3xl border-2 border-dashed border-slate-700 bg-slate-900/60 hover:border-pink-400 hover:bg-slate-900/90 transition-all duration-200 cursor-pointer text-center shadow-xl shadow-black/50"
           >
             {/* Top Plus Icon */}
-            <div className="w-16 h-16 rounded-3xl bg-slate-800 border-2 border-slate-600 group-hover:border-emerald-400 group-hover:scale-105 flex items-center justify-center text-slate-300 group-hover:text-emerald-400 transition-all duration-200 shadow-inner mb-6">
+            <div className="w-16 h-16 rounded-3xl bg-slate-800 border-2 border-slate-600 group-hover:border-pink-400 group-hover:scale-105 flex items-center justify-center text-slate-300 group-hover:text-pink-300 transition-all duration-200 shadow-inner mb-6">
               <Plus className="w-9 h-9" strokeWidth={2.5} />
             </div>
 
@@ -153,14 +153,14 @@ export const UploadTab: React.FC = () => {
               </p>
             </div>
 
-            {/* Prominent Green "Upload" Button matching sketch */}
+            {/* Prominent Pastel Pink "Upload" Button */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTriggerUpload();
               }}
-              className="relative w-full max-w-xs py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-black font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/30 transition-all duration-200"
+              className="relative w-full max-w-xs py-4 px-6 rounded-2xl bg-pink-300 hover:bg-pink-200 active:scale-[0.98] text-black font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-xl shadow-pink-300/30 transition-all duration-200"
             >
               <UploadIcon className="w-5 h-5" strokeWidth={2.5} />
               <span>Upload</span>
@@ -219,17 +219,17 @@ export const UploadTab: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0 mb-2">
-                    <span className="text-[9px] uppercase font-bold text-emerald-400 block truncate">
+                    <span className="text-[9px] uppercase font-bold text-pink-300 block truncate">
                       {item.brand}
                     </span>
-                    <p className="text-[11px] font-bold text-white truncate leading-tight group-hover:text-emerald-400 transition-colors">
+                    <p className="text-[11px] font-bold text-white truncate leading-tight group-hover:text-pink-300 transition-colors">
                       {item.name}
                     </p>
                   </div>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => addToCart(item)}
-                      className="flex-1 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-bold transition-colors"
+                      className="flex-1 py-1 rounded-lg bg-pink-300 hover:bg-pink-200 text-black text-[10px] font-bold transition-colors"
                     >
                       Cart
                     </button>
@@ -237,7 +237,7 @@ export const UploadTab: React.FC = () => {
                       onClick={() => toggleWishlist(item)}
                       className={`p-1 rounded-lg border transition-colors ${
                         isItemInWishlist(item.id)
-                          ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                          ? 'border-pink-300 bg-pink-950/60 text-pink-300'
                           : 'border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
@@ -252,7 +252,7 @@ export const UploadTab: React.FC = () => {
       ) : isAnalyzing ? (
         /* Analyzing State */
         <div className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-slate-800 bg-slate-950 text-center min-h-[380px]">
-          <div className="relative w-48 h-64 rounded-2xl overflow-hidden border-2 border-emerald-500/80 mb-5 shadow-2xl shadow-emerald-500/20">
+          <div className="relative w-48 h-64 rounded-2xl overflow-hidden border-2 border-pink-400 mb-5 shadow-2xl shadow-pink-950/40">
             {uploadedImageUrl && (
               <img
                 src={uploadedImageUrl}
@@ -260,11 +260,11 @@ export const UploadTab: React.FC = () => {
                 className="w-full h-full object-cover grayscale-40"
               />
             )}
-            <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_rgba(52,211,153,1)] animate-bounce" />
+            <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-pink-400 to-transparent shadow-[0_0_15px_rgba(244,114,182,1)] animate-bounce" />
           </div>
 
-          <div className="flex items-center gap-2 text-emerald-400 mb-2">
-            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center gap-2 text-pink-300 mb-2">
+            <div className="w-4 h-4 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
             <span className="text-sm font-black tracking-wide">Dissecting Garments...</span>
           </div>
           <p className="text-xs text-slate-400 max-w-xs">
@@ -288,15 +288,15 @@ export const UploadTab: React.FC = () => {
 
             <button
               onClick={handleTriggerUpload}
-              className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-slate-700 text-slate-200 text-xs font-bold hover:text-white hover:border-emerald-400 flex items-center gap-1.5 shadow-md"
+              className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-slate-700 text-slate-200 text-xs font-bold hover:text-white hover:border-pink-300 flex items-center gap-1.5 shadow-md"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+              <RotateCcw className="w-3.5 h-3.5 text-pink-300" />
               <span>Change Photo</span>
             </button>
 
             <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs">
               <div>
-                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
+                <span className="text-[10px] text-pink-300 font-bold uppercase tracking-wider block">
                   Aesthetic
                 </span>
                 <p className="text-sm font-extrabold text-white">
@@ -332,11 +332,11 @@ export const UploadTab: React.FC = () => {
                     onClick={() => setSelectedGarmentId(garment.id)}
                     className={`px-3 py-2 rounded-2xl border text-xs text-left whitespace-nowrap transition-all flex items-center gap-2 ${
                       isSelected
-                        ? 'border-emerald-400 bg-emerald-950/60 text-white font-bold shadow-md'
+                        ? 'border-pink-300 bg-pink-950/60 text-white font-bold shadow-md'
                         : 'border-slate-800 bg-slate-900/80 text-slate-300 hover:border-slate-700'
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="w-2 h-2 rounded-full bg-pink-300" />
                     <div>
                       <p className="text-[10px] text-slate-400 uppercase font-bold leading-none">
                         {garment.category}
@@ -356,7 +356,7 @@ export const UploadTab: React.FC = () => {
             <div className="p-4 rounded-3xl bg-slate-900 border-2 border-slate-700 shadow-xl space-y-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">
+                  <span className="text-[10px] font-black uppercase text-pink-300 tracking-wider">
                     {selectedGarment.category} • {selectedGarment.aesthetic}
                   </span>
                   <h3 className="text-base font-extrabold text-white mt-0.5">
@@ -369,17 +369,17 @@ export const UploadTab: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-800/60">
+                  <span className="text-xs font-mono font-bold text-pink-300 bg-pink-950 px-2 py-0.5 rounded-md border border-pink-400/40">
                     {Math.round(selectedGarment.confidence * 100)}% Match
                   </span>
                 </div>
               </div>
 
               {/* Add to Algorithm Button */}
-              <div className="p-3 rounded-2xl bg-black/60 border border-emerald-500/40 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-black/60 border border-pink-400/30 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    <TrendingUp className="w-3.5 h-3.5 text-pink-300" />
                     <span>Train Algorithm</span>
                   </p>
                   <p className="text-[10px] text-slate-400">
@@ -392,13 +392,13 @@ export const UploadTab: React.FC = () => {
                   disabled={selectedGarment.addedToAlgorithm}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     selectedGarment.addedToAlgorithm
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-600/50 cursor-default'
-                      : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/20 active:scale-95'
+                      ? 'bg-pink-950 text-pink-300 border border-pink-400/50 cursor-default'
+                      : 'bg-pink-300 hover:bg-pink-200 text-black shadow-md shadow-pink-300/20 active:scale-95'
                   }`}
                 >
                   {selectedGarment.addedToAlgorithm ? (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-pink-300" />
                       <span>Added</span>
                     </>
                   ) : (
@@ -414,17 +414,17 @@ export const UploadTab: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-2.5">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                    <ShoppingBag className="w-3.5 h-3.5 text-pink-300" />
                     <span>Similar Styles in Marketplace</span>
                   </h4>
-                  <span className="text-[10px] text-emerald-400 font-semibold">Available to Buy</span>
+                  <span className="text-[10px] text-pink-300 font-semibold">Available to Buy</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
                   {selectedGarment.marketplaceMatches.map((item) => (
                     <div
                       key={item.id}
-                      className="group relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 flex flex-col justify-between p-1.5 hover:border-emerald-400 transition-colors"
+                      className="group relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 flex flex-col justify-between p-1.5 hover:border-pink-300 transition-colors"
                     >
                       <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-900 mb-1.5">
                         <img
@@ -432,13 +432,13 @@ export const UploadTab: React.FC = () => {
                           alt={item.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
-                        <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[9px] font-bold text-emerald-400">
+                        <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[9px] font-bold text-pink-300">
                           ${item.price}
                         </span>
                       </div>
 
                       <div>
-                        <p className="text-[9px] uppercase font-bold text-emerald-400 truncate">
+                        <p className="text-[9px] uppercase font-bold text-pink-300 truncate">
                           {item.brand}
                         </p>
                         <p className="text-[10px] font-bold text-white truncate leading-tight">
@@ -449,7 +449,7 @@ export const UploadTab: React.FC = () => {
                       <div className="flex gap-1 mt-2">
                         <button
                           onClick={() => addToCart(item)}
-                          className="flex-1 py-1 rounded-lg bg-emerald-500 text-black text-[10px] font-bold hover:bg-emerald-400"
+                          className="flex-1 py-1 rounded-lg bg-pink-300 text-black text-[10px] font-bold hover:bg-pink-200"
                         >
                           Cart
                         </button>
@@ -457,7 +457,7 @@ export const UploadTab: React.FC = () => {
                           onClick={() => toggleWishlist(item)}
                           className={`p-1 rounded-lg border ${
                             isItemInWishlist(item.id)
-                              ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                              ? 'border-pink-300 bg-pink-950/60 text-pink-300'
                               : 'border-slate-700 text-slate-300'
                           }`}
                         >
@@ -475,36 +475,37 @@ export const UploadTab: React.FC = () => {
                 className="w-full py-2.5 rounded-2xl bg-slate-800 border border-slate-700 text-xs font-bold text-white hover:bg-slate-700 flex items-center justify-center gap-1.5 transition-colors"
               >
                 <span>Check Swipe Feed with Updated Weights</span>
-                <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
+                <ArrowRight className="w-3.5 h-3.5 text-pink-300" />
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Garment Details Modal (Similar to Swipe tab's 3-line inspect modal) */}
+      {/* Garment Details Modal (With Floating X, rounded-2xl corners, tap outside to close) */}
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in zoom-in-95"
+            className="bg-slate-950 border border-slate-700 rounded-2xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 cursor-default relative"
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase text-emerald-400 tracking-wider">
-                  {inspectItem.brand}
-                </span>
-                <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
-              </div>
-              <button
-                onClick={() => setInspectItem(null)}
-                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            {/* Floating Close Button */}
+            <button
+              onClick={() => setInspectItem(null)}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div>
+              <span className="text-[10px] font-extrabold uppercase text-pink-300 tracking-wider">
+                {inspectItem.brand}
+              </span>
+              <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
             </div>
 
             <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
@@ -513,7 +514,7 @@ export const UploadTab: React.FC = () => {
                 alt={inspectItem.name}
                 className="w-full h-full object-cover"
               />
-              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-emerald-400">
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 font-mono text-sm font-bold text-pink-300">
                 ${inspectItem.price}
               </span>
             </div>
@@ -539,7 +540,7 @@ export const UploadTab: React.FC = () => {
                   addToCart(inspectItem);
                   setInspectItem(null);
                 }}
-                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+                className="flex-1 py-3 rounded-xl bg-pink-300 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Add to Cart (${inspectItem.price})</span>
@@ -550,7 +551,7 @@ export const UploadTab: React.FC = () => {
                 }}
                 className={`p-3 rounded-xl border transition-colors ${
                   isItemInWishlist(inspectItem.id)
-                    ? 'border-emerald-500 bg-emerald-950/60 text-emerald-400'
+                    ? 'border-pink-300 bg-pink-950/60 text-pink-300'
                     : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white'
                 }`}
                 title="Toggle Wishlist"

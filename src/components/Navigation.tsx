@@ -44,8 +44,8 @@ export const Navigation: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black/90 backdrop-blur-md border-t border-slate-800 text-white pb-safe">
-      <div className="max-w-md mx-auto px-4 py-2 flex items-center justify-between">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black/90 backdrop-blur-md border-t border-slate-800 text-white pb-safe select-none">
+      <div className="w-full max-w-md mx-auto px-1 py-1.5 grid grid-cols-5 items-center justify-items-stretch">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
@@ -57,40 +57,40 @@ export const Navigation: React.FC = () => {
                 setActiveTab(item.id);
                 resetActiveTab(item.id);
               }}
-              className={`relative flex flex-col items-center justify-center py-1 px-2.5 transition-all duration-200 group ${
-                isActive ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-200'
+              className={`w-full relative flex flex-col items-center justify-center py-1 transition-colors duration-150 group ${
+                isActive ? 'text-pink-300' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <div className="relative">
+              <div className="relative w-9 h-9 flex items-center justify-center">
                 <div
-                  className={`p-1.5 rounded-xl transition-all duration-200 ${
-                    isActive ? 'bg-emerald-500/15 text-emerald-400' : 'group-hover:bg-slate-800/60'
+                  className={`p-1.5 rounded-xl transition-colors duration-150 flex items-center justify-center ${
+                    isActive ? 'bg-pink-400/15 text-pink-300' : 'group-hover:bg-slate-800/60'
                   }`}
                 >
                   <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 1.8} />
                 </div>
 
                 {item.badge !== undefined && (
-                  <span className="absolute -top-1 -right-1 bg-emerald-500 text-black font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                  <span className="absolute -top-0.5 -right-0.5 bg-pink-300 text-black font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm pointer-events-none">
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 )}
 
                 {item.accentDot && !isActive && (
-                  <span className="absolute 0 top-0 right-0 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-black animate-pulse" />
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-pink-300 ring-2 ring-black animate-pulse pointer-events-none" />
                 )}
               </div>
 
               <span
-                className={`text-[11px] font-medium tracking-tight mt-0.5 ${
-                  isActive ? 'text-emerald-400 font-semibold' : 'text-slate-400'
+                className={`text-[11px] tracking-tight mt-0.5 truncate max-w-full px-0.5 text-center ${
+                  isActive ? 'text-pink-300 font-bold' : 'text-slate-400 font-medium'
                 }`}
               >
                 {item.label}
               </span>
 
               {isActive && (
-                <div className="absolute -bottom-1 w-4 h-0.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <div className="absolute -bottom-0.5 w-4 h-0.5 bg-pink-300 rounded-full shadow-[0_0_8px_rgba(244,114,182,0.8)]" />
               )}
             </button>
           );

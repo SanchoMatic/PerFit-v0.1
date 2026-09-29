@@ -42,18 +42,19 @@ export const WishlistTab: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-3 max-w-md mx-auto">
-      {/* Top Header - Exact match to sketch with Gear icon */}
-      <div className="flex items-center justify-between mb-4 pt-1">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-white">
+      {/* Top Header - Large title filling top-left with sleek underline & Gear icon */}
+      <div className="flex items-end justify-between mb-5 pt-1">
+        <div className="relative">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white leading-none">
             Wishlist
           </h1>
+          <div className="mt-2 h-1 w-24 bg-gradient-to-r from-pink-400 via-pink-300 to-transparent rounded-full shadow-[0_0_10px_rgba(244,114,182,0.6)]" />
         </div>
 
         {/* Gear Icon (matching sketch 1 right top) */}
         <button
           onClick={() => setIsSettingsOpen(true)}
-          className="p-2.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors shadow-sm"
+          className="p-2.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 transition-colors shadow-sm mb-1"
           title="Wishlist Settings"
         >
           <Settings className="w-4 h-4" />
@@ -65,7 +66,7 @@ export const WishlistTab: React.FC = () => {
         <div className="flex items-center justify-end px-1 mb-3 text-xs">
           <button
             onClick={addAllWishlistToCart}
-            className="flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-emerald-400 text-[11px] font-bold hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[11px] font-bold hover:bg-emerald-500 hover:text-black transition-colors shadow-sm"
           >
             <ShoppingBag className="w-3 h-3" />
             <span>Add All to Cart</span>
@@ -100,7 +101,7 @@ export const WishlistTab: React.FC = () => {
 
                 {/* Match score pill in top left */}
                 {item.matchScore && (
-                  <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/50 text-[9px] font-mono font-bold text-emerald-300">
+                  <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-pink-950/90 border border-pink-400/50 text-[9px] font-mono font-bold text-pink-300">
                     {item.matchScore}%
                   </div>
                 )}
@@ -109,7 +110,7 @@ export const WishlistTab: React.FC = () => {
               {/* Garment Details / Brand Bar (Silver and Black) */}
               <div className="p-2 flex-1 flex flex-col justify-between bg-slate-900/90 border-t border-slate-800">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 truncate">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-pink-300 truncate">
                     {item.brand}
                   </p>
                   <p className="text-[11px] font-bold text-slate-100 truncate leading-tight mt-0.5">
@@ -124,7 +125,7 @@ export const WishlistTab: React.FC = () => {
                       e.stopPropagation();
                       addToCart(item);
                     }}
-                    className="w-full py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors"
+                    className="w-full py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95"
                   >
                     <ShoppingBag className="w-2.5 h-2.5" />
                     <span>Cart</span>
@@ -136,7 +137,7 @@ export const WishlistTab: React.FC = () => {
         </div>
       ) : (
         /* Empty State */
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-8 text-center mt-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center mt-6">
           <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3 text-slate-400">
             <ShoppingBag className="w-6 h-6 text-slate-400" />
           </div>
@@ -146,7 +147,7 @@ export const WishlistTab: React.FC = () => {
           </p>
           <button
             onClick={() => setActiveTab('swipe')}
-            className="px-4 py-2 rounded-full bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20"
+            className="px-4 py-2 rounded-full bg-pink-300 text-black text-xs font-black hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
           >
             Start Swiping
           </button>
@@ -157,34 +158,35 @@ export const WishlistTab: React.FC = () => {
       {selectedItemForAction && (
         <div
           onClick={() => setSelectedItemForAction(null)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4"
+            className="bg-slate-950 border border-slate-700 rounded-2xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto cursor-default relative"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-emerald-400 tracking-wider">
-                  {selectedItemForAction.brand}
-                </span>
-                <h3 className="text-base font-extrabold">{selectedItemForAction.name}</h3>
-              </div>
-              <button
-                onClick={() => setSelectedItemForAction(null)}
-                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            {/* Floating Close Button */}
+            <button
+              onClick={() => setSelectedItemForAction(null)}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close window"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="pr-10">
+              <span className="text-[10px] font-bold uppercase text-pink-300 tracking-wider">
+                {selectedItemForAction.brand}
+              </span>
+              <h3 className="text-base font-extrabold">{selectedItemForAction.name}</h3>
             </div>
 
-            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
+            <div className="rounded-xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
               <img
                 src={selectedItemForAction.image}
                 alt={selectedItemForAction.name}
                 className="w-full h-full object-cover"
               />
-              <span className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/80 text-xs font-mono font-bold text-emerald-400">
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 text-xs font-mono font-bold text-pink-300 border border-pink-400/20">
                 ${selectedItemForAction.price}
               </span>
             </div>
@@ -209,7 +211,7 @@ export const WishlistTab: React.FC = () => {
                   addToCart(selectedItemForAction);
                   setSelectedItemForAction(null);
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-500/20"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-500/20"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 <span>Add to Cart (${selectedItemForAction.price})</span>
@@ -234,20 +236,23 @@ export const WishlistTab: React.FC = () => {
       {isSettingsOpen && (
         <div
           onClick={() => setIsSettingsOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-950 border border-slate-700 rounded-3xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4"
+            className="bg-slate-950 border border-slate-700 rounded-2xl max-w-sm w-full p-5 text-white shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto cursor-default relative"
           >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            {/* Floating Close Button */}
+            <button
+              onClick={() => setIsSettingsOpen(false)}
+              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center pb-2 border-b border-slate-800 pr-10">
               <h3 className="text-sm font-extrabold text-white">Wishlist Settings</h3>
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="p-1 rounded-full bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <div>
@@ -266,7 +271,7 @@ export const WishlistTab: React.FC = () => {
                     onClick={() => setSortBy(s.id as typeof sortBy)}
                     className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       sortBy === s.id
-                        ? 'border-emerald-500 bg-emerald-950/50 text-emerald-400'
+                        ? 'border-pink-400 bg-pink-950/50 text-pink-300'
                         : 'border-slate-800 bg-slate-900 text-slate-300'
                     }`}
                   >
@@ -282,7 +287,7 @@ export const WishlistTab: React.FC = () => {
                   addAllWishlistToCart();
                   setIsSettingsOpen(false);
                 }}
-                className="w-full py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400 transition-colors"
+                className="w-full py-2.5 rounded-xl bg-pink-300 text-black text-xs font-black hover:bg-pink-200 transition-colors shadow-lg shadow-pink-300/20"
               >
                 Move All ({wishlistItems.length}) to Cart
               </button>
