@@ -51,6 +51,8 @@ export const SwipeTab: React.FC = () => {
     tabResetTimestamp,
   } = useApp();
 
+  const isLight = userProfile.preferences.theme === 'light';
+
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [tossState, setTossState] = useState<'like' | 'dislike' | null>(null);
@@ -116,7 +118,7 @@ export const SwipeTab: React.FC = () => {
     'Vintage Carhartt',
   ];
 
-  const categories = ['all', 'Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Footwear', 'Accessories', 'Dresses'];
+  const categories = ['all', 'Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Footwear', 'Accessories'];
   const aesthetics = ['all', ...TRENDING_AESTHETICS_25];
   const sizes = ['all', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'M Tall', 'L Tall'];
 
@@ -225,9 +227,10 @@ export const SwipeTab: React.FC = () => {
       {/* Top Header - Brands pill perfectly centered in 3-column layout */}
       <header className="grid grid-cols-3 items-center w-full z-20 mb-2">
         <div className="justify-self-start flex items-center">
-          {/* Brand logo/mark */}
-          <span className="text-xl font-black tracking-wider text-pink-300 font-mono leading-none">
-            PerFit
+          {/* Brand logo/mark - Aesthro (blend of astro and aesthetic) */}
+          <span className={`text-xl font-black tracking-wider ${isLight ? 'text-pink-600' : 'text-pink-300'} font-mono leading-none flex items-center gap-1`}>
+            <span>Aesthro</span>
+            <span className={`text-xs ${isLight ? 'text-indigo-600' : 'text-pink-300'} select-none`}>✦</span>
           </span>
         </div>
 
@@ -235,10 +238,14 @@ export const SwipeTab: React.FC = () => {
         <div className="justify-self-center relative flex justify-center">
           <button
             onClick={() => setIsBrandMenuOpen(!isBrandMenuOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-700 bg-black/80 text-white text-xs font-semibold tracking-wide shadow-sm hover:border-slate-500 transition-colors max-w-[130px]"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+              isLight
+                ? 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
+                : 'border-slate-700 bg-black/80 text-white hover:border-slate-500'
+            } text-xs font-semibold tracking-wide shadow-sm transition-colors max-w-[130px]`}
           >
             <span className="truncate">{brandFilter === 'all' ? 'Brands' : brandFilter}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-pink-300 flex-shrink-0" />
+            <ChevronDown className={`w-3.5 h-3.5 ${isLight ? 'text-pink-600' : 'text-pink-300'} flex-shrink-0`} />
           </button>
 
           {isBrandMenuOpen && (
@@ -247,7 +254,9 @@ export const SwipeTab: React.FC = () => {
                 className="fixed inset-0 z-30"
                 onClick={() => setIsBrandMenuOpen(false)}
               />
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-44 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl py-2 z-40 max-h-64 overflow-y-auto">
+              <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 w-44 ${
+                isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
+              } border rounded-2xl shadow-2xl py-2 z-40 max-h-64 overflow-y-auto`}>
                 {availableBrands.map((b) => (
                   <button
                     key={b}
@@ -255,12 +264,20 @@ export const SwipeTab: React.FC = () => {
                       setBrandFilter(b);
                       setIsBrandMenuOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2 text-xs font-medium hover:bg-slate-800 transition-colors flex items-center justify-between ${
-                      brandFilter === b ? 'text-pink-300 font-bold bg-slate-800/60' : 'text-slate-300'
+                    className={`w-full text-left px-3.5 py-2 text-xs font-medium ${
+                      isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
+                    } transition-colors flex items-center justify-between ${
+                      brandFilter === b
+                        ? isLight
+                          ? 'text-pink-600 font-bold bg-pink-50'
+                          : 'text-pink-300 font-bold bg-slate-800/60'
+                        : isLight
+                        ? 'text-slate-700'
+                        : 'text-slate-300'
                     }`}
                   >
                     <span className="truncate">{b === 'all' ? 'All Brands' : b}</span>
-                    {brandFilter === b && <Check className="w-3.5 h-3.5 text-pink-300 flex-shrink-0 ml-1" />}
+                    {brandFilter === b && <Check className={`w-3.5 h-3.5 ${isLight ? 'text-pink-600' : 'text-pink-300'} flex-shrink-0 ml-1`} />}
                   </button>
                 ))}
               </div>
@@ -274,14 +291,18 @@ export const SwipeTab: React.FC = () => {
             onClick={() => setIsFilterModalOpen(true)}
             className={`p-2 rounded-full border transition-colors relative ${
               categoryFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
-                ? 'border-pink-400 bg-pink-950/60 text-pink-300'
+                ? isLight
+                  ? 'border-pink-600 bg-pink-50 text-pink-600'
+                  : 'border-pink-400 bg-pink-950/60 text-pink-300'
+                : isLight
+                ? 'border-slate-300 bg-white text-slate-700 hover:text-black hover:border-slate-400'
                 : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white'
             }`}
             title="Filter Preferences"
           >
             <SlidersHorizontal className="w-4 h-4" />
             {(categoryFilter !== 'all' || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-pink-300 rounded-full ring-2 ring-black" />
+              <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 ${isLight ? 'bg-pink-600 ring-white' : 'bg-pink-300 ring-black'} rounded-full ring-2`} />
             )}
           </button>
         </div>
@@ -567,7 +588,7 @@ export const SwipeTab: React.FC = () => {
       {hasReachedDailyLimit && (
         <div
           onClick={() => bypassSwipeLimit()}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -619,31 +640,36 @@ export const SwipeTab: React.FC = () => {
       {isFilterModalOpen && (
         <div
           onClick={() => setIsFilterModalOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 text-white shadow-2xl animate-in slide-in-from-bottom-6 duration-200 max-h-[85vh] overflow-y-auto cursor-default relative"
+            className={`${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
+                : 'bg-slate-900 border-slate-700 text-white shadow-2xl'
+            } border rounded-2xl max-w-sm w-full p-5 animate-in slide-in-from-bottom-6 duration-200 max-h-[85vh] overflow-y-auto cursor-default relative`}
           >
             {/* Floating Close Button */}
             <button
               onClick={() => setIsFilterModalOpen(false)}
-              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              className={`sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                  : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
+              } border backdrop-blur-md shadow-lg transition-all`}
               title="Close Filters"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-800 mb-4 pr-10">
-              <SlidersHorizontal className="w-4 h-4 text-pink-300" />
+            <div className={`flex items-center gap-2 pb-3 border-b ${isLight ? 'border-slate-200 text-slate-900' : 'border-slate-800 text-white'} mb-3.5 pr-10`}>
+              <SlidersHorizontal className={`w-4 h-4 ${isLight ? 'text-pink-600' : 'text-pink-300'}`} />
               <h3 className="font-bold text-base">Filters & Preferences</h3>
             </div>
 
-            {/* 1. Item Presentation: Single Items (default) vs Bundles */}
-            <div className="mb-4">
-              <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 block">
-                Item Presentation
-              </label>
+            {/* 1. Item Presentation Buttons (No title, no summary text) */}
+            <div className="mb-3.5">
               <div className="grid grid-cols-3 gap-1.5">
                 {[
                   { id: 'single', label: 'Single Items' },
@@ -655,7 +681,11 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setItemTypeFilter(t.id as typeof itemTypeFilter)}
                     className={`py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
                       itemTypeFilter === t.id
-                        ? 'bg-pink-300 text-black shadow-md shadow-pink-300/20'
+                        ? isLight
+                          ? 'bg-pink-600 text-white shadow-md'
+                          : 'bg-pink-300 text-black shadow-md shadow-pink-300/20'
+                        : isLight
+                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
@@ -663,18 +693,15 @@ export const SwipeTab: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Default shows single garments; bundles and outfits can be toggled on.
-              </p>
             </div>
 
-            {/* 2. Category selection: Moved right below Item Presentation and above Size Filter */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
+            {/* 2. Category selection */}
+            <div className="mb-3.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
                   Category
                 </label>
-                <span className="text-[10px] text-pink-300 font-mono font-bold">
+                <span className={`text-[10px] font-mono font-bold ${isLight ? 'text-pink-600' : 'text-pink-300'}`}>
                   {categoryFilter === 'all' ? 'All Categories' : categoryFilter}
                 </span>
               </div>
@@ -685,7 +712,11 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setCategoryFilter(c)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
                       categoryFilter === c
-                        ? 'bg-pink-300 text-black font-bold shadow-sm'
+                        ? isLight
+                          ? 'bg-pink-600 text-white font-bold shadow-sm'
+                          : 'bg-pink-300 text-black font-bold shadow-sm'
+                        : isLight
+                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
@@ -696,12 +727,12 @@ export const SwipeTab: React.FC = () => {
             </div>
 
             {/* 3. Size Filter */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
+            <div className="mb-3.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
                   Size Filter
                 </label>
-                <span className="text-[10px] text-slate-500">
+                <span className={`text-[10px] ${isLight ? 'text-slate-500 font-medium' : 'text-slate-500'}`}>
                   {sizeFilter === 'all' ? 'Off (All Sizes)' : sizeFilter}
                 </span>
               </div>
@@ -710,9 +741,13 @@ export const SwipeTab: React.FC = () => {
                   <button
                     key={s}
                     onClick={() => setSizeFilter(s)}
-                    className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors ${
+                    className={`px-2.5 py-1 rounded-xl text-xs font-medium transition-colors ${
                       sizeFilter === s
-                        ? 'bg-pink-300 text-black font-bold'
+                        ? isLight
+                          ? 'bg-pink-600 text-white font-bold'
+                          : 'bg-pink-300 text-black font-bold'
+                        : isLight
+                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
@@ -723,11 +758,11 @@ export const SwipeTab: React.FC = () => {
             </div>
 
             {/* 4. Gender / Target Fit Filter */}
-            <div className="mb-4">
-              <label className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 block">
+            <div className="mb-3.5">
+              <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
                 Target Fit / Gender
               </label>
-              <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-slate-900 border border-slate-800">
+              <div className={`grid grid-cols-4 gap-1.5 p-1 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'men', label: 'Men' },
@@ -739,7 +774,11 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setGenderFilter(g.id as typeof genderFilter)}
                     className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                       genderFilter === g.id
-                        ? 'bg-pink-300 text-black shadow-md shadow-pink-300/20'
+                        ? isLight
+                          ? 'bg-pink-600 text-white shadow-md'
+                          : 'bg-pink-300 text-black shadow-md shadow-pink-300/20'
+                        : isLight
+                        ? 'text-slate-600 hover:text-slate-900'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -749,13 +788,13 @@ export const SwipeTab: React.FC = () => {
               </div>
             </div>
 
-            {/* 5. Simplified Compact Price Slider (saves vertical space) */}
+            {/* 5. Simplified Compact Price Slider */}
             <div className="mb-4">
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="font-semibold text-slate-300 uppercase tracking-wider text-[11px]">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className={`font-semibold uppercase tracking-wider text-[11px] ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   Max Price
                 </span>
-                <span className="font-mono text-pink-300 font-bold text-xs">
+                <span className={`font-mono font-bold text-xs ${isLight ? 'text-pink-600' : 'text-pink-300'}`}>
                   {priceRangeFilter.max === null || !priceRangeFilter.active || priceRangeFilter.max >= 500
                     ? 'Any Price ($1 - ∞)'
                     : `Up to $${priceRangeFilter.max}`}
@@ -775,7 +814,7 @@ export const SwipeTab: React.FC = () => {
                     active: val < 500,
                   });
                 }}
-                className="w-full accent-pink-300 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                className={`w-full ${isLight ? 'accent-pink-600 bg-slate-200' : 'accent-pink-300 bg-slate-800'} cursor-pointer h-1.5 rounded-lg`}
               />
               <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
                 <span>$20</span>
@@ -785,7 +824,9 @@ export const SwipeTab: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className={`sticky -bottom-5 -mx-5 -mb-5 p-3.5 border-t ${
+              isLight ? 'bg-white/95 border-slate-200' : 'bg-slate-900/95 border-slate-800'
+            } backdrop-blur-md flex gap-3 z-20`}>
               <button
                 onClick={() => {
                   setCategoryFilter('all');
@@ -794,13 +835,21 @@ export const SwipeTab: React.FC = () => {
                   setSizeFilter('all');
                   setPriceRangeFilter({ min: 1, max: null, active: false });
                 }}
-                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-xs font-medium text-slate-300 hover:bg-slate-800"
+                className={`flex-1 py-2.5 rounded-xl border text-xs font-semibold transition-colors ${
+                  isLight
+                    ? 'border-slate-300 text-slate-700 hover:bg-slate-100'
+                    : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                }`}
               >
                 Reset All
               </button>
               <button
                 onClick={() => setIsFilterModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-pink-300 text-black font-black text-xs hover:bg-pink-200 shadow-md shadow-pink-300/20"
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-colors shadow-md ${
+                  isLight
+                    ? 'bg-pink-600 text-white hover:bg-pink-700 shadow-pink-600/20'
+                    : 'bg-pink-300 text-black hover:bg-pink-200 shadow-pink-300/20'
+                }`}
               >
                 Apply Filters
               </button>
@@ -813,7 +862,7 @@ export const SwipeTab: React.FC = () => {
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}

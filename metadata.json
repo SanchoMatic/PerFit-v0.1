@@ -1,6 +1,6 @@
 {
-  "name": "PerFit - AI Fashion Discovery",
-  "description": "PerFit - Clothes recommendations, wishlist, cart, AI outfit dissection, and personalized style algorithm.",
+  "name": "Aesthro - Cosmic Aesthetic Fashion Discovery",
+  "description": "Aesthro - A blend of astro and aesthetic fashion discovery, clothes recommendations, cosmic wishlist, cart, AI outfit curation, and personalized style algorithm.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

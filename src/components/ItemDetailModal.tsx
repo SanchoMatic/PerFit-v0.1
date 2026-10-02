@@ -25,7 +25,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
       onClick={onClose}
     >
       <div
@@ -48,7 +48,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         </button>
 
         <div className="pr-8">
-          <span className="text-[10px] font-extrabold uppercase text-pink-400 tracking-wider">
+          <span className={`text-[10px] font-extrabold uppercase ${isLight ? 'text-pink-600' : 'text-pink-400'} tracking-wider`}>
             {item.brand}
           </span>
           <h3 className={`text-lg font-black leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -137,14 +137,16 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
             }}
             className={`p-3 rounded-xl border transition-colors ${
               inWishlist
-                ? 'border-pink-400 bg-pink-950/60 text-pink-300'
+                ? isLight
+                  ? 'border-pink-600 bg-pink-50 text-pink-700'
+                  : 'border-pink-400 bg-pink-950/60 text-pink-300'
                 : isLight
                 ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
                 : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800'
             }`}
             title={inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
           >
-            <Heart className={`w-4 h-4 ${inWishlist ? 'fill-pink-300 text-pink-300' : ''}`} />
+            <Heart className={`w-4 h-4 ${inWishlist ? (isLight ? 'fill-pink-600 text-pink-600' : 'fill-pink-300 text-pink-300') : ''}`} />
           </button>
         </div>
       </div>

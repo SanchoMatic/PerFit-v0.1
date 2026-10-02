@@ -2,6 +2,7 @@ import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navigation } from './components/Navigation';
 import { Toasts } from './components/Toasts';
+import { CosmicSkyBackground } from './components/CosmicSkyBackground';
 import { SwipeTab } from './components/tabs/SwipeTab';
 import { WishlistTab } from './components/tabs/WishlistTab';
 import { CartTab } from './components/tabs/CartTab';
@@ -12,7 +13,7 @@ const MainContent: React.FC = () => {
   const { activeTab } = useApp();
 
   return (
-    <main key={activeTab} className="flex-1 w-full overflow-x-hidden animate-page-enter">
+    <main key={activeTab} className="flex-1 w-full overflow-x-hidden animate-page-enter relative z-10">
       {activeTab === 'swipe' && <SwipeTab />}
       {activeTab === 'wishlist' && <WishlistTab />}
       {activeTab === 'cart' && <CartTab />}
@@ -28,12 +29,14 @@ const AppShell: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-200 flex flex-col font-sans antialiased ${
+      className={`min-h-screen transition-colors duration-200 flex flex-col font-sans antialiased relative overflow-x-hidden ${
         isLight
-          ? 'bg-white text-slate-900 selection:bg-pink-300 selection:text-black'
-          : 'bg-black text-white selection:bg-pink-300 selection:text-black'
+          ? 'text-slate-900 selection:bg-pink-300 selection:text-black'
+          : 'text-white selection:bg-pink-300 selection:text-black'
       }`}
     >
+      {/* Non-invasive cosmic night sky theme (dark) and day sky cosmic theme (light) */}
+      <CosmicSkyBackground isLight={isLight} />
       <Toasts />
       <MainContent />
       {/* Toolbar stays the exact same fixed dark navigation bar */}

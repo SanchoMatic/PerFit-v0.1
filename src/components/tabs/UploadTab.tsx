@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Flame,
   X,
+  HelpCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DissectedGarment, ClothingItem } from '../../types';
@@ -38,6 +39,9 @@ export const UploadTab: React.FC = () => {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [selectedGarmentId, setSelectedGarmentId] = useState<string | null>(null);
   const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
+  const [showLookupInfo, setShowLookupInfo] = useState(false);
+
+  const isLight = userProfile.preferences.theme === 'light';
 
   // Return to main upload view when tab is clicked
   useEffect(() => {
@@ -119,56 +123,106 @@ export const UploadTab: React.FC = () => {
         className="hidden"
       />
 
-      {/* Screen Header - Simple and clean without fluff */}
-      <div className="text-center mb-6">
-        <h1 className="text-xl font-black tracking-tight text-white">Outfit Dissection</h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Upload any outfit photo to dissect garments and find matching marketplace styles.
+      {/* Screen Header - Simplified and clean */}
+      <div className="text-center mb-5">
+        <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Outfit Dissection</h1>
+        <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} mt-1`}>
+          Scan photo to match pieces
         </p>
       </div>
 
       {!currentDissection && !isAnalyzing ? (
-        /* Empty / Initial State - Matching sketch from IMG_0314 (left) purely and simply:
-           - Large `+` icon
-           - Simple prompt lines
-           - Big pastel pink "Upload" button
-        */
-        <div className="mt-4">
+        <div className="mt-2 space-y-3">
           <div
             onClick={handleTriggerUpload}
-            className="group relative flex flex-col items-center justify-center p-10 rounded-3xl border-2 border-dashed border-slate-700 bg-slate-900/60 hover:border-pink-400 hover:bg-slate-900/90 transition-all duration-200 cursor-pointer text-center shadow-xl shadow-black/50"
+            className={`group relative flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-dashed ${
+              isLight
+                ? 'border-slate-300 bg-white hover:border-pink-600 shadow-sm'
+                : 'border-slate-700 bg-slate-900/60 hover:border-pink-400 hover:bg-slate-900/90 shadow-xl shadow-black/50'
+            } transition-all duration-200 cursor-pointer text-center`}
           >
+            {/* '?' Help Button on Upload Card */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowLookupInfo((prev) => !prev);
+              }}
+              className={`absolute top-3.5 right-3.5 p-2 rounded-full ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                  : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-pink-300 border-slate-700'
+              } text-xs font-bold transition-all shadow-md z-10`}
+              title="How outfit lookup works"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+
+            {/* Expandable Explanation of How Outfit Lookup Works */}
+            {showLookupInfo && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full mb-4 p-3.5 rounded-2xl ${
+                  isLight
+                    ? 'bg-white border-pink-600/40 text-slate-800'
+                    : 'bg-slate-950/95 border-pink-400/40 text-slate-300'
+                } border text-left text-xs space-y-1.5 shadow-xl animate-in zoom-in-95 duration-150`}
+              >
+                <div className={`flex items-center justify-between pb-1 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
+                  <span className={`font-extrabold ${isLight ? 'text-pink-600' : 'text-pink-300'} text-[11px] uppercase tracking-wider`}>
+                    How Outfit Lookup Works
+                  </span>
+                  <button
+                    onClick={() => setShowLookupInfo(false)}
+                    className={`p-1 rounded-full ${isLight ? 'text-slate-500 hover:text-black' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className={`space-y-1 ${isLight ? 'text-slate-700' : 'text-slate-300'} text-[11px] pt-0.5`}>
+                  <p>1. Upload or drop any full-outfit photo</p>
+                  <p>2. AI identifies each garment in the fit</p>
+                  <p>3. Match with catalog pieces to save or cart</p>
+                </div>
+              </div>
+            )}
+
             {/* Top Plus Icon */}
-            <div className="w-16 h-16 rounded-3xl bg-slate-800 border-2 border-slate-600 group-hover:border-pink-400 group-hover:scale-105 flex items-center justify-center text-slate-300 group-hover:text-pink-300 transition-all duration-200 shadow-inner mb-6">
-              <Plus className="w-9 h-9" strokeWidth={2.5} />
+            <div className={`w-14 h-14 rounded-2xl ${
+              isLight
+                ? 'bg-slate-100 border-2 border-slate-300 text-slate-700 group-hover:border-pink-600 group-hover:text-pink-600'
+                : 'bg-slate-800 border-2 border-slate-600 text-slate-300 group-hover:border-pink-400 group-hover:text-pink-300'
+            } group-hover:scale-105 flex items-center justify-center transition-all duration-200 shadow-inner mb-4`}>
+              <Plus className="w-8 h-8" strokeWidth={2.5} />
             </div>
 
-            {/* Simple prompt */}
-            <div className="space-y-1.5 mb-8">
-              <p className="text-sm text-white font-bold">
-                Select or drop an outfit photo
-              </p>
-              <p className="text-xs text-slate-400">
-                AI will extract tops, pants, shoes, and accessories
+            {/* Simplified prompt */}
+            <div className="mb-5">
+              <p className={`text-sm ${isLight ? 'text-slate-900' : 'text-white'} font-bold`}>
+                Drop or select photo
               </p>
             </div>
 
-            {/* Prominent Pastel Pink "Upload" Button */}
+            {/* Prominent Upload Button */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTriggerUpload();
               }}
-              className="relative w-full max-w-xs py-4 px-6 rounded-2xl bg-pink-300 hover:bg-pink-200 active:scale-[0.98] text-black font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-xl shadow-pink-300/30 transition-all duration-200"
+              className={`relative w-full max-w-xs py-3.5 px-6 rounded-2xl ${
+                isLight
+                  ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-pink-600/20'
+                  : 'bg-pink-300 hover:bg-pink-200 text-black shadow-pink-300/30'
+              } active:scale-[0.98] font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-xl transition-all duration-200`}
             >
-              <UploadIcon className="w-5 h-5" strokeWidth={2.5} />
+              <UploadIcon className="w-4 h-4" strokeWidth={2.5} />
               <span>Upload</span>
             </button>
           </div>
 
           {/* Lower Half: "Hot Right Now" Rotating Carousel with Red Text and Fire Emoji */}
-          <div className="mt-8 pt-4 border-t border-slate-800">
+          <div className={`mt-8 pt-4 border-t ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-black text-red-500 flex items-center gap-1.5 tracking-tight">
@@ -179,14 +233,14 @@ export const UploadTab: React.FC = () => {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => scrollCarousel('left')}
-                  className="p-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+                  className={`p-1.5 rounded-full ${isLight ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'} border transition-colors`}
                   title="Previous"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => scrollCarousel('right')}
-                  className="p-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+                  className={`p-1.5 rounded-full ${isLight ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'} border transition-colors`}
                   title="Next"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -204,7 +258,9 @@ export const UploadTab: React.FC = () => {
                 <div
                   key={item.id}
                   onClick={() => setInspectItem(item)}
-                  className="w-36 flex-shrink-0 snap-start rounded-2xl bg-slate-950 border border-slate-800 p-2 flex flex-col justify-between hover:border-slate-500 hover:scale-[1.02] transition-all shadow-md group cursor-pointer"
+                  className={`w-36 flex-shrink-0 snap-start rounded-2xl ${
+                    isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-950 border-slate-800 shadow-md'
+                  } border p-2 flex flex-col justify-between hover:scale-[1.02] transition-all group cursor-pointer`}
                   title="Click to view more info"
                 >
                   <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-slate-900 mb-2">
@@ -219,10 +275,10 @@ export const UploadTab: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0 mb-2">
-                    <span className="text-[9px] uppercase font-bold text-pink-300 block truncate">
+                    <span className={`text-[9px] uppercase font-bold ${isLight ? 'text-pink-600' : 'text-pink-300'} block truncate`}>
                       {item.brand}
                     </span>
-                    <p className="text-[11px] font-bold text-white truncate leading-tight group-hover:text-pink-300 transition-colors">
+                    <p className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate leading-tight group-hover:text-pink-600 transition-colors`}>
                       {item.name}
                     </p>
                   </div>
@@ -237,7 +293,11 @@ export const UploadTab: React.FC = () => {
                       onClick={() => toggleWishlist(item)}
                       className={`p-1 rounded-lg border transition-colors ${
                         isItemInWishlist(item.id)
-                          ? 'border-pink-300 bg-pink-950/60 text-pink-300'
+                          ? isLight
+                            ? 'border-pink-600 bg-pink-50 text-pink-700'
+                            : 'border-pink-300 bg-pink-950/60 text-pink-300'
+                          : isLight
+                          ? 'border-slate-300 text-slate-500 hover:text-black'
                           : 'border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
@@ -486,26 +546,34 @@ export const UploadTab: React.FC = () => {
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-slate-950 border border-slate-700 rounded-2xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 cursor-default relative"
+            className={`${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
+                : 'bg-slate-950 border-slate-700 text-white shadow-2xl'
+            } border rounded-2xl max-w-sm w-full p-6 space-y-4 animate-in zoom-in-95 duration-200 cursor-default relative`}
           >
             {/* Floating Close Button */}
             <button
               onClick={() => setInspectItem(null)}
-              className="sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 backdrop-blur-md shadow-lg transition-all"
+              className={`sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+              } border backdrop-blur-md shadow-lg transition-all`}
               title="Close"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div>
-              <span className="text-[10px] font-extrabold uppercase text-pink-300 tracking-wider">
+              <span className={`text-[10px] font-extrabold uppercase ${isLight ? 'text-pink-600' : 'text-pink-300'} tracking-wider`}>
                 {inspectItem.brand}
               </span>
-              <h3 className="text-lg font-black text-white">{inspectItem.name}</h3>
+              <h3 className={`text-lg font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{inspectItem.name}</h3>
             </div>
 
             <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
@@ -519,18 +587,18 @@ export const UploadTab: React.FC = () => {
               </span>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className={`text-xs ${isLight ? 'text-slate-700' : 'text-slate-300'} leading-relaxed`}>
               {inspectItem.description}
             </p>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Material</span>
-                <span className="font-semibold text-white">{inspectItem.material}</span>
+              <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} uppercase font-bold block`}>Material</span>
+                <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{inspectItem.material}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Silhouette Fit</span>
-                <span className="font-semibold text-white">{inspectItem.fit}</span>
+              <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} uppercase font-bold block`}>Silhouette Fit</span>
+                <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{inspectItem.fit}</span>
               </div>
             </div>
 

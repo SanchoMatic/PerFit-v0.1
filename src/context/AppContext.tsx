@@ -151,14 +151,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       'Clean Sartorial': 75,
     },
     colorWeights: {
-      'Olive Green': 90,
-      'Forest Green': 84,
-      'Sage Green': 79,
-      'Slate Silver': 88,
-      'Silver Grey': 81,
-      'Jet Black': 95,
-      'Bone White': 78,
-      'Charcoal': 70,
+      'Olive & Earth Greens': 88,
+      'Monochrome Black & Charcoal': 92,
+      'Slate Silver & Grey': 84,
+      'Bone & Off-White': 80,
     },
     brandWeights: {
       "Arc'teryx": 88,
@@ -216,10 +212,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
 
-      // Color contribution
+      // Color contribution (consolidated affinities)
       item.colors.forEach((col) => {
-        if (algorithmProfile.colorWeights[col]) {
-          score += (algorithmProfile.colorWeights[col] - 50) * 0.15;
+        const cLower = col.toLowerCase();
+        let matchedWeight: number | undefined;
+        if (cLower.includes('green') || cLower.includes('olive') || cLower.includes('sage') || cLower.includes('moss') || cLower.includes('emerald')) {
+          matchedWeight = algorithmProfile.colorWeights['Olive & Earth Greens'];
+        } else if (cLower.includes('black') || cLower.includes('charcoal')) {
+          matchedWeight = algorithmProfile.colorWeights['Monochrome Black & Charcoal'];
+        } else if (cLower.includes('silver') || cLower.includes('grey') || cLower.includes('slate') || cLower.includes('melange')) {
+          matchedWeight = algorithmProfile.colorWeights['Slate Silver & Grey'];
+        } else if (cLower.includes('white') || cLower.includes('bone') || cLower.includes('champagne') || cLower.includes('cream')) {
+          matchedWeight = algorithmProfile.colorWeights['Bone & Off-White'];
+        } else {
+          matchedWeight = algorithmProfile.colorWeights[col];
+        }
+        if (matchedWeight !== undefined) {
+          score += (matchedWeight - 50) * 0.15;
         }
       });
 
@@ -258,6 +267,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [swipedItemIds, setSwipedItemIds] = useState<string[]>([]);
   const [likedItemIds, setLikedItemIds] = useState<string[]>(INITIAL_WISHLIST_IDS);
+  const [savedWishlistItemIds, setSavedWishlistItemIds] = useState<string[]>(INITIAL_WISHLIST_IDS);
   const [passedItemIds, setPassedItemIds] = useState<string[]>([]);
   const [swipeHistory, setSwipeHistory] = useState<Array<{ id: string; action: 'like' | 'dislike'; item: ClothingItem }>>([]);
 
@@ -290,7 +300,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     avatarUrl: '',
     coverImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80',
     joinedDate: 'May 2024',
-    bio: 'Curating minimalist utilitarian staples, technical shells & sculptural silhouettes.',
+    bio: 'Minimalist technical curator',
     membership: 'Pro Style Member',
     styleArchetype: 'Minimal Utilitarian / Gorpcore',
     paymentMethod: {
@@ -339,6 +349,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toasts, setToasts] = useState<NotificationToast[]>([]);
 
   const showToast = useCallback((message: string, subtext?: string, type: 'green' | 'silver' | 'red' = 'green') => {
+    const combined = `${message || ''} ${subtext || ''}`.toLowerCase();
+    // Only banner notifications pertaining to adding items to cart or friend interactions are permitted
+    const isCartAdd =
+      (combined.includes('cart') || combined.includes('checkout')) &&
+      (combined.includes('add') || combined.includes('added'));
+    const isFriend =
+      combined.includes('friend') ||
+      combined.includes('fit recommendation') ||
+      combined.includes('sent fit') ||
+      combined.includes('recommendation sent');
+
+    if (!isCartAdd && !isFriend) {
+      return;
+    }
+
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, subtext, type }]);
     setTimeout(() => {
@@ -396,9 +421,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
 
-      // Category Filter
-      if (categoryFilter !== 'all' && item.category !== categoryFilter) {
-        return false;
+      // Category Filter (lumping Dresses into Tops)
+      if (categoryFilter !== 'all') {
+        const itemCategory = item.category === 'Dresses' ? 'Tops' : item.category;
+        if (itemCategory !== categoryFilter) {
+          return false;
+        }
       }
 
       // Aesthetic Filter (25 trending aesthetics bank)
@@ -449,7 +477,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (direction === 'like') {
       setLikedItemIds((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]));
-      showToast(`Added to Wishlist!`, `${item.name} (${item.brand})`, 'green');
 
       // Boost Algorithm Weights
       setAlgorithmProfile((prev) => {
@@ -460,7 +487,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const nextColors = { ...prev.colorWeights };
         item.colors.forEach((col) => {
-          nextColors[col] = Math.min(100, (nextColors[col] || 50) + 3);
+          const cLower = col.toLowerCase();
+          let targetKey: string | undefined;
+          if (cLower.includes('green') || cLower.includes('olive') || cLower.includes('sage') || cLower.includes('moss') || cLower.includes('emerald')) {
+            targetKey = 'Olive & Earth Greens';
+          } else if (cLower.includes('black') || cLower.includes('charcoal')) {
+            targetKey = 'Monochrome Black & Charcoal';
+          } else if (cLower.includes('silver') || cLower.includes('grey') || cLower.includes('slate') || cLower.includes('melange')) {
+            targetKey = 'Slate Silver & Grey';
+          } else if (cLower.includes('white') || cLower.includes('bone') || cLower.includes('champagne') || cLower.includes('cream')) {
+            targetKey = 'Bone & Off-White';
+          }
+          if (targetKey && nextColors[targetKey] !== undefined) {
+            nextColors[targetKey] = Math.min(100, nextColors[targetKey] + 3);
+          }
         });
 
         const nextBrands = { ...prev.brandWeights };
@@ -527,36 +567,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Feed refreshed', 'Viewing all curated clothes again', 'silver');
   }, [showToast]);
 
-  // Wishlist Items
+  // Wishlist Items - only added when user taps the save ribbon icon
   const wishlistItems = useMemo(() => {
-    const items = catalogWithScores.filter((item) => likedItemIds.includes(item.id));
+    const items = catalogWithScores.filter((item) => savedWishlistItemIds.includes(item.id));
     if (activeCollectionId === 'all') return items;
     const collection = collections.find((c) => c.id === activeCollectionId);
     if (!collection) return items;
     return items.filter((item) => collection.itemIds.includes(item.id));
-  }, [catalogWithScores, likedItemIds, activeCollectionId, collections]);
+  }, [catalogWithScores, savedWishlistItemIds, activeCollectionId, collections]);
 
   const isItemInWishlist = useCallback((itemId: string) => {
-    return likedItemIds.includes(itemId);
-  }, [likedItemIds]);
+    return savedWishlistItemIds.includes(itemId);
+  }, [savedWishlistItemIds]);
 
   const toggleWishlist = useCallback((item: ClothingItem) => {
-    setLikedItemIds((prev) => {
+    setSavedWishlistItemIds((prev) => {
       const exists = prev.includes(item.id);
       if (exists) {
-        showToast('Removed from Wishlist', item.name, 'red');
         return prev.filter((id) => id !== item.id);
       } else {
-        showToast('Saved to Wishlist', item.name, 'green');
         return [...prev, item.id];
       }
     });
-  }, [showToast]);
+  }, []);
 
   const removeItemFromWishlist = useCallback((itemId: string) => {
-    setLikedItemIds((prev) => prev.filter((id) => id !== itemId));
-    showToast('Removed from Wishlist', '', 'red');
-  }, [showToast]);
+    setSavedWishlistItemIds((prev) => prev.filter((id) => id !== itemId));
+  }, []);
 
   const createCollection = useCallback((title: string, description: string, itemIds?: string[]) => {
     const newCol: WishlistCollection = {
@@ -722,14 +759,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAlgorithmProfile({
       aestheticWeights: neutralAesthetics,
       colorWeights: {
-        'Olive Green': 50,
-        'Forest Green': 50,
-        'Sage Green': 50,
-        'Slate Silver': 50,
-        'Silver Grey': 50,
-        'Jet Black': 50,
-        'Bone White': 50,
-        'Charcoal': 50,
+        'Olive & Earth Greens': 50,
+        'Monochrome Black & Charcoal': 50,
+        'Slate Silver & Grey': 50,
+        'Bone & Off-White': 50,
       },
       brandWeights: {},
       categoryWeights: {},
@@ -752,14 +785,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const nextColors = { ...prev.colorWeights };
       if (garment.color) {
-        // match closest color or add directly
-        const colorKey = garment.color.includes('Green')
-          ? 'Olive Green'
-          : garment.color.includes('Silver')
-          ? 'Slate Silver'
-          : garment.color.includes('Black')
-          ? 'Jet Black'
-          : garment.color;
+        // match to consolidated color affinity groups
+        const cLower = garment.color.toLowerCase();
+        let colorKey = 'Slate Silver & Grey';
+        if (cLower.includes('green') || cLower.includes('olive') || cLower.includes('sage') || cLower.includes('moss') || cLower.includes('emerald')) {
+          colorKey = 'Olive & Earth Greens';
+        } else if (cLower.includes('black') || cLower.includes('charcoal')) {
+          colorKey = 'Monochrome Black & Charcoal';
+        } else if (cLower.includes('silver') || cLower.includes('grey') || cLower.includes('slate') || cLower.includes('melange')) {
+          colorKey = 'Slate Silver & Grey';
+        } else if (cLower.includes('white') || cLower.includes('bone') || cLower.includes('champagne') || cLower.includes('cream')) {
+          colorKey = 'Bone & Off-White';
+        }
         nextColors[colorKey] = Math.min(100, (nextColors[colorKey] || 50) + 12);
       }
 

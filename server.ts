@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -10,9 +11,30 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function parsePort(): number {
+  // If explicitly passed via CLI argument --port <port>
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const parsed = parseInt(process.argv[portArgIndex + 1], 10);
+    if (!isNaN(parsed)) return parsed;
+  }
+  // If APP_PORT is explicitly set in environment
+  if (process.env.APP_PORT) {
+    const parsed = parseInt(process.env.APP_PORT, 10);
+    if (!isNaN(parsed)) return parsed;
+  }
+  // In AI Studio / Cloud Run, PORT=8080 is the ingress proxy (Nginx).
+  // The Node application must always run on port 3000 to match Nginx's proxy_pass.
+  if (process.env.PORT && process.env.PORT !== '8080') {
+    const parsed = parseInt(process.env.PORT, 10);
+    if (!isNaN(parsed)) return parsed;
+  }
+  return 3000;
+}
+
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const PORT = parsePort();
   const isProd = process.env.NODE_ENV === 'production';
 
   app.use(express.json({ limit: '20mb' }));
@@ -145,12 +167,31 @@ Provide realistic, accurate fashion analysis. Return valid JSON matching the sch
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  let viteMiddleware: any = null;
+  let viteReadyPromise: Promise<void> | null = null;
+
   if (!isProd) {
-    const vite = await createViteServer({
+    viteReadyPromise = createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
+    })
+      .then((vite) => {
+        viteMiddleware = vite.middlewares;
+        console.log('  ➜  Vite middleware ready in SPA mode');
+      })
+      .catch((err) => {
+        console.error('Error starting Vite middleware:', err);
+      });
+
+    app.use(async (req, res, next) => {
+      if (!viteMiddleware && viteReadyPromise) {
+        await viteReadyPromise;
+      }
+      if (viteMiddleware) {
+        return viteMiddleware(req, res, next);
+      }
+      next();
     });
-    app.use(vite.middlewares);
   } else {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (_req, res) => {
@@ -158,8 +199,21 @@ Provide realistic, accurate fashion analysis. Return valid JSON matching the sch
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
+    console.log(`  ➜  Network: http://0.0.0.0:${PORT}/`);
     console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+
+  server.on('error', (err: any) => {
+    console.error('Server error:', err);
+  });
+
+  process.on('SIGTERM', () => {
+    server.close();
+  });
+  process.on('SIGINT', () => {
+    server.close();
   });
 }
 
