@@ -4,7 +4,6 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI, Type } from '@google/genai';
 
 dotenv.config();
 
@@ -37,6 +36,23 @@ async function startServer() {
   const PORT = parsePort();
   const isProd = process.env.NODE_ENV === 'production';
 
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
+    console.log(`  ➜  Network: http://0.0.0.0:${PORT}/`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+
+  server.on('error', (err: any) => {
+    console.error('Server error:', err);
+  });
+
+  process.on('SIGTERM', () => {
+    server.close();
+  });
+  process.on('SIGINT', () => {
+    server.close();
+  });
+
   app.use(express.json({ limit: '20mb' }));
 
   // API Route: Dissect clothing items from outfit image using Gemini Vision
@@ -59,6 +75,8 @@ async function startServer() {
       }
 
       const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+
+      const { GoogleGenAI, Type } = await import('@google/genai');
 
       const ai = new GoogleGenAI({
         apiKey,
@@ -162,59 +180,46 @@ Provide realistic, accurate fashion analysis. Return valid JSON matching the sch
     }
   });
 
-  // Health check endpoint
+  // Health check endpoints
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', app: 'Aesthro' });
+  });
+
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  let viteMiddleware: any = null;
-  let viteReadyPromise: Promise<void> | null = null;
-
   if (!isProd) {
-    viteReadyPromise = createViteServer({
+    const vitePromise = createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
-    })
-      .then((vite) => {
-        viteMiddleware = vite.middlewares;
+    });
+
+    app.use(async (req, res, next) => {
+      try {
+        const vite = await vitePromise;
+        vite.middlewares(req, res, next);
+      } catch (e) {
+        next(e);
+      }
+    });
+
+    vitePromise
+      .then(() => {
         console.log('  ➜  Vite middleware ready in SPA mode');
       })
       .catch((err) => {
-        console.error('Error starting Vite middleware:', err);
+        console.error('Failed to initialize Vite middleware:', err);
       });
-
-    app.use(async (req, res, next) => {
-      if (!viteMiddleware && viteReadyPromise) {
-        await viteReadyPromise;
-      }
-      if (viteMiddleware) {
-        return viteMiddleware(req, res, next);
-      }
-      next();
-    });
   } else {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (_req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
-
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
-    console.log(`  ➜  Network: http://0.0.0.0:${PORT}/`);
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
-
-  server.on('error', (err: any) => {
-    console.error('Server error:', err);
-  });
-
-  process.on('SIGTERM', () => {
-    server.close();
-  });
-  process.on('SIGINT', () => {
-    server.close();
-  });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('Fatal error starting server:', err);
+  process.exit(1);
+});

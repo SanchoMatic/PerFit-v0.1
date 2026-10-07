@@ -8,6 +8,10 @@ import {
   DissectionResult,
   DissectedGarment,
   UserProfile,
+  Friend,
+  SharedOutfit,
+  ChatMessage,
+  Conversation,
 } from '../types';
 import {
   INITIAL_CATALOG,
@@ -17,6 +21,7 @@ import {
   DEMO_OUTFIT_PRESETS,
   DemoOutfitPreset,
 } from '../data/mockCatalog';
+import { INITIAL_FRIENDS, INITIAL_CONVERSATIONS, INITIAL_MESSAGES } from '../data/friendsData';
 import { TRENDING_AESTHETICS_25 } from '../data/aesthetics';
 
 interface NotificationToast {
@@ -38,8 +43,9 @@ interface AppContextType {
   currentCardIndex: number;
   brandFilter: string;
   setBrandFilter: (brand: string) => void;
-  categoryFilter: string;
-  setCategoryFilter: (category: string) => void;
+  categoryFilter: string[];
+  setCategoryFilter: (category: string | string[]) => void;
+  toggleCategoryFilter: (category: string) => void;
   aestheticFilter: string;
   setAestheticFilter: (aesthetic: string) => void;
   genderFilter: 'all' | 'men' | 'women' | 'unisex';
@@ -102,6 +108,33 @@ interface AppContextType {
   setUploadedImageUrl: (url: string | null) => void;
   dissectImage: (base64OrUrl: string, mimeType?: string) => Promise<void>;
   selectPresetOutfit: (preset: DemoOutfitPreset) => void;
+  breakdownHistoryItems: ClothingItem[];
+  addBreakdownHistoryItems: (items: ClothingItem[]) => void;
+
+  // Friends & Messaging
+  friends: Friend[];
+  conversations: Conversation[];
+  messages: Record<string, ChatMessage[]>;
+  isInboxOpen: boolean;
+  setIsInboxOpen: (open: boolean) => void;
+  activeConversationId: string | null;
+  setActiveConversationId: (id: string | null) => void;
+  chatOnlineStatus: 'online' | 'busy' | 'offline';
+  setChatOnlineStatus: (status: 'online' | 'busy' | 'offline') => void;
+  sendMessage: (
+    conversationId: string,
+    text?: string,
+    sharedItem?: ClothingItem,
+    sharedOutfit?: SharedOutfit
+  ) => void;
+  createConversation: (participantIds: string[], name?: string) => string;
+  updateConversationAvatar: (conversationId: string, avatarUrl: string) => void;
+  sendItemToFriends: (friendIds: string[], item: ClothingItem, note?: string) => void;
+  sendOutfitToFriend: (friendId: string, outfit: SharedOutfit, note?: string) => void;
+  openChatWithFriend: (friendId: string) => void;
+  totalUnreadMessages: number;
+  sendItemModalItem: ClothingItem | null;
+  setSendItemModalItem: (item: ClothingItem | null) => void;
 
   // Toasts
   toasts: NotificationToast[];
@@ -119,6 +152,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetActiveTab = useCallback((tab: TabType) => {
     setActiveTab(tab);
     setTabResetTimestamp(Date.now());
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, []);
 
   // Algorithm Profile state with all 25 trending aesthetics
@@ -248,7 +284,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Swipe Feed State
   const [brandFilter, setBrandFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilterState] = useState<string[]>([]);
+
+  const setCategoryFilter = useCallback((val: string | string[]) => {
+    if (typeof val === 'string') {
+      if (val === 'all') {
+        setCategoryFilterState([]);
+      } else {
+        setCategoryFilterState([val]);
+      }
+    } else {
+      setCategoryFilterState(val.filter((c) => c !== 'all'));
+    }
+  }, []);
+
+  const toggleCategoryFilter = useCallback((cat: string) => {
+    if (cat === 'all') {
+      setCategoryFilterState([]);
+      return;
+    }
+    setCategoryFilterState((prev) => {
+      const exists = prev.some((c) => c.toLowerCase() === cat.toLowerCase());
+      if (exists) {
+        return prev.filter((c) => c.toLowerCase() !== cat.toLowerCase());
+      } else {
+        return [...prev, cat];
+      }
+    });
+  }, []);
+
   const [aestheticFilter, setAestheticFilter] = useState<string>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'men' | 'women' | 'unisex'>('all');
   const [itemTypeFilter, setItemTypeFilter] = useState<'single' | 'all' | 'bundles'>('single');
@@ -345,6 +409,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
+  // Previously found items using the breakdown tool
+  const [breakdownHistoryItems, setBreakdownHistoryItems] = useState<ClothingItem[]>(() => {
+    return [
+      INITIAL_CATALOG.find((i) => i.id === 'item-2') || INITIAL_CATALOG[1],
+      INITIAL_CATALOG.find((i) => i.id === 'item-1') || INITIAL_CATALOG[0],
+      INITIAL_CATALOG.find((i) => i.id === 'item-5') || INITIAL_CATALOG[4],
+      INITIAL_CATALOG.find((i) => i.id === 'item-4') || INITIAL_CATALOG[3],
+      INITIAL_CATALOG.find((i) => i.id === 'item-3') || INITIAL_CATALOG[2],
+      INITIAL_CATALOG.find((i) => i.id === 'item-47') || INITIAL_CATALOG[5],
+      INITIAL_CATALOG.find((i) => i.id === 'item-48') || INITIAL_CATALOG[6],
+      INITIAL_CATALOG.find((i) => i.id === 'item-6') || INITIAL_CATALOG[7],
+    ].filter(Boolean);
+  });
+
+  const addBreakdownHistoryItems = useCallback((items: ClothingItem[]) => {
+    setBreakdownHistoryItems((prev) => {
+      const existingIds = new Set(prev.map((i) => i.id));
+      const newItems = items.filter((i) => !existingIds.has(i.id));
+      return [...newItems, ...prev];
+    });
+  }, []);
+
+  // Online Appearance Status in Chat (online, busy, offline)
+  const [chatOnlineStatus, setChatOnlineStatus] = useState<'online' | 'busy' | 'offline'>('online');
+
   // Toasts
   const [toasts, setToasts] = useState<NotificationToast[]>([]);
 
@@ -421,10 +510,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
 
-      // Category Filter (lumping Dresses into Tops)
-      if (categoryFilter !== 'all') {
+      // Multiple Category Filter (allows multiple clothing categories to be selected)
+      if (categoryFilter.length > 0 && !categoryFilter.includes('all')) {
         const itemCategory = item.category === 'Dresses' ? 'Tops' : item.category;
-        if (itemCategory !== categoryFilter) {
+        const matchesCategory = categoryFilter.some(
+          (c) =>
+            c.toLowerCase() === itemCategory.toLowerCase() ||
+            c.toLowerCase() === item.category.toLowerCase()
+        );
+        if (!matchesCategory) {
           return false;
         }
       }
@@ -895,6 +989,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       setCurrentDissection(result);
+      const matches = dissectedItems.flatMap((d) => d.marketplaceMatches);
+      if (matches.length > 0) {
+        addBreakdownHistoryItems(matches);
+      }
       setIsAnalyzing(false);
       showToast(
         `Dissected ${dissectedItems.length} clothing items!`,
@@ -902,7 +1000,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'green'
       );
     }, 650);
-  }, [findMarketplaceMatches, showToast]);
+  }, [findMarketplaceMatches, showToast, addBreakdownHistoryItems]);
 
   // Dissect uploaded image via server or smart computer vision fallback
   const dissectImage = useCallback(async (base64OrUrl: string, mimeType: string = 'image/jpeg') => {
@@ -957,6 +1055,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
 
         setCurrentDissection(finalResult);
+        const matches = dissectedItems.flatMap((d) => d.marketplaceMatches);
+        if (matches.length > 0) {
+          addBreakdownHistoryItems(matches);
+        }
         showToast(
           `AI Dissection Complete: Found ${dissectedItems.length} items!`,
           `Analyzed aesthetic: ${finalResult.overallAesthetic}`,
@@ -989,6 +1091,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           colorPalette: fallbackPreset.colorPalette,
           items: dissectedItems,
         });
+
+        const matches = dissectedItems.flatMap((d) => d.marketplaceMatches);
+        if (matches.length > 0) {
+          addBreakdownHistoryItems(matches);
+        }
 
         showToast(
           `Dissected ${dissectedItems.length} clothing items!`,
@@ -1025,6 +1132,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         items: dissectedItems,
       });
 
+      const matches = dissectedItems.flatMap((d) => d.marketplaceMatches);
+      if (matches.length > 0) {
+        addBreakdownHistoryItems(matches);
+      }
+
       showToast(
         `Dissected ${dissectedItems.length} items from outfit!`,
         'Matched with marketplace catalog',
@@ -1033,12 +1145,153 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsAnalyzing(false);
     }
-  }, [findMarketplaceMatches, showToast]);
+  }, [findMarketplaceMatches, showToast, addBreakdownHistoryItems]);
 
   const updateUserProfile = useCallback((profile: Partial<UserProfile>) => {
     setUserProfile((prev) => ({ ...prev, ...profile }));
     showToast('Profile updated', '', 'green');
   }, [showToast]);
+
+  // Friends & Chat State
+  const [friends, setFriends] = useState<Friend[]>(INITIAL_FRIENDS);
+  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(INITIAL_MESSAGES);
+  const [isInboxOpen, setIsInboxOpen] = useState<boolean>(false);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [sendItemModalItem, setSendItemModalItem] = useState<ClothingItem | null>(null);
+
+  const sendMessage = useCallback((
+    conversationId: string,
+    text?: string,
+    sharedItem?: ClothingItem,
+    sharedOutfit?: SharedOutfit
+  ) => {
+    const newMsgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const newMsg: ChatMessage = {
+      id: newMsgId,
+      conversationId,
+      senderId: 'user',
+      text: text?.trim() || undefined,
+      sharedItem,
+      sharedOutfit,
+      timestamp: Date.now(),
+      status: 'sent',
+    };
+
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: [...(prev[conversationId] || []), newMsg],
+    }));
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId
+          ? {
+              ...c,
+              lastMessage: newMsg,
+              updatedAt: Date.now(),
+            }
+          : c
+      )
+    );
+
+    // Realistic delivery & seen transitions
+    setTimeout(() => {
+      setMessages((prev) => {
+        const thread = prev[conversationId] || [];
+        return {
+          ...prev,
+          [conversationId]: thread.map((m) =>
+            m.id === newMsgId && m.status === 'sent' ? { ...m, status: 'delivered' } : m
+          ),
+        };
+      });
+    }, 1200);
+
+    setTimeout(() => {
+      setMessages((prev) => {
+        const thread = prev[conversationId] || [];
+        return {
+          ...prev,
+          [conversationId]: thread.map((m) =>
+            m.id === newMsgId ? { ...m, status: 'seen', seenTimestamp: Date.now() } : m
+          ),
+        };
+      });
+    }, 3800);
+  }, []);
+
+  const createConversation = useCallback((participantIds: string[], name?: string): string => {
+    if (participantIds.length === 1) {
+      const existing = conversations.find(
+        (c) => c.type === 'direct' && c.participantIds.includes(participantIds[0])
+      );
+      if (existing) {
+        return existing.id;
+      }
+    }
+
+    const newId = `conv-${Date.now()}`;
+    const isGroup = participantIds.length > 1;
+    const friend = friends.find((f) => f.id === participantIds[0]);
+
+    const newConv: Conversation = {
+      id: newId,
+      type: isGroup ? 'group' : 'direct',
+      name:
+        name ||
+        (isGroup
+          ? participantIds
+              .map((id) => friends.find((f) => f.id === id)?.name.split(' ')[0])
+              .filter(Boolean)
+              .join(', ') + ' Squad'
+          : friend?.name),
+      participantIds,
+      avatar: !isGroup ? friend?.avatar : undefined,
+      unreadCount: 0,
+      updatedAt: Date.now(),
+    };
+
+    setConversations((prev) => [newConv, ...prev]);
+    setMessages((prev) => ({ ...prev, [newId]: [] }));
+    return newId;
+  }, [conversations, friends]);
+
+  const updateConversationAvatar = useCallback((convId: string, avatarUrl: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, avatar: avatarUrl } : c))
+    );
+    showToast('Group Photo Updated', 'Uploaded new group photo', 'green');
+  }, [showToast]);
+
+  const sendItemToFriends = useCallback((friendIds: string[], item: ClothingItem, note?: string) => {
+    friendIds.forEach((friendId) => {
+      const convId = createConversation([friendId]);
+      sendMessage(convId, note || `Sent you ${item.name}!`, item);
+    });
+    const friendNames = friendIds.map((id) => friends.find((f) => f.id === id)?.name).filter(Boolean).join(', ');
+    showToast(`Sent ${item.name} to ${friendNames}!`, 'Check chat inbox in your profile', 'green');
+    setSendItemModalItem(null);
+  }, [createConversation, sendMessage, friends, showToast]);
+
+  const sendOutfitToFriend = useCallback((friendId: string, outfit: SharedOutfit, note?: string) => {
+    const convId = createConversation([friendId]);
+    sendMessage(convId, note || `Curated an outfit for you: ${outfit.name}!`, undefined, outfit);
+    const friend = friends.find((f) => f.id === friendId);
+    showToast(`Outfit sent to ${friend?.name || 'friend'}!`, 'Opening chat...', 'green');
+    setActiveConversationId(convId);
+    setIsInboxOpen(true);
+  }, [createConversation, sendMessage, friends, showToast]);
+
+  const openChatWithFriend = useCallback((friendId: string) => {
+    const convId = createConversation([friendId]);
+    setActiveConversationId(convId);
+    setIsInboxOpen(true);
+  }, [createConversation]);
+
+  const totalUnreadMessages = useMemo(() => {
+    return conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+  }, [conversations]);
 
   return (
     <AppContext.Provider
@@ -1054,6 +1307,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBrandFilter,
         categoryFilter,
         setCategoryFilter,
+        toggleCategoryFilter,
         aestheticFilter,
         setAestheticFilter,
         genderFilter,
@@ -1108,6 +1362,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setUploadedImageUrl,
         dissectImage,
         selectPresetOutfit,
+        breakdownHistoryItems,
+        addBreakdownHistoryItems,
+        friends,
+        conversations,
+        messages,
+        isInboxOpen,
+        setIsInboxOpen,
+        activeConversationId,
+        setActiveConversationId,
+        chatOnlineStatus,
+        setChatOnlineStatus,
+        sendMessage,
+        createConversation,
+        updateConversationAvatar,
+        sendItemToFriends,
+        sendOutfitToFriend,
+        openChatWithFriend,
+        totalUnreadMessages,
+        sendItemModalItem,
+        setSendItemModalItem,
         toasts,
         showToast,
         removeToast,

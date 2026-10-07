@@ -7,6 +7,7 @@ import {
   ExternalLink,
   X,
   Check,
+  Send,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ClothingItem } from '../../types';
@@ -22,6 +23,7 @@ export const WishlistTab: React.FC = () => {
     tabResetTimestamp,
     userProfile,
     showToast,
+    setSendItemModalItem,
   } = useApp();
 
   const isLight = userProfile.preferences.theme === 'light';
@@ -29,7 +31,7 @@ export const WishlistTab: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedItemForAction, setSelectedItemForAction] = useState<ClothingItem | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'price-asc' | 'price-desc' | 'match'>('match');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
 
   // Return to main wishlist page when tab is tapped
   useEffect(() => {
@@ -37,11 +39,28 @@ export const WishlistTab: React.FC = () => {
     setSelectedItemForAction(null);
   }, [activeTab, tabResetTimestamp]);
 
-  // Filter and sort items (lumping dresses into tops)
+  const toggleCategory = (cat: string) => {
+    if (cat === 'all') {
+      setCategoryFilter([]);
+      return;
+    }
+    setCategoryFilter((prev) => {
+      const exists = prev.some((c) => c.toLowerCase() === cat.toLowerCase());
+      if (exists) {
+        return prev.filter((c) => c.toLowerCase() !== cat.toLowerCase());
+      } else {
+        return [...prev, cat];
+      }
+    });
+  };
+
+  // Filter and sort items (multi-category support, lumping dresses into tops)
   const filteredItems = wishlistItems.filter((item) => {
-    if (categoryFilter === 'all') return true;
+    if (categoryFilter.length === 0 || categoryFilter.includes('all')) return true;
     const cat = item.category.toLowerCase() === 'dresses' ? 'tops' : item.category.toLowerCase();
-    return cat === categoryFilter.toLowerCase();
+    return categoryFilter.some(
+      (c) => c.toLowerCase() === cat || c.toLowerCase() === item.category.toLowerCase()
+    );
   });
 
   const sortedItems = [...filteredItems].sort((a, b) => {
@@ -52,54 +71,9 @@ export const WishlistTab: React.FC = () => {
   });
 
   return (
-    <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-3 max-w-md mx-auto">
-      {/* Top Header - Cosmic Astro styled title with celestial accents & sleek underline */}
-      <div className="flex items-end justify-between mb-4 pt-1">
-        <div className="relative">
-          {/* Subtle cosmic astro tag */}
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase ${
-                isLight
-                  ? 'bg-indigo-50/90 text-indigo-700 border border-indigo-200/90 shadow-xs'
-                  : 'bg-indigo-950/70 text-indigo-300 border border-indigo-800/60 shadow-xs'
-              }`}
-            >
-              <span className={isLight ? 'text-indigo-600' : 'text-pink-300'}>✦</span>
-              <span>Astro Vault</span>
-            </span>
-          </div>
-
-          <h1
-            className={`text-4xl sm:text-5xl font-black tracking-tight ${
-              isLight
-                ? 'text-slate-900'
-                : 'text-white drop-shadow-[0_2px_12px_rgba(244,114,182,0.2)]'
-            } leading-none flex items-center gap-2`}
-          >
-            <span>Wishlist</span>
-            <span
-              className={`text-xl sm:text-2xl select-none ${
-                isLight ? 'text-indigo-500' : 'text-pink-300'
-              } animate-cosmic-shimmer`}
-            >
-              ✦
-            </span>
-          </h1>
-
-          {/* Cosmic astro stardust gradient underline */}
-          <div
-            className={`mt-2 h-1 w-28 bg-gradient-to-r ${
-              isLight
-                ? 'from-indigo-600 via-pink-500 to-transparent shadow-[0_0_12px_rgba(99,102,241,0.25)]'
-                : 'from-pink-400 via-indigo-400 to-transparent shadow-[0_0_14px_rgba(244,114,182,0.6)]'
-            } rounded-full`}
-          />
-        </div>
-      </div>
-
-      {/* Action toolbar with Filters button & Add All to Cart */}
-      <div className="flex items-center justify-between px-1 mb-3 text-xs">
+    <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-1 max-w-md mx-auto">
+      {/* Action toolbar with Filters button & Add All to Cart - Shifted upward to top (Wishlist title deleted) */}
+      <div className="flex items-center justify-between px-1 mb-2 pt-1 text-xs">
         <button
           onClick={() => setIsSettingsOpen(true)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
@@ -109,8 +83,8 @@ export const WishlistTab: React.FC = () => {
           } border text-[11px] font-bold transition-colors shadow-sm`}
           title="Wishlist Filters"
         >
-          <SlidersHorizontal className={`w-3 h-3 ${isLight ? 'text-pink-600' : 'text-slate-400'}`} />
-          <span>Filters{categoryFilter !== 'all' ? ` (${categoryFilter})` : ''}</span>
+          <SlidersHorizontal className={`w-3.5 h-3.5 ${isLight ? 'text-slate-800' : 'text-slate-300'}`} />
+          <span>Filters{categoryFilter.length > 0 ? ` (${categoryFilter.join(', ')})` : ''}</span>
         </button>
 
         {wishlistItems.length > 0 && (
@@ -123,6 +97,9 @@ export const WishlistTab: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* Spacer maintaining exact spacing between header and cards without gradient underline */}
+      <div className="mb-4 h-0" />
 
       {/* 3x3 Grid matching the exact sketch from IMG_0313 (right) with silver border frames! */}
       {sortedItems.length > 0 ? (
@@ -155,7 +132,7 @@ export const WishlistTab: React.FC = () => {
 
                 {/* Match score pill in top left */}
                 {item.matchScore && (
-                  <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-pink-950/90 border border-pink-400/50 text-[9px] font-mono font-bold text-pink-300">
+                  <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded-full ${isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'} text-[9px] font-mono font-bold text-white shadow-sm`}>
                     {item.matchScore}%
                   </div>
                 )}
@@ -168,10 +145,10 @@ export const WishlistTab: React.FC = () => {
                   : 'bg-slate-900/90 border-t border-slate-800'
               }`}>
                 <div>
-                  <p className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-pink-600' : 'text-pink-300'} truncate`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'} truncate`}>
                     {item.brand}
                   </p>
-                  <p className={`text-[11px] font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'} truncate leading-tight mt-0.5`}>
+                  <p className={`text-[11px] font-bold ${isLight ? 'text-sky-950' : 'text-white'} truncate leading-tight mt-0.5`}>
                     {item.name}
                   </p>
                 </div>
@@ -206,9 +183,7 @@ export const WishlistTab: React.FC = () => {
           </p>
           <button
             onClick={() => setActiveTab('swipe')}
-            className={`px-4 py-2 rounded-full ${
-              isLight ? 'bg-pink-600 hover:bg-pink-700 text-white' : 'bg-pink-300 hover:bg-pink-200 text-black'
-            } text-xs font-black transition-colors shadow-lg`}
+            className="px-4 py-2 rounded-full bg-pink-600 hover:bg-pink-500 text-white text-xs font-black transition-colors shadow-lg shadow-pink-600/25"
           >
             Start Swiping
           </button>
@@ -219,7 +194,7 @@ export const WishlistTab: React.FC = () => {
       {selectedItemForAction && (
         <div
           onClick={() => setSelectedItemForAction(null)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -227,7 +202,7 @@ export const WishlistTab: React.FC = () => {
               isLight
                 ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
                 : 'bg-slate-950 border-slate-700 text-white shadow-2xl'
-            } border rounded-2xl max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto cursor-default relative`}
+            } border rounded-2xl max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain my-auto cursor-default relative`}
           >
             {/* Floating Close Button */}
             <button
@@ -243,10 +218,10 @@ export const WishlistTab: React.FC = () => {
             </button>
 
             <div className="pr-10">
-              <span className={`text-[10px] font-bold uppercase ${isLight ? 'text-pink-600' : 'text-pink-300'} tracking-wider`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
                 {selectedItemForAction.brand}
               </span>
-              <h3 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>{selectedItemForAction.name}</h3>
+              <h3 className={`text-base font-extrabold ${isLight ? 'text-sky-950' : 'text-white'}`}>{selectedItemForAction.name}</h3>
             </div>
 
             <div className="rounded-xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
@@ -255,7 +230,7 @@ export const WishlistTab: React.FC = () => {
                 alt={selectedItemForAction.name}
                 className="w-full h-full object-cover"
               />
-              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/80 text-xs font-mono font-bold text-pink-300 border border-pink-400/20">
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 backdrop-blur-sm text-xs font-mono font-bold text-white border border-white/20">
                 ${selectedItemForAction.price}
               </span>
             </div>
@@ -289,6 +264,21 @@ export const WishlistTab: React.FC = () => {
 
               <button
                 onClick={() => {
+                  setSendItemModalItem(selectedItemForAction);
+                  setSelectedItemForAction(null);
+                }}
+                className={`p-2.5 rounded-xl border transition-colors ${
+                  isLight
+                    ? 'border-slate-300 bg-white text-slate-700 hover:text-pink-600 hover:border-pink-600'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-pink-400 hover:border-pink-500'
+                }`}
+                title="Send to Friend via Chat"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => {
                   removeItemFromWishlist(selectedItemForAction.id);
                   setSelectedItemForAction(null);
                 }}
@@ -306,7 +296,7 @@ export const WishlistTab: React.FC = () => {
       {isSettingsOpen && (
         <div
           onClick={() => setIsSettingsOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -314,7 +304,7 @@ export const WishlistTab: React.FC = () => {
               isLight
                 ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
                 : 'bg-slate-950 border-slate-700 text-white shadow-2xl'
-            } border rounded-2xl max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto cursor-default relative`}
+            } border rounded-2xl max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain my-auto cursor-default relative`}
           >
             {/* Floating Close Button */}
             <button
@@ -331,34 +321,47 @@ export const WishlistTab: React.FC = () => {
 
             <div className={`flex items-center pb-2 border-b ${isLight ? 'border-slate-200 text-slate-900' : 'border-slate-800 text-white'} pr-10`}>
               <h3 className="text-sm font-extrabold flex items-center gap-2">
-                <SlidersHorizontal className={`w-4 h-4 ${isLight ? 'text-pink-600' : 'text-pink-300'}`} />
+                <SlidersHorizontal className="w-4 h-4" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
                 <span>Wishlist Filters</span>
               </h3>
             </div>
 
             {/* Category Filter */}
             <div>
-              <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'} block mb-1.5`}>
-                Category
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                  Category
+                </label>
+                <span className="text-[10px] font-mono font-bold text-pink-600">
+                  {categoryFilter.length === 0 ? 'All Categories' : categoryFilter.join(', ')}
+                </span>
+              </div>
               <div className="flex flex-wrap gap-1.5">
-                {['all', 'outerwear', 'tops', 'bottoms', 'knitwear', 'footwear', 'accessories'].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border capitalize transition-all ${
-                      categoryFilter === cat
-                        ? isLight
-                          ? 'border-pink-600 bg-pink-50 text-pink-700 font-bold shadow-sm'
-                          : 'border-pink-400 bg-pink-950/50 text-pink-300 font-bold'
-                        : isLight
-                        ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        : 'border-slate-800 bg-slate-900 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+                {['all', 'outerwear', 'tops', 'bottoms', 'knitwear', 'footwear', 'accessories'].map((cat) => {
+                  const isAll = cat === 'all';
+                  const isSelected = isAll
+                    ? categoryFilter.length === 0
+                    : categoryFilter.some((c) => c.toLowerCase() === cat.toLowerCase());
+
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border capitalize transition-all ${
+                        isSelected
+                          ? isLight
+                            ? 'border-pink-600 bg-pink-50 text-pink-600 font-bold shadow-sm'
+                            : 'border-pink-600 bg-pink-950/60 text-pink-600 font-bold'
+                          : isLight
+                          ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          : 'border-slate-800 bg-slate-900 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -379,8 +382,8 @@ export const WishlistTab: React.FC = () => {
                     className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       sortBy === s.id
                         ? isLight
-                          ? 'border-pink-600 bg-pink-50 text-pink-700 font-bold shadow-sm'
-                          : 'border-pink-400 bg-pink-950/50 text-pink-300 font-bold'
+                          ? 'border-pink-600 bg-pink-50 text-pink-600 font-bold shadow-sm'
+                          : 'border-pink-600 bg-pink-950/60 text-pink-600 font-bold'
                         : isLight
                         ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
                         : 'border-slate-800 bg-slate-900 text-slate-300'

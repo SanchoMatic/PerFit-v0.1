@@ -98,11 +98,11 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-start justify-center pt-3 sm:pt-6 pb-16 px-3 sm:px-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden overscroll-contain animate-in fade-in duration-200 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-slate-950 border border-slate-700 rounded-2xl max-w-md w-full p-5 text-white shadow-2xl relative max-h-[92vh] flex flex-col justify-between overflow-y-auto animate-in zoom-in-95 duration-200 cursor-default"
+        className="bg-slate-950 border border-slate-700 rounded-2xl max-w-md w-full p-5 text-white shadow-2xl relative max-h-[85vh] flex flex-col justify-between overflow-y-auto overscroll-contain my-auto animate-in zoom-in-95 duration-200 cursor-default pb-5"
       >
         {/* Floating Close Button */}
         <button
@@ -267,7 +267,7 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
               </button>
               <button
                 onClick={handleApplyResults}
-                className="flex-1 py-3.5 px-4 rounded-2xl bg-pink-300 hover:bg-pink-200 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-pink-300/25 transition-all"
+                className="flex-1 py-3.5 px-4 rounded-2xl cosmic-gradient-bg text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-pink-600/30 transition-all"
               >
                 <span>Apply to Recommendations</span>
                 <ArrowRight className="w-4 h-4" />

@@ -89,3 +89,64 @@
 .animate-cosmic-shimmer {
   animation: cosmicShimmer 4s ease-in-out infinite;
 }
+
+/* Dynamic color gradient cascading downwards diagonally (exact colors from wishlist underline / swipe cascade) */
+@keyframes cascadeDownDiagonal {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.cosmic-gradient-bg {
+  background: linear-gradient(135deg, #db2777 0%, #818cf8 45%, #c084fc 75%, #db2777 100%);
+  background-size: 240% 240%;
+  animation: cascadeDownDiagonal 6s ease-in-out infinite;
+}
+
+.cosmic-gradient-bg-light {
+  background: linear-gradient(135deg, #db2777 0%, #f43f5e 45%, #fb7185 75%, #db2777 100%);
+  background-size: 240% 240%;
+  animation: cascadeDownDiagonal 6s ease-in-out infinite;
+}
+
+.cosmic-gradient-text {
+  background: linear-gradient(135deg, #db2777 0%, #818cf8 45%, #c084fc 75%, #db2777 100%);
+  background-size: 240% 240%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  animation: cascadeDownDiagonal 6s ease-in-out infinite;
+}
+
+.cosmic-gradient-text-light {
+  background: linear-gradient(135deg, #db2777 0%, #f43f5e 45%, #fb7185 75%, #db2777 100%);
+  background-size: 240% 240%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  animation: cascadeDownDiagonal 6s ease-in-out infinite;
+}
+
+.cosmic-gradient-border {
+  border: 2px solid transparent;
+  background-image: linear-gradient(#050508, #050508), linear-gradient(135deg, #db2777 0%, #818cf8 45%, #c084fc 75%, #db2777 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: cascadeDownDiagonal 6s ease-in-out infinite;
+  background-size: auto, 240% 240%;
+}
+
+.cosmic-gradient-border-light {
+  border: 2px solid transparent;
+  background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(135deg, #db2777 0%, #f43f5e 45%, #fb7185 75%, #db2777 100%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: cascadeDownDiagonal 6s ease-in-out infinite;
+  background-size: auto, 240% 240%;
+}

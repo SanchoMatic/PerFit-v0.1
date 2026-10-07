@@ -133,3 +133,56 @@ export interface UserProfile {
     showOutOfStock?: boolean;
   };
 }
+
+export interface Friend {
+  id: string;
+  name: string;
+  handle: string;
+  avatar: string;
+  coverImage?: string;
+  matchScore: number;
+  favoriteBrand: string;
+  styleArchetype: string;
+  bio: string;
+  sharedItems: number;
+  outfitsCount: number;
+  friendsCount: number;
+  joinedDate: string;
+  moodboards?: Array<{
+    title: string;
+    description: string;
+    items: ClothingItem[];
+  }>;
+}
+
+export interface SharedOutfit {
+  id: string;
+  name: string;
+  description?: string;
+  aesthetic: string;
+  items: ClothingItem[];
+  createdAt: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: 'user' | string;
+  text?: string;
+  sharedItem?: ClothingItem;
+  sharedOutfit?: SharedOutfit;
+  timestamp: number;
+  status: 'sent' | 'delivered' | 'seen';
+  seenTimestamp?: number;
+}
+
+export interface Conversation {
+  id: string;
+  type: 'direct' | 'group';
+  name?: string;
+  participantIds: string[];
+  avatar?: string;
+  lastMessage?: ChatMessage;
+  unreadCount: number;
+  updatedAt: number;
+}
