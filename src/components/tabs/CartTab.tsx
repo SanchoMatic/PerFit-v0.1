@@ -13,6 +13,8 @@ import {
   Heart,
   Info,
   Send,
+  Bookmark,
+  BookmarkCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ClothingItem } from '../../types';
@@ -20,9 +22,13 @@ import { ClothingItem } from '../../types';
 export const CartTab: React.FC = () => {
   const {
     cartItems,
+    savedForLaterItems,
     removeFromCart,
     updateCartQuantity,
     clearCart,
+    saveForLater,
+    moveToCartFromSaved,
+    removeFromSavedForLater,
     cartTotal,
     showToast,
     setActiveTab,
@@ -85,17 +91,12 @@ export const CartTab: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-3 max-w-md mx-auto">
-      {/* Top Header - Exact match to sketch: Shopping Bag inside a silver circle */}
+    <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-[max(12px,env(safe-area-inset-top))] max-w-md mx-auto">
+      {/* Top Header - Shopping Bag inside a silver circle (number bubble removed as requested) */}
       <div className="flex flex-col items-center justify-center my-3">
-        {/* Silver-gray circle with shopping bag icon */}
+        {/* Silver-gray circle with shopping bag icon - Clean, no number bubble */}
         <div className={`w-16 h-16 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-600 text-slate-200'} border-2 flex items-center justify-center shadow-md mb-2 relative group`}>
           <ShoppingBag className="w-8 h-8 text-pink-600" strokeWidth={1.8} />
-          {cartItems.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-pink-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md shadow-pink-600/30">
-              {cartItems.reduce((acc, c) => acc + c.quantity, 0)}
-            </span>
-          )}
         </div>
         <h1 className={`text-base font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Your Cart</h1>
         <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -154,46 +155,71 @@ export const CartTab: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-2 mt-2">
+                  {/* Quantity Stepper & Save for Later */}
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateCartQuantity(ci.item.id, -1, ci.selectedSize);
+                        }}
+                        className={`w-6 h-6 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
+                        title="Decrease"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} px-1.5 min-w-[18px] text-center`}>
+                        {ci.quantity}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateCartQuantity(ci.item.id, 1, ci.selectedSize);
+                        }}
+                        className={`w-6 h-6 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
+                        title="Increase"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    {/* Save for later button */}
                     <button
-                      onClick={() => updateCartQuantity(ci.item.id, -1, ci.selectedSize)}
-                      className={`w-5 h-5 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        saveForLater(ci.item.id, ci.selectedSize);
+                      }}
+                      className="text-[11px] font-semibold text-pink-500 hover:text-pink-400 flex items-center gap-1 transition-colors px-1 py-0.5"
+                      title="Save for later"
                     >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} px-1`}>
-                      {ci.quantity}
-                    </span>
-                    <button
-                      onClick={() => updateCartQuantity(ci.item.id, 1, ci.selectedSize)}
-                      className={`w-5 h-5 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
-                    >
-                      <Plus className="w-3 h-3" />
+                      <Bookmark className="w-3 h-3 text-pink-500" />
+                      <span>Save for later</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Price */}
-                <div className="text-right">
-                  <span className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} font-mono block`}>
-                    ${ci.item.price * ci.quantity}
-                  </span>
-                  {ci.quantity > 1 && (
-                    <span className="text-[10px] text-slate-400 block">
-                      ${ci.item.price} ea
+                {/* Price & Delete */}
+                <div className="flex flex-col items-end justify-between self-stretch py-1">
+                  <div className="text-right">
+                    <span className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} font-mono block`}>
+                      ${ci.item.price * ci.quantity}
                     </span>
-                  )}
-                </div>
+                    {ci.quantity > 1 && (
+                      <span className="text-[10px] text-slate-400 block">
+                        ${ci.item.price} ea
+                      </span>
+                    )}
+                  </div>
 
-                {/* Trash Button without outline */}
-                <button
-                  onClick={() => removeFromCart(ci.item.id, ci.selectedSize)}
-                  className="w-9 h-9 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/70 hover:text-red-200 transition-all flex items-center justify-center flex-shrink-0 shadow-sm"
-                  title="Remove Item"
-                >
-                  <Trash2 className="w-4 h-4" strokeWidth={2.2} />
-                </button>
+                  {/* Trash Button */}
+                  <button
+                    onClick={() => removeFromCart(ci.item.id, ci.selectedSize)}
+                    className="w-8 h-8 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/70 hover:text-red-200 transition-all flex items-center justify-center shadow-sm"
+                    title="Remove Item"
+                  >
+                    <Trash2 className="w-4 h-4" strokeWidth={2.2} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -274,23 +300,167 @@ export const CartTab: React.FC = () => {
             <ShieldCheck className="w-3.5 h-3.5 text-pink-600" />
             <span>Encrypted checkout • Free 30-day returns • Guaranteed Authentic</span>
           </div>
+
+          {/* Saved For Later List Under Checkout Button */}
+          {savedForLaterItems.length > 0 && (
+            <div className="mt-8 pt-6 border-t-2 border-slate-800">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <BookmarkCheck className="w-4 h-4 text-pink-500" />
+                  <h2 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    Saved for Later
+                  </h2>
+                </div>
+                <span className="text-xs text-slate-400 font-mono">
+                  {savedForLaterItems.length} {savedForLaterItems.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
+
+              <div className={`divide-y ${isLight ? 'divide-slate-200 border-slate-200' : 'divide-slate-800 border-slate-800'} border-y`}>
+                {savedForLaterItems.map((sItem) => (
+                  <div
+                    key={`${sItem.item.id}-${sItem.selectedSize}`}
+                    className="py-3.5 flex items-center justify-between gap-3"
+                  >
+                    {/* Thumbnail */}
+                    <div
+                      onClick={() => setInspectItem(sItem.item)}
+                      className="w-14 h-18 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 cursor-pointer shadow-sm"
+                    >
+                      <img
+                        src={sItem.item.image}
+                        alt={sItem.item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-[10px] uppercase font-bold block ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
+                        {sItem.item.brand}
+                      </span>
+                      <h3
+                        onClick={() => setInspectItem(sItem.item)}
+                        className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate cursor-pointer`}
+                      >
+                        {sItem.item.name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                        <span>Size: {sItem.selectedSize}</span>
+                        <span>•</span>
+                        <span className="font-mono text-slate-300 font-semibold">${sItem.item.price}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <button
+                          onClick={() => moveToCartFromSaved(sItem.item.id, sItem.selectedSize)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                        >
+                          <ShoppingBag className="w-3 h-3" />
+                          <span>Move to Cart</span>
+                        </button>
+                        <button
+                          onClick={() => removeFromSavedForLater(sItem.item.id, sItem.selectedSize)}
+                          className="text-[11px] font-semibold text-slate-400 hover:text-red-400 flex items-center gap-1 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* Empty Cart State */
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center mt-6">
-          <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3 text-slate-400">
-            <ShoppingBag className="w-7 h-7 text-slate-400" />
+        <div className="mt-4">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center mt-3">
+            <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-3 text-slate-400">
+              <ShoppingBag className="w-7 h-7 text-slate-400" />
+            </div>
+            <h3 className="text-sm font-bold text-white mb-1">Your cart is empty</h3>
+            <p className="text-xs text-slate-400 mb-5 max-w-xs mx-auto">
+              Swipe through clothes or explore your collection wishlist to add statement pieces to your bag.
+            </p>
+            <button
+              onClick={() => setActiveTab('swipe')}
+              className="px-5 py-2.5 rounded-full bg-pink-600 text-white text-xs font-black hover:bg-pink-500 transition-colors shadow-lg shadow-pink-600/20"
+            >
+              Start Swiping Clothes
+            </button>
           </div>
-          <h3 className="text-sm font-bold text-white mb-1">Your cart is empty</h3>
-          <p className="text-xs text-slate-400 mb-5 max-w-xs mx-auto">
-            Swipe through clothes or explore your collection wishlist to add statement pieces to your bag.
-          </p>
-          <button
-            onClick={() => setActiveTab('swipe')}
-            className="px-5 py-2.5 rounded-full bg-pink-600 text-white text-xs font-black hover:bg-pink-500 transition-colors shadow-lg shadow-pink-600/20"
-          >
-            Start Swiping Clothes
-          </button>
+
+          {/* Saved For Later list displayed even when active cart is empty */}
+          {savedForLaterItems.length > 0 && (
+            <div className="mt-8 pt-6 border-t-2 border-slate-800">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <BookmarkCheck className="w-4 h-4 text-pink-500" />
+                  <h2 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    Saved for Later
+                  </h2>
+                </div>
+                <span className="text-xs text-slate-400 font-mono">
+                  {savedForLaterItems.length} {savedForLaterItems.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
+
+              <div className={`divide-y ${isLight ? 'divide-slate-200 border-slate-200' : 'divide-slate-800 border-slate-800'} border-y`}>
+                {savedForLaterItems.map((sItem) => (
+                  <div
+                    key={`${sItem.item.id}-${sItem.selectedSize}`}
+                    className="py-3.5 flex items-center justify-between gap-3"
+                  >
+                    <div
+                      onClick={() => setInspectItem(sItem.item)}
+                      className="w-14 h-18 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 cursor-pointer shadow-sm"
+                    >
+                      <img
+                        src={sItem.item.image}
+                        alt={sItem.item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-[10px] uppercase font-bold block ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
+                        {sItem.item.brand}
+                      </span>
+                      <h3
+                        onClick={() => setInspectItem(sItem.item)}
+                        className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} truncate cursor-pointer`}
+                      >
+                        {sItem.item.name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                        <span>Size: {sItem.selectedSize}</span>
+                        <span>•</span>
+                        <span className="font-mono text-slate-300 font-semibold">${sItem.item.price}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <button
+                          onClick={() => moveToCartFromSaved(sItem.item.id, sItem.selectedSize)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                        >
+                          <ShoppingBag className="w-3 h-3" />
+                          <span>Move to Cart</span>
+                        </button>
+                        <button
+                          onClick={() => removeFromSavedForLater(sItem.item.id, sItem.selectedSize)}
+                          className="text-[11px] font-semibold text-slate-400 hover:text-red-400 flex items-center gap-1 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

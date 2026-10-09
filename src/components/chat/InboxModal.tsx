@@ -153,9 +153,13 @@ export const InboxModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      onClick={() => setIsInboxOpen(false)}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+    >
       <div
-        className={`w-full max-w-md h-[600px] max-h-[92vh] rounded-3xl border shadow-2xl overflow-hidden flex flex-col ${
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-md h-[600px] max-h-[92vh] rounded-3xl border shadow-2xl overflow-hidden flex flex-col cursor-default ${
           isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
         }`}
       >

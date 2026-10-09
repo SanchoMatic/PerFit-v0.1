@@ -71,28 +71,28 @@ export const WishlistTab: React.FC = () => {
   });
 
   return (
-    <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-1 max-w-md mx-auto">
-      {/* Action toolbar with Filters button & Add All to Cart - Shifted upward to top (Wishlist title deleted) */}
+    <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-[max(8px,env(safe-area-inset-top))] max-w-md mx-auto">
+      {/* Action toolbar with Filters button & Add All to Cart - Shifted upward to top, enlarged for mobile */}
       <div className="flex items-center justify-between px-1 mb-2 pt-1 text-xs">
         <button
           onClick={() => setIsSettingsOpen(true)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-full ${
             isLight
               ? 'bg-white border-slate-300 text-slate-800 hover:border-slate-400'
               : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
-          } border text-[11px] font-bold transition-colors shadow-sm`}
+          } border text-xs font-bold transition-colors shadow-sm min-h-[42px]`}
           title="Wishlist Filters"
         >
-          <SlidersHorizontal className={`w-3.5 h-3.5 ${isLight ? 'text-slate-800' : 'text-slate-300'}`} />
+          <SlidersHorizontal className={`w-4 h-4 ${isLight ? 'text-slate-800' : 'text-slate-300'}`} />
           <span>Filters{categoryFilter.length > 0 ? ` (${categoryFilter.join(', ')})` : ''}</span>
         </button>
 
         {wishlistItems.length > 0 && (
           <button
             onClick={addAllWishlistToCart}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-500 text-[11px] font-bold hover:bg-emerald-500 hover:text-black transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs font-bold hover:bg-emerald-500 hover:text-black transition-colors shadow-sm min-h-[42px]"
           >
-            <ShoppingBag className="w-3 h-3" />
+            <ShoppingBag className="w-4 h-4" />
             <span>Add All to Cart</span>
           </button>
         )}

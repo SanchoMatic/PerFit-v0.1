@@ -44,9 +44,17 @@ export const SendItemModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      onClick={() => {
+        setSendItemModalItem(null);
+        setSelectedFriendIds([]);
+        setNote('');
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+    >
       <div
-        className={`w-full max-w-sm rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-sm rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] cursor-default ${
           isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
         }`}
       >
@@ -95,14 +103,14 @@ export const SendItemModal: React.FC = () => {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="text-[10px] uppercase font-bold text-pink-600 tracking-wider">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
               {sendItemModalItem.brand}
             </span>
-            <h4 className="text-xs font-bold truncate leading-tight mt-0.5">
+            <h4 className={`text-xs font-bold truncate leading-tight mt-0.5 ${isLight ? 'text-sky-950' : 'text-white'}`}>
               {sendItemModalItem.name}
             </h4>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-extrabold font-mono text-emerald-500">
+              <span className="text-xs font-extrabold font-mono text-white">
                 ${sendItemModalItem.price}
               </span>
               <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} capitalize`}>

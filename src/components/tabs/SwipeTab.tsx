@@ -77,6 +77,7 @@ export const SwipeTab: React.FC = () => {
 
   const startPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isMovedRef = useRef<boolean>(false);
+  const isSwipingRef = useRef<boolean>(false);
   const currentItem = filteredCatalog[0];
   const nextItem = filteredCatalog[1];
 
@@ -141,29 +142,39 @@ export const SwipeTab: React.FC = () => {
   const aesthetics = ['all', ...TRENDING_AESTHETICS_25];
   const sizes = ['all', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'M Tall', 'L Tall'];
 
-  // Toss animations for Like and Dislike (smooth Tinder-like toss)
+  // Toss animations for Like and Dislike (smooth Tinder-like toss, strictly one card at a time)
   const triggerLike = () => {
-    if (!currentItem || hasReachedDailyLimit || tossState) return;
+    if (!currentItem || hasReachedDailyLimit || tossState || isSwipingRef.current) return;
+    isSwipingRef.current = true;
     setTossState('like');
     setTimeout(() => {
       swipe('like', currentItem);
       setTossState(null);
       setDragOffset({ x: 0, y: 0 });
+      setIsDragging(false);
+      setTimeout(() => {
+        isSwipingRef.current = false;
+      }, 50);
     }, 280);
   };
 
   const triggerDislike = () => {
-    if (!currentItem || hasReachedDailyLimit || tossState) return;
+    if (!currentItem || hasReachedDailyLimit || tossState || isSwipingRef.current) return;
+    isSwipingRef.current = true;
     setTossState('dislike');
     setTimeout(() => {
       swipe('dislike', currentItem);
       setTossState(null);
       setDragOffset({ x: 0, y: 0 });
+      setIsDragging(false);
+      setTimeout(() => {
+        isSwipingRef.current = false;
+      }, 50);
     }, 280);
   };
 
   const handleUndo = () => {
-    if (!canUndo || tossState !== null) return;
+    if (!canUndo || tossState !== null || isSwipingRef.current) return;
     setIsUndoing(true);
     undoLastSwipe();
     setTimeout(() => {
@@ -173,7 +184,8 @@ export const SwipeTab: React.FC = () => {
 
   // Drag handlers for desktop and mobile
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    if (hasReachedDailyLimit || tossState) return;
+    if (hasReachedDailyLimit || tossState || isSwipingRef.current) return;
+    if ((e.target as HTMLElement).closest('button')) return;
     setIsDragging(true);
     isMovedRef.current = false;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -182,7 +194,7 @@ export const SwipeTab: React.FC = () => {
   };
 
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDragging || hasReachedDailyLimit || tossState) return;
+    if (!isDragging || hasReachedDailyLimit || tossState || isSwipingRef.current) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const dx = clientX - startPos.current.x;
@@ -192,13 +204,18 @@ export const SwipeTab: React.FC = () => {
     }
     setDragOffset({
       x: dx,
-      y: dy,
+      y: dy * 0.4,
     });
   };
 
-  const handleTouchEnd = () => {
-    if (!isDragging || tossState) return;
+  const handleTouchEnd = (e?: React.TouchEvent | React.MouseEvent) => {
+    if (!isDragging || tossState || isSwipingRef.current) return;
     setIsDragging(false);
+
+    if (e && (e.target as HTMLElement).closest('button')) {
+      setDragOffset({ x: 0, y: 0 });
+      return;
+    }
 
     if (!isMovedRef.current) {
       // Tap detected on the product card: open more info modal
@@ -227,7 +244,7 @@ export const SwipeTab: React.FC = () => {
   const cardOpacity = tossState ? 0.15 : 1;
 
   return (
-    <div className="relative h-[calc(100vh-64px)] max-h-[calc(100vh-64px)] overflow-hidden flex flex-col justify-between pb-20 px-4 pt-2 max-w-md mx-auto select-none">
+    <div className="relative min-h-[calc(100dvh-64px)] h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] overflow-hidden flex flex-col justify-between pb-20 px-4 pt-[max(8px,env(safe-area-inset-top))] max-w-md mx-auto select-none">
       {/* Dynamic Gradual Gradient Glow matching Like (green), Dislike (red), or Undo (goldish yellow lower-middle) */}
       <div
         className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-200 ease-out"
@@ -252,18 +269,18 @@ export const SwipeTab: React.FC = () => {
           </span>
         </div>
 
-        {/* Center "Brands" Pill dropdown - Guaranteed centered on header */}
+        {/* Center "Brands" Pill dropdown - Guaranteed centered on header, enlarged for mobile */}
         <div className="justify-self-center relative flex justify-center">
           <button
             onClick={() => setIsBrandMenuOpen(!isBrandMenuOpen)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-full ${
               isLight
                 ? 'cosmic-gradient-border-light text-slate-800 hover:shadow-sm'
                 : 'cosmic-gradient-border text-white hover:shadow-sm'
-            } text-xs font-semibold tracking-wide shadow-sm transition-colors max-w-[130px]`}
+            } text-sm font-bold tracking-wide shadow-sm transition-colors max-w-[160px] min-h-[40px]`}
           >
             <span className="truncate">{brandFilter === 'all' ? 'Brands' : brandFilter}</span>
-            <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
+            <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
           </button>
 
           {isBrandMenuOpen && (
@@ -272,7 +289,7 @@ export const SwipeTab: React.FC = () => {
                 className="fixed inset-0 z-30"
                 onClick={() => setIsBrandMenuOpen(false)}
               />
-              <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 w-44 ${
+              <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 w-48 ${
                 isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
               } border rounded-2xl shadow-2xl py-2 z-40 max-h-64 overflow-y-auto`}>
                 {availableBrands.map((b) => (
@@ -282,7 +299,7 @@ export const SwipeTab: React.FC = () => {
                       setBrandFilter(b);
                       setIsBrandMenuOpen(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2 text-xs font-medium ${
+                    className={`w-full text-left px-4 py-2.5 text-xs font-semibold ${
                       isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
                     } transition-colors flex items-center justify-between ${
                       brandFilter === b
@@ -303,11 +320,11 @@ export const SwipeTab: React.FC = () => {
           )}
         </div>
 
-        {/* Filter Sliders Button */}
+        {/* Filter Sliders Button - Enlarged for mobile */}
         <div className="justify-self-end flex items-center">
           <button
             onClick={() => setIsFilterModalOpen(true)}
-            className={`p-2 rounded-full border transition-colors relative shadow-sm ${
+            className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full border transition-colors relative shadow-sm flex items-center justify-center ${
               categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
                 ? isLight
                   ? 'border-pink-600 bg-pink-50 text-pink-600'
@@ -318,7 +335,7 @@ export const SwipeTab: React.FC = () => {
             }`}
             title="Filter Preferences"
           >
-            <SlidersHorizontal className={`w-4 h-4 ${
+            <SlidersHorizontal className={`w-5 h-5 ${
               categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
                 ? isLight
                   ? 'text-pink-600'
@@ -338,9 +355,24 @@ export const SwipeTab: React.FC = () => {
       <div className="relative flex-1 flex items-center justify-center my-auto z-10 w-full max-h-[min(54vh,460px)] min-h-[350px]">
         {currentItem ? (
           <div className="relative w-full h-full max-h-[min(54vh,460px)] flex items-center justify-center">
-            {/* Background Card Preview for depth */}
+            {/* Background Card Preview for depth with smooth scale transition */}
             {nextItem && (
-              <div className="absolute w-[92%] h-[94%] rounded-3xl bg-slate-900/60 border border-slate-800 transform translate-y-3 scale-95 opacity-60 overflow-hidden pointer-events-none">
+              <div
+                style={{
+                  transform: tossState
+                    ? 'translate3d(0, 0, 0) scale(1)'
+                    : `translate3d(0, ${Math.max(0, 10 - (Math.abs(dragOffset.x) / 100) * 10)}px, 0) scale(${Math.min(1, 0.94 + (Math.abs(dragOffset.x) / 200) * 0.06)})`,
+                  opacity: tossState
+                    ? 1
+                    : Math.min(1, 0.6 + (Math.abs(dragOffset.x) / 160) * 0.4),
+                  transition: tossState
+                    ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
+                    : isDragging
+                    ? 'none'
+                    : 'transform 200ms ease-out, opacity 200ms ease-out',
+                }}
+                className="absolute w-[94%] h-[95%] rounded-3xl bg-slate-900 border border-slate-800 overflow-hidden pointer-events-none"
+              >
                 <img
                   src={nextItem.image}
                   alt={nextItem.name}
@@ -357,7 +389,8 @@ export const SwipeTab: React.FC = () => {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              onClick={() => {
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
                 if (!isMovedRef.current && currentItem) {
                   setInspectItem(currentItem);
                 }
@@ -367,7 +400,7 @@ export const SwipeTab: React.FC = () => {
                 opacity: cardOpacity,
                 cursor: isDragging ? 'grabbing' : 'pointer',
                 transition: tossState
-                  ? 'transform 280ms cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 280ms ease-out'
+                  ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
                   : isDragging
                   ? 'none'
                   : 'transform 200ms ease-out, opacity 200ms ease-out',
@@ -467,22 +500,31 @@ export const SwipeTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom Quick Bar */}
-              <div className="px-4 py-2 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              {/* Bottom Quick Bar - Big Add to Cart button for simple mobile use, no popup */}
+              <div className="px-4 py-2.5 bg-slate-950/95 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 z-20">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-300 font-medium">Fit: {currentItem.fit}</span>
+                  <span className="text-slate-300 font-semibold text-xs">Fit: {currentItem.fit}</span>
                   <span>•</span>
-                  <span className="text-slate-300">{currentItem.material.split(' ')[0]}</span>
+                  <span className="text-slate-300 text-xs">{currentItem.material.split(' ')[0]}</span>
                 </div>
                 <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    addToCart(currentItem);
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     addToCart(currentItem);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-extrabold transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-black text-xs font-black transition-transform active:scale-95 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 min-h-[38px] cursor-pointer"
                 >
-                  <ShoppingBag className="w-3 h-3" />
-                  <span>Cart</span>
+                  <ShoppingBag className="w-4 h-4 stroke-[2.2]" />
+                  <span>Add to Cart</span>
                 </button>
               </div>
             </div>
@@ -525,39 +567,39 @@ export const SwipeTab: React.FC = () => {
 
       {/* Bottom Swiping Controls:
           From Left to Right:
-          1. Dislike (Pass / Swipe Left) - Transparent button with solid shaded thumbs down icon
-          2. Undo (RotateCcw)
-          3. Save (Bookmark / Add to Wishlist)
-          4. Like (Thumbs Up / Swipe Right) - Solid shaded button with transparent look thumbs up icon
+          1. Dislike (Pass / Swipe Left) - Larger button for mobile
+          2. Undo (RotateCcw) - Larger button for mobile
+          3. Save (Bookmark / Add to Wishlist) - Larger button for mobile
+          4. Like (Thumbs Up / Swipe Right) - Larger button for mobile
       */}
-      <div className="relative z-20 flex items-center justify-between px-2 pt-1 flex-shrink-0">
-        {/* 1. Red Dislike Corner Button - Transparent button with solid shaded thumbs down icon */}
+      <div className="relative z-20 flex items-center justify-between px-2 pt-1 pb-1 flex-shrink-0">
+        {/* 1. Red Dislike Corner Button - Enlarged for mobile */}
         <button
           onClick={triggerDislike}
           disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
-          className="relative group p-4 rounded-3xl bg-transparent border-2 border-red-500/60 hover:bg-red-500/10 hover:border-red-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-md flex items-center justify-center disabled:opacity-40"
+          className="relative group p-4 sm:p-5 w-[76px] h-[76px] min-w-[76px] min-h-[76px] rounded-3xl bg-transparent border-2 border-red-500/60 hover:bg-red-500/10 hover:border-red-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-md flex items-center justify-center disabled:opacity-40"
           title="Pass / Dislike (Swipe Left)"
         >
-          <ThumbsDown className="w-7 h-7 relative z-10 fill-red-500 text-red-500 stroke-red-500" strokeWidth={1.5} />
+          <ThumbsDown className="w-8 h-8 sm:w-9 sm:h-9 relative z-10 fill-red-500 text-red-500 stroke-red-500" strokeWidth={1.5} />
         </button>
 
-        {/* Center Controls: Undo + Save button */}
-        <div className="flex items-center gap-2">
-          {/* 2. Undo Button */}
+        {/* Center Controls: Undo + Save button - Enlarged for mobile */}
+        <div className="flex items-center gap-3">
+          {/* 2. Undo Button - Enlarged */}
           <button
             onClick={handleUndo}
             disabled={!canUndo || tossState !== null}
-            className={`p-3.5 rounded-full border transition-all duration-300 shadow-md ${
+            className={`w-[52px] h-[52px] min-w-[52px] min-h-[52px] rounded-full border transition-all duration-300 shadow-md flex items-center justify-center ${
               canUndo
                 ? 'border-amber-400 bg-amber-950/50 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-300 hover:text-amber-200 hover:scale-105 active:scale-95 animate-pulse'
                 : 'border-slate-800 bg-slate-900/60 text-slate-500 opacity-30 pointer-events-none'
             }`}
             title="Undo last swipe"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-5 h-5" />
           </button>
 
-          {/* 3. Save Button (Replaces 3-line button; adds items to wishlist) */}
+          {/* 3. Save Button - Enlarged */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -566,7 +608,7 @@ export const SwipeTab: React.FC = () => {
               }
             }}
             disabled={!currentItem || tossState !== null}
-            className={`p-3.5 rounded-full transition-all shadow-md flex items-center justify-center group ${
+            className={`w-[52px] h-[52px] min-w-[52px] min-h-[52px] rounded-full transition-all shadow-md flex items-center justify-center group ${
               currentItem && isItemInWishlist(currentItem.id)
                 ? `${isLight ? 'cosmic-gradient-bg-light' : 'cosmic-gradient-bg'} text-white shadow-[0_0_16px_rgba(219,39,119,0.55)] border-2 border-transparent`
                 : isLight
@@ -576,21 +618,21 @@ export const SwipeTab: React.FC = () => {
             title={currentItem && isItemInWishlist(currentItem.id) ? 'Saved in Wishlist' : 'Save to Wishlist'}
           >
             <Bookmark
-              className={`w-4 h-4 transition-transform ${
+              className={`w-5 h-5 transition-transform ${
                 currentItem && isItemInWishlist(currentItem.id) ? 'fill-white text-white scale-110' : ''
               }`}
             />
           </button>
         </div>
 
-        {/* 4. Green Like Corner Button - Solid shaded button with transparent look thumbs up icon */}
+        {/* 4. Green Like Corner Button - Enlarged for mobile */}
         <button
           onClick={triggerLike}
           disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
-          className="relative group p-4 rounded-3xl bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-600/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] flex items-center justify-center disabled:opacity-40"
+          className="relative group p-4 sm:p-5 w-[76px] h-[76px] min-w-[76px] min-h-[76px] rounded-3xl bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-600/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] flex items-center justify-center disabled:opacity-40"
           title="Like & Curate (Swipe Right)"
         >
-          <ThumbsUp className="w-7 h-7 relative z-10 fill-transparent stroke-white/90 text-transparent" strokeWidth={2.4} />
+          <ThumbsUp className="w-8 h-8 sm:w-9 sm:h-9 relative z-10 fill-transparent stroke-white/90 text-transparent" strokeWidth={2.4} />
         </button>
       </div>
 

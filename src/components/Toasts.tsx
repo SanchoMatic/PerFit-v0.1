@@ -1,60 +1,57 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { CheckCircle2, Sparkles, X, AlertCircle } from 'lucide-react';
+import { ShoppingBag, X, AlertCircle } from 'lucide-react';
 
 export const Toasts: React.FC = () => {
-  const { toasts, removeToast } = useApp();
+  const { toasts, removeToast, userProfile } = useApp();
+  const isLight = userProfile.preferences.theme === 'light';
 
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
+    <div className="fixed top-[max(12px,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-1.5 w-auto max-w-[300px] px-2 pointer-events-none">
       {toasts.map((toast) => {
-        const isGreen = toast.type === 'green';
         const isRed = toast.type === 'red';
 
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center justify-between gap-3 p-3.5 rounded-2xl shadow-2xl backdrop-blur-lg border transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${
-              isGreen
-                ? 'bg-black/95 border-pink-600/50 text-white shadow-pink-950/40'
-                : isRed
-                ? 'bg-black/95 border-red-500/50 text-white shadow-red-950/40'
-                : 'bg-black/95 border-slate-700 text-white shadow-black/60'
+            className={`pointer-events-auto flex items-center justify-between gap-2.5 py-1.5 px-3 rounded-full shadow-lg backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-top-3 ${
+              isRed
+                ? 'bg-black/95 border border-red-500/80 text-white shadow-red-950/40'
+                : 'bg-black/95 border-2 border-emerald-500 text-white shadow-emerald-950/50'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div
-                className={`p-1.5 rounded-xl ${
-                  isGreen
-                    ? 'bg-pink-600/20 text-pink-600'
-                    : isRed
-                    ? 'bg-red-500/20 text-red-400'
-                    : 'bg-slate-800 text-slate-300'
-                }`}
-              >
-                {isGreen ? (
-                  <Sparkles className="w-4 h-4" />
-                ) : isRed ? (
-                  <AlertCircle className="w-4 h-4" />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex-shrink-0 flex items-center justify-center">
+                {isRed ? (
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4" />
+                  <ShoppingBag
+                    className="w-3.5 h-3.5"
+                    strokeWidth={2.4}
+                    style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }}
+                  />
                 )}
               </div>
-              <div>
-                <p className="text-xs font-semibold tracking-wide">{toast.message}</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold tracking-tight text-white truncate leading-tight">
+                  {toast.message}
+                </p>
                 {toast.subtext && (
-                  <p className="text-[11px] text-slate-400 line-clamp-1">{toast.subtext}</p>
+                  <p className="text-[9px] text-slate-300 line-clamp-1 leading-tight">
+                    {toast.subtext}
+                  </p>
                 )}
               </div>
             </div>
 
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+              className="text-slate-400 hover:text-white p-0.5 rounded-full transition-colors flex-shrink-0"
+              title="Dismiss"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           </div>
         );

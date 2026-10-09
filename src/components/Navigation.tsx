@@ -65,7 +65,12 @@ export const Navigation: React.FC = () => {
   const navItems: Array<{
     id: TabType;
     label: string;
-    icon: React.ComponentType<{ className?: string; strokeWidth?: number; isLight?: boolean }>;
+    icon: React.ComponentType<{
+      className?: string;
+      strokeWidth?: number;
+      isLight?: boolean;
+      style?: React.CSSProperties;
+    }>;
     badge?: number;
     accentDot?: boolean;
   }> = [

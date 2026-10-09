@@ -125,7 +125,7 @@ export const UploadTab: React.FC = () => {
     currentDissection?.items[0];
 
   return (
-    <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-4 max-w-md mx-auto">
+    <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-[max(16px,env(safe-area-inset-top))] max-w-md mx-auto">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}

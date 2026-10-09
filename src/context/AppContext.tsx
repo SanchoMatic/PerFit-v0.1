@@ -82,10 +82,14 @@ interface AppContextType {
 
   // Cart & Purchases
   cartItems: CartItem[];
+  savedForLaterItems: CartItem[];
   addToCart: (item: ClothingItem, size?: string, color?: string) => void;
   removeFromCart: (itemId: string, size?: string) => void;
   updateCartQuantity: (itemId: string, delta: number, size?: string) => void;
   clearCart: () => void;
+  saveForLater: (itemId: string, size?: string) => void;
+  moveToCartFromSaved: (itemId: string, size?: string) => void;
+  removeFromSavedForLater: (itemId: string, size?: string) => void;
   cartTotal: number;
   cartCount: number;
   purchasedItems: ClothingItem[];
@@ -341,6 +345,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Cart
   const [cartItems, setCartItems] = useState<CartItem[]>(INITIAL_CART_ITEMS);
+  const [savedForLaterItems, setSavedForLaterItems] = useState<CartItem[]>([]);
   const [purchasedItems, setPurchasedItems] = useState<ClothingItem[]>(() => [
     INITIAL_CATALOG[1], // Arc'teryx Beta LT Jacket
     INITIAL_CATALOG[2], // Salomon XT-6 Expanse
@@ -792,6 +797,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const clearCart = useCallback(() => {
     setCartItems([]);
     showToast('Cart cleared', '', 'silver');
+  }, [showToast]);
+
+  const saveForLater = useCallback((itemId: string, size?: string) => {
+    setCartItems((prevCart) => {
+      const target = prevCart.find((ci) => {
+        if (size) return ci.item.id === itemId && ci.selectedSize === size;
+        return ci.item.id === itemId;
+      });
+      if (target) {
+        setSavedForLaterItems((prevSaved) => {
+          const exists = prevSaved.some(
+            (s) => s.item.id === target.item.id && s.selectedSize === target.selectedSize
+          );
+          if (exists) return prevSaved;
+          return [...prevSaved, target];
+        });
+        showToast('Saved for Later', `${target.item.name} moved to saved list`, 'green');
+      }
+      return prevCart.filter((ci) => {
+        if (size) return !(ci.item.id === itemId && ci.selectedSize === size);
+        return ci.item.id !== itemId;
+      });
+    });
+  }, [showToast]);
+
+  const moveToCartFromSaved = useCallback((itemId: string, size?: string) => {
+    setSavedForLaterItems((prevSaved) => {
+      const target = prevSaved.find((s) => {
+        if (size) return s.item.id === itemId && s.selectedSize === size;
+        return s.item.id === itemId;
+      });
+      if (target) {
+        setCartItems((prevCart) => {
+          const existing = prevCart.find(
+            (ci) => ci.item.id === target.item.id && ci.selectedSize === target.selectedSize
+          );
+          if (existing) {
+            return prevCart.map((ci) =>
+              ci === existing ? { ...ci, quantity: ci.quantity + target.quantity } : ci
+            );
+          }
+          return [...prevCart, target];
+        });
+        showToast('Moved to Cart', `${target.item.name} is in your cart`, 'green');
+      }
+      return prevSaved.filter((s) => {
+        if (size) return !(s.item.id === itemId && s.selectedSize === size);
+        return s.item.id !== itemId;
+      });
+    });
+  }, [showToast]);
+
+  const removeFromSavedForLater = useCallback((itemId: string, size?: string) => {
+    setSavedForLaterItems((prev) =>
+      prev.filter((s) => {
+        if (size) return !(s.item.id === itemId && s.selectedSize === size);
+        return s.item.id !== itemId;
+      })
+    );
+    showToast('Removed from Saved', '', 'red');
   }, [showToast]);
 
   const cartTotal = useMemo(() => {
@@ -1340,10 +1405,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         assignItemToCollection,
         addAllWishlistToCart,
         cartItems,
+        savedForLaterItems,
         addToCart,
         removeFromCart,
         updateCartQuantity,
         clearCart,
+        saveForLater,
+        moveToCartFromSaved,
+        removeFromSavedForLater,
         cartTotal,
         cartCount,
         purchasedItems,

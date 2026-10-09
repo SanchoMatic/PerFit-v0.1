@@ -1227,22 +1227,22 @@ export const ProfileTab: React.FC = () => {
             {/* Elegant vignette gradients */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/50" />
 
-            {/* Top Right Gear Icon for Settings & Menu */}
+            {/* Top Right Gear Icon for Settings & Menu - Enlarged for mobile */}
             <button
               onClick={() => setActiveSubView('menu')}
-              className="absolute top-3 right-3 p-2 rounded-full bg-black/65 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-lg z-10"
+              className="absolute top-[max(12px,env(safe-area-inset-top))] right-3.5 w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-lg z-10 flex items-center justify-center"
               title="Settings & Menu"
             >
-              <SettingsIcon className="w-4 h-4" />
+              <SettingsIcon className="w-5 h-5" />
             </button>
 
-            {/* Chat Button under Settings Gear */}
+            {/* Chat Button under Settings Gear - Enlarged for mobile */}
             <button
               onClick={() => setIsInboxOpen(true)}
-              className="absolute top-14 right-3 p-2 rounded-full bg-black/65 hover:bg-black/90 backdrop-blur-md border border-white/20 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-lg z-10 group"
+              className="absolute top-[calc(max(12px,env(safe-area-inset-top))+56px)] right-3.5 w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-lg z-10 group flex items-center justify-center"
               title="Direct & Group Messages"
             >
-              <MessageSquare className="w-4 h-4 text-white group-hover:text-pink-300 transition-colors" />
+              <MessageSquare className="w-5 h-5 text-white group-hover:text-pink-300 transition-colors" />
               {totalUnreadMessages > 0 && (
                 <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'} text-white font-black text-[9px] flex items-center justify-center ring-2 ring-black animate-pulse`}>
                   {totalUnreadMessages}
@@ -1861,14 +1861,14 @@ export const ProfileTab: React.FC = () => {
           >
             <button
               onClick={() => setActiveSubView('none')}
-              className={`p-2 rounded-full ${
+              className={`p-2.5 min-w-[42px] min-h-[42px] rounded-full flex items-center justify-center ${
                 isLight
                   ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
                   : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
               } border`}
               title="Back to Profile"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -1940,10 +1940,10 @@ export const ProfileTab: React.FC = () => {
                 }
                 setActiveCollectionDetailId(null);
               }}
-              className={`p-2 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'} border transition-colors`}
+              className={`p-2.5 min-w-[42px] min-h-[42px] rounded-full flex items-center justify-center ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'} border transition-colors`}
               title="Back"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} capitalize`}>
