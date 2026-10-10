@@ -1,5 +1,6 @@
 import express from 'express';
 import type { Request, Response } from 'express';
+import http from 'http';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -33,25 +34,9 @@ function parsePort(): number {
 
 async function startServer() {
   const app = express();
+  const server = http.createServer(app);
   const PORT = parsePort();
   const isProd = process.env.NODE_ENV === 'production';
-
-  const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
-    console.log(`  ➜  Network: http://0.0.0.0:${PORT}/`);
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
-
-  server.on('error', (err: any) => {
-    console.error('Server error:', err);
-  });
-
-  process.on('SIGTERM', () => {
-    server.close();
-  });
-  process.on('SIGINT', () => {
-    server.close();
-  });
 
   app.use(express.json({ limit: '20mb' }));
 
@@ -190,33 +175,46 @@ Provide realistic, accurate fashion analysis. Return valid JSON matching the sch
   });
 
   if (!isProd) {
-    const vitePromise = createViteServer({
-      server: { middlewareMode: true },
+    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
+    const isHttps = process.env.APP_URL?.startsWith('https') || false;
+    const vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        hmr: isHmrDisabled
+          ? false
+          : {
+              server,
+              clientPort: isHttps ? 443 : undefined,
+            },
+      },
       appType: 'spa',
     });
 
-    app.use(async (req, res, next) => {
-      try {
-        const vite = await vitePromise;
-        vite.middlewares(req, res, next);
-      } catch (e) {
-        next(e);
-      }
-    });
-
-    vitePromise
-      .then(() => {
-        console.log('  ➜  Vite middleware ready in SPA mode');
-      })
-      .catch((err) => {
-        console.error('Failed to initialize Vite middleware:', err);
-      });
+    app.use(vite.middlewares);
+    console.log('  ➜  Vite middleware ready in SPA mode');
   } else {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (_req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
+
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`  ➜  Local:   http://localhost:${PORT}/`);
+    console.log(`  ➜  Network: http://0.0.0.0:${PORT}/`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+
+  server.on('error', (err: any) => {
+    console.error('Server error:', err);
+  });
+
+  process.on('SIGTERM', () => {
+    server.close();
+  });
+  process.on('SIGINT', () => {
+    server.close();
+  });
 }
 
 startServer().catch((err) => {
