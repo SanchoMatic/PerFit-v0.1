@@ -29,6 +29,7 @@ export const SwipeTab: React.FC = () => {
     resetDeck,
     brandFilter,
     setBrandFilter,
+    toggleBrandFilter,
     categoryFilter,
     setCategoryFilter,
     toggleCategoryFilter,
@@ -74,6 +75,39 @@ export const SwipeTab: React.FC = () => {
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }, [activeTab, tabResetTimestamp]);
+
+  // Lock scrolling app-wide while on the Swipe tab to prevent accidental pull/scroll gestures while swiping
+  useEffect(() => {
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalBodyTouchAction = document.body.style.touchAction;
+    const originalDocOverflow = document.documentElement.style.overflow;
+    const originalDocTouchAction = document.documentElement.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.touchAction = 'none';
+
+    const preventTouchScroll = (e: TouchEvent) => {
+      // Allow internal scrolling inside open filter modal, inspect modal, or brand dropdown
+      if ((e.target as HTMLElement).closest('.overflow-y-auto')) {
+        return;
+      }
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('touchmove', preventTouchScroll, { passive: false });
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.touchAction = originalBodyTouchAction;
+      document.documentElement.style.overflow = originalDocOverflow;
+      document.documentElement.style.touchAction = originalDocTouchAction;
+      window.removeEventListener('touchmove', preventTouchScroll);
+    };
+  }, []);
 
   const startPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isMovedRef = useRef<boolean>(false);
@@ -244,7 +278,7 @@ export const SwipeTab: React.FC = () => {
   const cardOpacity = tossState ? 0.15 : 1;
 
   return (
-    <div className="relative min-h-[calc(100dvh-64px)] h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] overflow-hidden flex flex-col justify-between pb-20 px-4 pt-[max(8px,env(safe-area-inset-top))] max-w-md mx-auto select-none">
+    <div className="relative min-h-[calc(100dvh-64px)] h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] overflow-hidden flex flex-col justify-between pb-20 px-4 pt-[max(8px,env(safe-area-inset-top))] max-w-md mx-auto select-none touch-none overscroll-none">
       {/* Dynamic Gradual Gradient Glow matching Like (green), Dislike (red), or Undo (goldish yellow lower-middle) */}
       <div
         className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-200 ease-out"
@@ -269,7 +303,7 @@ export const SwipeTab: React.FC = () => {
           </span>
         </div>
 
-        {/* Center "Brands" Pill dropdown - Guaranteed centered on header, enlarged for mobile */}
+        {/* Center "Brands" Pill dropdown - Allows multiple brands to be selected at once */}
         <div className="justify-self-center relative flex justify-center">
           <button
             onClick={() => setIsBrandMenuOpen(!isBrandMenuOpen)}
@@ -279,7 +313,13 @@ export const SwipeTab: React.FC = () => {
                 : 'cosmic-gradient-border text-white hover:shadow-sm'
             } text-sm font-bold tracking-wide shadow-sm transition-colors max-w-[160px] min-h-[40px]`}
           >
-            <span className="truncate">{brandFilter === 'all' ? 'Brands' : brandFilter}</span>
+            <span className="truncate">
+              {brandFilter.length === 0 || brandFilter.includes('all')
+                ? 'Brands'
+                : brandFilter.length === 1
+                ? brandFilter[0]
+                : `Brands (${brandFilter.length})`}
+            </span>
             <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
           </button>
 
@@ -289,61 +329,96 @@ export const SwipeTab: React.FC = () => {
                 className="fixed inset-0 z-30"
                 onClick={() => setIsBrandMenuOpen(false)}
               />
-              <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 w-48 ${
-                isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
-              } border rounded-2xl shadow-2xl py-2 z-40 max-h-64 overflow-y-auto`}>
-                {availableBrands.map((b) => (
+              <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 w-52 ${
+                isLight ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/60' : 'bg-slate-900 border-slate-700 text-white shadow-black/80'
+              } border rounded-2xl shadow-2xl py-2 z-40 max-h-72 flex flex-col`}>
+                <div className="px-3.5 py-1.5 flex items-center justify-between border-b border-inherit mb-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
+                    Select Brands
+                  </span>
+                  {brandFilter.length > 0 && !brandFilter.includes('all') && (
+                    <button
+                      type="button"
+                      onClick={() => setBrandFilter('all')}
+                      className={`text-[10px] font-bold ${isLight ? 'text-slate-600 hover:text-black' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="overflow-y-auto max-h-52 px-1">
+                  {availableBrands.map((b) => {
+                    const isAll = b === 'all';
+                    const isSelected = isAll
+                      ? brandFilter.length === 0 || brandFilter.includes('all')
+                      : brandFilter.some((x) => x.toLowerCase() === b.toLowerCase());
+
+                    return (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => {
+                          if (isAll) {
+                            setBrandFilter('all');
+                          } else {
+                            toggleBrandFilter(b);
+                          }
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between mb-0.5 ${
+                          isSelected
+                            ? isLight
+                              ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
+                              : 'cosmic-gradient-bg text-white font-bold shadow-sm shadow-pink-600/40'
+                            : isLight
+                            ? 'hover:bg-slate-100 text-slate-700'
+                            : 'hover:bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        <span className="truncate">{b === 'all' ? 'All Brands' : b}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-white flex-shrink-0 ml-1" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="p-2 border-t border-inherit mt-1">
                   <button
-                    key={b}
-                    onClick={() => {
-                      setBrandFilter(b);
-                      setIsBrandMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-semibold ${
-                      isLight ? 'hover:bg-slate-100' : 'hover:bg-slate-800'
-                    } transition-colors flex items-center justify-between ${
-                      brandFilter === b
-                        ? isLight
-                          ? 'text-pink-600 font-bold bg-pink-50'
-                          : 'text-pink-600 font-bold bg-slate-800/80'
-                        : isLight
-                        ? 'text-slate-700'
-                        : 'text-slate-300'
+                    type="button"
+                    onClick={() => setIsBrandMenuOpen(false)}
+                    className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      isLight ? 'cosmic-gradient-bg-light text-white shadow-sm' : 'cosmic-gradient-bg text-white shadow-sm'
                     }`}
                   >
-                    <span className="truncate">{b === 'all' ? 'All Brands' : b}</span>
-                    {brandFilter === b && <Check className="w-3.5 h-3.5 text-pink-600 flex-shrink-0 ml-1" />}
+                    Done {brandFilter.length > 0 ? `(${brandFilter.length})` : ''}
                   </button>
-                ))}
+                </div>
               </div>
             </>
           )}
         </div>
 
-        {/* Filter Sliders Button - Enlarged for mobile */}
+        {/* Filter Sliders Button - Uses gradient styling instead of plain pinkish red */}
         <div className="justify-self-end flex items-center">
           <button
             onClick={() => setIsFilterModalOpen(true)}
             className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full border transition-colors relative shadow-sm flex items-center justify-center ${
               categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
                 ? isLight
-                  ? 'border-pink-600 bg-pink-50 text-pink-600'
-                  : 'border-pink-600 bg-pink-950/60 text-pink-400'
+                  ? 'cosmic-gradient-border-light text-slate-900 bg-white'
+                  : 'cosmic-gradient-border text-white bg-slate-950'
                 : isLight
                 ? 'border-slate-300 bg-white text-slate-800 hover:text-black hover:border-slate-400'
                 : 'border-slate-700 bg-slate-900 text-slate-200 hover:text-white hover:border-slate-500'
             }`}
             title="Filter Preferences"
           >
-            <SlidersHorizontal className={`w-5 h-5 ${
-              categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
-                ? isLight
-                  ? 'text-pink-600'
-                  : 'text-pink-400'
-                : isLight
-                ? 'text-slate-800'
-                : 'text-slate-200'
-            }`} />
+            <SlidersHorizontal
+              className="w-5 h-5"
+              style={
+                categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
+                  ? { stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }
+                  : undefined
+              }
+            />
             {(categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
               <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 ${isLight ? 'cosmic-gradient-bg-light' : 'cosmic-gradient-bg'} ${isLight ? 'ring-white' : 'ring-black'} rounded-full ring-2`} />
             )}
@@ -542,11 +617,13 @@ export const SwipeTab: React.FC = () => {
             <div className="flex flex-col gap-2 w-full max-w-xs">
               <button
                 onClick={resetDeck}
-                className="px-5 py-2.5 rounded-full bg-pink-600 text-white font-bold text-xs tracking-wide hover:bg-pink-500 transition-colors shadow-lg shadow-pink-600/25"
+                className={`px-5 py-2.5 rounded-full ${
+                  isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'
+                } text-white font-bold text-xs tracking-wide transition-all shadow-lg`}
               >
                 Shuffle & Reset Deck
               </button>
-              {(brandFilter !== 'all' || categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
+              {(brandFilter.length > 0 || categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active) && (
                 <button
                   onClick={() => {
                     setBrandFilter('all');
@@ -716,11 +793,11 @@ export const SwipeTab: React.FC = () => {
             </button>
 
             <div className={`flex items-center gap-2 pb-3 border-b ${isLight ? 'border-slate-200 text-slate-900' : 'border-slate-800 text-white'} mb-3.5 pr-10`}>
-              <SlidersHorizontal className="w-4 h-4 text-pink-600" />
+              <SlidersHorizontal className="w-4 h-4" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
               <h3 className="font-bold text-base">Filters & Preferences</h3>
             </div>
 
-            {/* 1. Item Presentation Buttons (No title, no summary text) */}
+            {/* 1. Item Presentation Buttons */}
             <div className="mb-3.5">
               <div className="grid grid-cols-3 gap-1.5">
                 {[
@@ -733,7 +810,9 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setItemTypeFilter(t.id as typeof itemTypeFilter)}
                     className={`py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
                       itemTypeFilter === t.id
-                        ? 'bg-pink-600 text-white shadow-md shadow-pink-600/25'
+                        ? isLight
+                          ? 'cosmic-gradient-bg-light text-white shadow-md shadow-pink-600/30'
+                          : 'cosmic-gradient-bg text-white shadow-md shadow-pink-600/40'
                         : isLight
                         ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -751,7 +830,7 @@ export const SwipeTab: React.FC = () => {
                 <label className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
                   Category
                 </label>
-                <span className="text-[10px] font-mono font-bold text-pink-600">
+                <span className={`text-[10px] font-mono font-bold ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
                   {categoryFilter.length === 0 ? 'All Categories' : categoryFilter.join(', ')}
                 </span>
               </div>
@@ -766,9 +845,11 @@ export const SwipeTab: React.FC = () => {
                     <button
                       key={c}
                       onClick={() => toggleCategoryFilter(c)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                         isSelected
-                          ? 'bg-pink-600 text-white font-bold shadow-sm shadow-pink-600/25'
+                          ? isLight
+                            ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
+                            : 'cosmic-gradient-bg text-white font-bold shadow-sm shadow-pink-600/40'
                           : isLight
                           ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                           : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -796,9 +877,11 @@ export const SwipeTab: React.FC = () => {
                   <button
                     key={s}
                     onClick={() => setSizeFilter(s)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-medium transition-colors ${
+                    className={`px-2.5 py-1 rounded-xl text-xs font-medium transition-all ${
                       sizeFilter === s
-                        ? 'bg-pink-600 text-white font-bold shadow-sm shadow-pink-600/25'
+                        ? isLight
+                          ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
+                          : 'cosmic-gradient-bg text-white font-bold shadow-sm shadow-pink-600/40'
                         : isLight
                         ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
@@ -827,7 +910,9 @@ export const SwipeTab: React.FC = () => {
                     onClick={() => setGenderFilter(g.id as typeof genderFilter)}
                     className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                       genderFilter === g.id
-                        ? 'bg-pink-600 text-white shadow-md shadow-pink-600/25'
+                        ? isLight
+                          ? 'cosmic-gradient-bg-light text-white shadow-md shadow-pink-600/30'
+                          : 'cosmic-gradient-bg text-white shadow-md shadow-pink-600/40'
                         : isLight
                         ? 'text-slate-600 hover:text-slate-900'
                         : 'text-slate-400 hover:text-white'
@@ -845,7 +930,7 @@ export const SwipeTab: React.FC = () => {
                 <span className={`font-semibold uppercase tracking-wider text-[11px] ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   Max Price
                 </span>
-                <span className="font-mono font-bold text-xs text-pink-600">
+                <span className={`font-mono font-bold text-xs ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
                   {priceRangeFilter.max === null || !priceRangeFilter.active || priceRangeFilter.max >= 500
                     ? 'Any Price ($1 - ∞)'
                     : `Up to $${priceRangeFilter.max}`}
@@ -865,7 +950,7 @@ export const SwipeTab: React.FC = () => {
                     active: val < 500,
                   });
                 }}
-                className="w-full accent-pink-600 bg-slate-800 cursor-pointer h-1.5 rounded-lg"
+                className="w-full accent-pink-500 bg-slate-800 cursor-pointer h-1.5 rounded-lg"
               />
               <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
                 <span>$20</span>
@@ -896,7 +981,11 @@ export const SwipeTab: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsFilterModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl font-black text-xs transition-colors shadow-md bg-pink-600 text-white hover:bg-pink-500 shadow-pink-600/25"
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all shadow-md ${
+                  isLight
+                    ? 'cosmic-gradient-bg-light text-white shadow-pink-600/30 hover:opacity-95'
+                    : 'cosmic-gradient-bg text-white shadow-pink-600/40 hover:opacity-95'
+                }`}
               >
                 Apply Filters
               </button>

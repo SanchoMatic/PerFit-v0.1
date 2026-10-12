@@ -1214,8 +1214,8 @@ export const ProfileTab: React.FC = () => {
         </div>
       ) : activeSubView === 'none' ? (
         <div className="page-slide-forward -mx-4 -mt-4">
-          {/* 1. Header Background Banner Image (Shortened by 25% to h-32, layered z-0 behind avatar) */}
-          <div className="relative z-0 h-32 w-full overflow-hidden bg-slate-900 border-b border-slate-800">
+          {/* 1. Header Background Banner Image - Sized to fully accommodate iPhone safe areas & top action buttons */}
+          <div className="relative z-0 min-h-[168px] h-[calc(140px+env(safe-area-inset-top,0px))] w-full bg-slate-900 border-b border-slate-800">
             <img
               src={
                 userProfile.coverImageUrl ||
@@ -1227,33 +1227,36 @@ export const ProfileTab: React.FC = () => {
             {/* Elegant vignette gradients */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/50" />
 
-            {/* Top Right Gear Icon for Settings & Menu - Enlarged for mobile */}
-            <button
-              onClick={() => setActiveSubView('menu')}
-              className="absolute top-[max(12px,env(safe-area-inset-top))] right-3.5 w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-lg z-10 flex items-center justify-center"
-              title="Settings & Menu"
-            >
-              <SettingsIcon className="w-5 h-5" />
-            </button>
+            {/* Top Right Actions: Chat Button & Settings Gear - Side-by-side with full clearance so nothing is cut off on modern phones */}
+            <div className="absolute top-[max(12px,env(safe-area-inset-top))] right-3.5 z-20 flex items-center gap-2.5">
+              {/* Chat Button - Full mobile size with unread badge */}
+              <button
+                onClick={() => setIsInboxOpen(true)}
+                className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/75 hover:bg-black/95 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-xl group flex items-center justify-center relative active:scale-95"
+                title="Direct & Group Messages"
+              >
+                <MessageSquare className="w-5 h-5 text-white group-hover:text-pink-300 transition-colors" />
+                {totalUnreadMessages > 0 && (
+                  <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'} text-white font-black text-[9px] flex items-center justify-center ring-2 ring-black animate-pulse`}>
+                    {totalUnreadMessages}
+                  </span>
+                )}
+              </button>
 
-            {/* Chat Button under Settings Gear - Enlarged for mobile */}
-            <button
-              onClick={() => setIsInboxOpen(true)}
-              className="absolute top-[calc(max(12px,env(safe-area-inset-top))+56px)] right-3.5 w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-lg z-10 group flex items-center justify-center"
-              title="Direct & Group Messages"
-            >
-              <MessageSquare className="w-5 h-5 text-white group-hover:text-pink-300 transition-colors" />
-              {totalUnreadMessages > 0 && (
-                <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'} text-white font-black text-[9px] flex items-center justify-center ring-2 ring-black animate-pulse`}>
-                  {totalUnreadMessages}
-                </span>
-              )}
-            </button>
+              {/* Settings Gear Icon */}
+              <button
+                onClick={() => setActiveSubView('menu')}
+                className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/75 hover:bg-black/95 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-xl flex items-center justify-center active:scale-95"
+                title="Settings & Menu"
+              >
+                <SettingsIcon className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="px-4">
             {/* 2. Avatar Overlapping Cover (Layered in front with z-10) & Edit Profile Button */}
-            <div className="flex items-end justify-between -mt-10 mb-3 relative z-10">
+            <div className="flex items-end justify-between -mt-11 mb-3 relative z-10">
               {/* Interactive Circular Avatar */}
               <div
                 onClick={() => avatarInputRef.current?.click()}
@@ -1306,18 +1309,21 @@ export const ProfileTab: React.FC = () => {
               </button>
             </div>
 
-            {/* 3. User Name & Handle */}
+            {/* 3. User Name & Handle + Glowing Gradient Pro Member Badge */}
             <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   {userProfile.name}
                 </h1>
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800 border-slate-700 text-slate-300'
-                  } border`}
+                  className={`text-[10px] font-extrabold px-3 py-0.5 rounded-full ${
+                    isLight
+                      ? 'cosmic-gradient-glow-badge-light text-slate-900'
+                      : 'cosmic-gradient-glow-badge text-white'
+                  } tracking-wide inline-flex items-center gap-1`}
                 >
-                  {userProfile.membership}
+                  <span className={`text-[8px] ${isLight ? 'text-pink-600' : 'text-pink-400'}`}>✦</span>
+                  <span>{userProfile.membership}</span>
                 </span>
               </div>
               <p className={`text-xs font-mono font-bold ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>{userProfile.handle}</p>
@@ -2670,6 +2676,24 @@ export const ProfileTab: React.FC = () => {
           {/* SUBVIEW: SETTINGS (Includes Sizing, Daily Limit, Theme & Feed) */}
           {activeSubView === 'settings' && (
             <div className="space-y-4">
+              {/* Membership Status Badge Card in Settings */}
+              <div className={`p-4 rounded-2xl ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'} border flex items-center justify-between`}>
+                <div>
+                  <h3 className={`text-xs font-bold uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'} tracking-wider`}>
+                    Membership Tier
+                  </h3>
+                  <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Active VIP styling privileges & early marketplace drops
+                  </p>
+                </div>
+                <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full ${
+                  isLight ? 'cosmic-gradient-glow-badge-light text-slate-900' : 'cosmic-gradient-glow-badge text-white'
+                } inline-flex items-center gap-1`}>
+                  <span className={`text-[8px] ${isLight ? 'text-pink-600' : 'text-pink-400'}`}>✦</span>
+                  <span>{userProfile.membership}</span>
+                </span>
+              </div>
+
               {/* Daily Swipe Limit Configuration */}
               <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
@@ -3064,15 +3088,18 @@ export const ProfileTab: React.FC = () => {
                 </h3>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-black text-pink-300">
+                    <span className={`text-xs font-black ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
                       {userProfile.membership}
                     </span>
                     <p className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       Unlimited AI outfit dissections & priority marketplace drops
                     </p>
                   </div>
-                  <span className="text-[10px] bg-pink-400/20 text-pink-300 px-2.5 py-0.5 rounded-full border border-pink-400/30 font-bold">
-                    Active
+                  <span className={`text-[10px] px-3 py-1 rounded-full font-bold ${
+                    isLight ? 'cosmic-gradient-glow-badge-light text-slate-900' : 'cosmic-gradient-glow-badge text-white'
+                  } inline-flex items-center gap-1`}>
+                    <span className={`text-[8px] ${isLight ? 'text-pink-600' : 'text-pink-400'}`}>✦</span>
+                    <span>Active Pro</span>
                   </span>
                 </div>
               </div>

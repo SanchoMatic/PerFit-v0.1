@@ -154,15 +154,11 @@ export const InboxModal: React.FC = () => {
 
   return (
     <div
-      onClick={() => setIsInboxOpen(false)}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+      className={`fixed inset-0 z-50 flex flex-col w-full h-[100dvh] max-h-[100dvh] overflow-hidden ${
+        isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'
+      } pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] animate-in fade-in duration-200 cursor-default`}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-md h-[600px] max-h-[92vh] rounded-3xl border shadow-2xl overflow-hidden flex flex-col cursor-default ${
-          isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
-        }`}
-      >
+      <div className="flex flex-col flex-1 w-full max-w-3xl mx-auto h-full overflow-hidden">
         {/* ============================================================
             VIEW 1: INBOX LIST (Twitter / Facebook style inboxes)
            ============================================================ */}
@@ -664,7 +660,9 @@ export const InboxModal: React.FC = () => {
                 onClick={handleStartChat}
                 className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 text-white transition-all shadow-md ${
                   selectedFriendIds.length > 0
-                    ? 'bg-pink-600 hover:bg-pink-700 shadow-pink-600/30'
+                    ? isLight
+                      ? 'cosmic-gradient-bg-light shadow-pink-600/30 hover:opacity-95'
+                      : 'cosmic-gradient-bg shadow-pink-600/40 hover:opacity-95'
                     : 'bg-slate-700 opacity-50 cursor-not-allowed'
                 }`}
               >
@@ -1074,7 +1072,9 @@ export const InboxModal: React.FC = () => {
                 onClick={handleSendMessage}
                 className={`p-2.5 rounded-xl text-white transition-all shadow-md ${
                   messageInput.trim() || selectedAttachmentItem
-                    ? 'bg-pink-600 hover:bg-pink-700 shadow-pink-600/30'
+                    ? isLight
+                      ? 'cosmic-gradient-bg-light shadow-pink-600/30 hover:opacity-95'
+                      : 'cosmic-gradient-bg shadow-pink-600/40 hover:opacity-95'
                     : 'bg-slate-700 opacity-50 cursor-not-allowed'
                 }`}
               >

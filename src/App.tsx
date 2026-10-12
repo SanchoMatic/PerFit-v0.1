@@ -65,6 +65,77 @@ const MainContent: React.FC = () => {
   );
 };
 
+// Enforce portrait mode app-wide, but allow screen rotation whenever user is in the chat screen
+const PortraitModeOrientationHandler: React.FC = () => {
+  const { isInboxOpen } = useApp();
+  const [isMobileLandscape, setIsMobileLandscape] = React.useState(false);
+
+  useEffect(() => {
+    // If in chat screen, allow orientation to rotate freely
+    if (isInboxOpen) {
+      try {
+        if ('orientation' in screen && 'unlock' in (screen.orientation as any)) {
+          (screen.orientation as any).unlock();
+        }
+      } catch (e) {}
+      setIsMobileLandscape(false);
+      return;
+    }
+
+    // App-wide outside chat: lock rotation in portrait mode
+    try {
+      if ('orientation' in screen && 'lock' in (screen.orientation as any)) {
+        (screen.orientation as any).lock('portrait').catch(() => {});
+      }
+    } catch (e) {}
+
+    const handleOrientationChange = () => {
+      const isTouch = window.matchMedia('(pointer: coarse)').matches;
+      const isLandscape = window.innerWidth > window.innerHeight && window.innerHeight < 700;
+      setIsMobileLandscape(isTouch && isLandscape);
+    };
+
+    handleOrientationChange();
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, [isInboxOpen]);
+
+  if (!isMobileLandscape || isInboxOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
+      <div className="w-16 h-16 rounded-3xl cosmic-gradient-border flex items-center justify-center mb-4 animate-pulse">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="url(#cosmicCascadeGrad)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-8 h-8"
+        >
+          <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+          <path d="M12 18h.01" />
+        </svg>
+      </div>
+      <h2 className="text-base font-black tracking-wider text-white mb-2 uppercase">
+        Portrait Mode Locked
+      </h2>
+      <p className="text-xs text-slate-400 max-w-xs leading-relaxed mb-3">
+        Please rotate your device back to portrait orientation to continue exploring clothes.
+      </p>
+      <span className="text-[11px] font-mono cosmic-gradient-text font-bold">
+        ✦ Screen rotation is enabled in Chat ✦
+      </span>
+    </div>
+  );
+};
+
 const AppShell: React.FC = () => {
   const { userProfile, activeTab, tabResetTimestamp } = useApp();
   const isLight = userProfile.preferences.theme === 'light';
@@ -85,6 +156,7 @@ const AppShell: React.FC = () => {
       }`}
     >
       <CosmicGradientSvgDefs />
+      <PortraitModeOrientationHandler />
       {/* Non-invasive cosmic night sky theme (dark) and day sky cosmic theme (light) */}
       <CosmicSkyBackground isLight={isLight} />
       <Toasts />

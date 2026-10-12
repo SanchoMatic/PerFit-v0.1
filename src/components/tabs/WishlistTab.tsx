@@ -77,14 +77,32 @@ export const WishlistTab: React.FC = () => {
         <button
           onClick={() => setIsSettingsOpen(true)}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-full ${
-            isLight
+            categoryFilter.length > 0
+              ? isLight
+                ? 'cosmic-gradient-border-light text-slate-800 bg-white'
+                : 'cosmic-gradient-border text-white bg-slate-900'
+              : isLight
               ? 'bg-white border-slate-300 text-slate-800 hover:border-slate-400'
               : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
-          } border text-xs font-bold transition-colors shadow-sm min-h-[42px]`}
+          } border text-xs font-bold transition-all shadow-sm min-h-[42px]`}
           title="Wishlist Filters"
         >
-          <SlidersHorizontal className={`w-4 h-4 ${isLight ? 'text-slate-800' : 'text-slate-300'}`} />
-          <span>Filters{categoryFilter.length > 0 ? ` (${categoryFilter.join(', ')})` : ''}</span>
+          <SlidersHorizontal
+            className={`w-4 h-4 ${categoryFilter.length === 0 ? (isLight ? 'text-slate-800' : 'text-slate-300') : ''}`}
+            style={
+              categoryFilter.length > 0
+                ? { stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }
+                : undefined
+            }
+          />
+          <span>
+            Filters
+            {categoryFilter.length === 0
+              ? ''
+              : categoryFilter.length === 1
+              ? ` (${categoryFilter[0]})`
+              : ` (${categoryFilter.length})`}
+          </span>
         </button>
 
         {wishlistItems.length > 0 && (
@@ -183,7 +201,9 @@ export const WishlistTab: React.FC = () => {
           </p>
           <button
             onClick={() => setActiveTab('swipe')}
-            className="px-4 py-2 rounded-full bg-pink-600 hover:bg-pink-500 text-white text-xs font-black transition-colors shadow-lg shadow-pink-600/25"
+            className={`px-4 py-2 rounded-full ${
+              isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'
+            } hover:opacity-95 text-white text-xs font-black transition-all shadow-lg`}
           >
             Start Swiping
           </button>
@@ -332,8 +352,12 @@ export const WishlistTab: React.FC = () => {
                 <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   Category
                 </label>
-                <span className="text-[10px] font-mono font-bold text-pink-600">
-                  {categoryFilter.length === 0 ? 'All Categories' : categoryFilter.join(', ')}
+                <span className={`text-[10px] font-mono font-bold ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
+                  {categoryFilter.length === 0
+                    ? 'All Categories'
+                    : categoryFilter.length === 1
+                    ? categoryFilter[0]
+                    : `(${categoryFilter.length} Selected)`}
                 </span>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -351,8 +375,8 @@ export const WishlistTab: React.FC = () => {
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold border capitalize transition-all ${
                         isSelected
                           ? isLight
-                            ? 'border-pink-600 bg-pink-50 text-pink-600 font-bold shadow-sm'
-                            : 'border-pink-600 bg-pink-950/60 text-pink-600 font-bold'
+                            ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
+                            : 'cosmic-gradient-bg text-white font-bold shadow-sm shadow-pink-600/40'
                           : isLight
                           ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
                           : 'border-slate-800 bg-slate-900 text-slate-300 hover:text-white'
@@ -382,8 +406,8 @@ export const WishlistTab: React.FC = () => {
                     className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       sortBy === s.id
                         ? isLight
-                          ? 'border-pink-600 bg-pink-50 text-pink-600 font-bold shadow-sm'
-                          : 'border-pink-600 bg-pink-950/60 text-pink-600 font-bold'
+                          ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
+                          : 'cosmic-gradient-bg text-white font-bold shadow-sm shadow-pink-600/40'
                         : isLight
                         ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
                         : 'border-slate-800 bg-slate-900 text-slate-300'

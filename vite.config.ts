@@ -5,7 +5,22 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: 'disable-hmr-websocket',
+        enforce: 'pre',
+        transform(code, id) {
+          if (id.includes('@vite/client') || id.includes('client.mjs')) {
+            return code.replace(
+              'transport.connect(createHMRHandler(handleMessage));',
+              '/* HMR disabled in AI Studio per runtime constraints */'
+            );
+          }
+        },
+      },
+    ],
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),

@@ -41,8 +41,9 @@ interface AppContextType {
   catalog: ClothingItem[];
   filteredCatalog: ClothingItem[];
   currentCardIndex: number;
-  brandFilter: string;
-  setBrandFilter: (brand: string) => void;
+  brandFilter: string[];
+  setBrandFilter: (brand: string | string[]) => void;
+  toggleBrandFilter: (brand: string) => void;
   categoryFilter: string[];
   setCategoryFilter: (category: string | string[]) => void;
   toggleCategoryFilter: (category: string) => void;
@@ -287,8 +288,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [algorithmProfile]);
 
   // Swipe Feed State
-  const [brandFilter, setBrandFilter] = useState<string>('all');
+  const [brandFilter, setBrandFilterState] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilterState] = useState<string[]>([]);
+
+  const setBrandFilter = useCallback((val: string | string[]) => {
+    if (typeof val === 'string') {
+      if (val === 'all') {
+        setBrandFilterState([]);
+      } else {
+        setBrandFilterState([val]);
+      }
+    } else {
+      setBrandFilterState(val.filter((b) => b !== 'all'));
+    }
+  }, []);
+
+  const toggleBrandFilter = useCallback((brand: string) => {
+    if (brand === 'all') {
+      setBrandFilterState([]);
+      return;
+    }
+    setBrandFilterState((prev) => {
+      const exists = prev.some((b) => b.toLowerCase() === brand.toLowerCase());
+      if (exists) {
+        return prev.filter((b) => b.toLowerCase() !== brand.toLowerCase());
+      } else {
+        return [...prev, brand];
+      }
+    });
+  }, []);
 
   const setCategoryFilter = useCallback((val: string | string[]) => {
     if (typeof val === 'string') {
@@ -472,8 +500,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Filtered catalog for Swiping Tab
   const filteredCatalog = useMemo(() => {
     return catalogWithScores.filter((item) => {
-      // Don't show already swiped items
+      // Don't show already swiped items or items already saved in wishlist
       if (swipedItemIds.includes(item.id)) return false;
+      if (savedWishlistItemIds.includes(item.id)) return false;
 
       // Item Type Filter: default 'single' only suggests single items, not bundles/outfits
       if (itemTypeFilter === 'single' && item.isBundle) {
@@ -510,9 +539,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // Brand Filter
-      if (brandFilter !== 'all' && item.brand.toLowerCase() !== brandFilter.toLowerCase()) {
-        return false;
+      // Multiple Brand Filter
+      if (brandFilter.length > 0 && !brandFilter.includes('all')) {
+        const matchesBrand = brandFilter.some(
+          (b) => b.toLowerCase() === item.brand.toLowerCase()
+        );
+        if (!matchesBrand) {
+          return false;
+        }
       }
 
       // Multiple Category Filter (allows multiple clothing categories to be selected)
@@ -554,6 +588,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [
     catalogWithScores,
     swipedItemIds,
+    savedWishlistItemIds,
     brandFilter,
     categoryFilter,
     aestheticFilter,
@@ -1370,6 +1405,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentCardIndex,
         brandFilter,
         setBrandFilter,
+        toggleBrandFilter,
         categoryFilter,
         setCategoryFilter,
         toggleCategoryFilter,

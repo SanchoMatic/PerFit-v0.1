@@ -12,6 +12,36 @@
     <meta property="og:description" content="Aesthro - A blend of astro and aesthetic fashion discovery, clothes recommendations, cosmic wishlist, cart, AI outfit curation, and personalized style algorithm." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Runtime constraint: HMR is disabled in AI Studio; ignore WebSocket errors
+      (function() {
+        var origRejection = window.onunhandledrejection;
+        var customRejection = null;
+        Object.defineProperty(window, 'onunhandledrejection', {
+          get: function() { return customRejection || origRejection; },
+          set: function(fn) {
+            customRejection = function(event) {
+              var r = event && event.reason;
+              var msg = (r && (r.message || String(r))) || '';
+              if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('vite:ws') !== -1 || msg.indexOf('transport') !== -1) {
+                if (event && event.preventDefault) event.preventDefault();
+                return;
+              }
+              if (typeof fn === 'function') return fn(event);
+            };
+          },
+          configurable: true
+        });
+        window.addEventListener('unhandledrejection', function(event) {
+          var r = event && event.reason;
+          var msg = (r && (r.message || String(r))) || '';
+          if (msg.indexOf('WebSocket') !== -1 || msg.indexOf('vite:ws') !== -1 || msg.indexOf('transport') !== -1) {
+            if (event && event.preventDefault) event.preventDefault();
+            if (event && event.stopImmediatePropagation) event.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">

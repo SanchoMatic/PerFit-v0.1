@@ -175,17 +175,13 @@ Provide realistic, accurate fashion analysis. Return valid JSON matching the sch
   });
 
   if (!isProd) {
-    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
-    const isHttps = process.env.APP_URL?.startsWith('https') || false;
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: isHmrDisabled
-          ? false
-          : {
-              server,
-              clientPort: isHttps ? 443 : undefined,
-            },
+        ws: {
+          server,
+        },
+        hmr: false,
       },
       appType: 'spa',
     });
