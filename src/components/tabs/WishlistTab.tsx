@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   SlidersHorizontal,
   ShoppingBag,
@@ -8,11 +8,17 @@ import {
   X,
   Check,
   Send,
+  ChevronDown,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ClothingItem } from '../../types';
 
-export const WishlistTab: React.FC = () => {
+interface WishlistTabProps {
+  onClose?: () => void;
+  isOverlay?: boolean;
+}
+
+export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = false }) => {
   const {
     wishlistItems,
     removeItemFromWishlist,
@@ -33,11 +39,65 @@ export const WishlistTab: React.FC = () => {
   const [sortBy, setSortBy] = useState<'recent' | 'price-asc' | 'price-desc' | 'match'>('match');
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
 
+  // Pull down to exit gesture (Instagram vanish mode DM behavior)
+  const [pullY, setPullY] = useState(0);
+  const [isDismissing, setIsDismissing] = useState(false);
+
+  const touchStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartY = useRef(0);
+  const isPullingDown = useRef<boolean>(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const PULL_THRESHOLD = 70;
+
   // Return to main wishlist page when tab is tapped
   useEffect(() => {
     setIsSettingsOpen(false);
     setSelectedItemForAction(null);
   }, [activeTab, tabResetTimestamp]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!onClose || isDismissing) return;
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    const scrollTop = scrollContainerRef.current ? scrollContainerRef.current.scrollTop : window.scrollY;
+    touchStartY.current = scrollTop <= 2 ? touch.clientY : 0;
+    isPullingDown.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!onClose || isDismissing || touchStartY.current === 0) return;
+    const touch = e.touches[0];
+    const dy = touch.clientY - touchStartY.current;
+    const dx = touch.clientX - touchStartPos.current.x;
+
+    // Only vertical downward pull from top
+    if (dy > 8 && dy > Math.abs(dx) * 1.5) {
+      isPullingDown.current = true;
+      setPullY(Math.min(dy * 0.5, 120));
+    } else if (dy <= 0) {
+      setPullY(0);
+      isPullingDown.current = false;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!onClose || isDismissing) return;
+
+    if (isPullingDown.current && pullY >= PULL_THRESHOLD) {
+      // Threshold reached! Confirm vanish mode exit down
+      setIsDismissing(true);
+      setTimeout(() => {
+        onClose();
+      }, 200);
+    } else {
+      // Smoothly spring back
+      setPullY(0);
+    }
+
+    touchStartY.current = 0;
+    isPullingDown.current = false;
+  };
 
   const toggleCategory = (cat: string) => {
     if (cat === 'all') {
@@ -70,9 +130,87 @@ export const WishlistTab: React.FC = () => {
     return 0;
   });
 
+  const pullProgress = Math.min(1, pullY / PULL_THRESHOLD);
+
   return (
-    <div className="min-h-[calc(100vh-64px)] pb-24 px-4 pt-[max(8px,env(safe-area-inset-top))] max-w-md mx-auto">
-      {/* Action toolbar with Filters button & Add All to Cart - Shifted upward to top, enlarged for mobile */}
+    <div
+      ref={scrollContainerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        transform: isDismissing
+          ? 'translate3d(0, 100%, 0)'
+          : pullY > 0
+          ? `translate3d(0, ${pullY}px, 0)`
+          : undefined,
+        transition: isDismissing
+          ? 'transform 200ms ease-out, opacity 200ms ease-out'
+          : pullY === 0
+          ? 'transform 240ms cubic-bezier(0.16, 1, 0.3, 1)'
+          : 'none',
+        opacity: isDismissing ? 0 : 1,
+      }}
+      className={`min-h-[calc(100vh-64px)] pb-32 px-4 ${
+        isOverlay ? 'pt-3' : 'pt-[max(8px,env(safe-area-inset-top))]'
+      } max-w-md mx-auto relative`}
+    >
+      {/* 1. Instagram Vanish Mode Style Pull-Down Exit Indicator (gradually reveals as user pulls down from top) */}
+      {isOverlay && (
+        <div
+          className="sticky top-0 z-30 flex flex-col items-center justify-center pointer-events-none py-1 transition-all"
+          style={{
+            opacity: pullY > 5 ? Math.min(1, (pullY - 5) / 28) : 0,
+            transform: `translate3d(0, ${Math.min(pullY * 0.4, 28)}px, 0)`,
+          }}
+        >
+          <div
+            className={`rounded-full transition-all duration-200 flex items-center justify-center shadow-2xl relative ${
+              pullY >= PULL_THRESHOLD
+                ? 'w-11 h-11 bg-slate-900 border-2 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.8)] scale-110'
+                : 'w-10 h-10 bg-slate-950/95 border-2 border-slate-700/80 shadow-md scale-95'
+            }`}
+            style={{
+              transform: `scale(${0.75 + pullProgress * 0.35}) rotate(${pullProgress * 90}deg)`,
+            }}
+          >
+            {/* SVG Circular Fill Progress Meter around the exit X */}
+            <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
+              <circle
+                cx="50%"
+                cy="50%"
+                r="16"
+                fill="none"
+                stroke={pullY >= PULL_THRESHOLD ? '#34d399' : '#64748b'}
+                strokeWidth="2.5"
+                strokeDasharray="100"
+                strokeDashoffset={100 - pullProgress * 100}
+                strokeLinecap="round"
+                className="transition-all duration-75"
+              />
+            </svg>
+            <X
+              className={`transition-colors relative z-10 ${
+                pullY >= PULL_THRESHOLD
+                  ? 'w-5 h-5 text-emerald-300 stroke-[3]'
+                  : 'w-4 h-4 text-slate-300 stroke-[2.2]'
+              }`}
+            />
+          </div>
+          <span
+            className={`text-[10px] font-bold uppercase tracking-wider mt-1 transition-all ${
+              pullY >= PULL_THRESHOLD
+                ? 'text-emerald-400 scale-105 font-black drop-shadow'
+                : 'text-slate-400'
+            }`}
+          >
+            {pullY >= PULL_THRESHOLD ? 'Release to exit' : 'Pull down to exit'}
+          </span>
+        </div>
+      )}
+
+
+      {/* Action toolbar with Filters button & Add All to Cart */}
       <div className="flex items-center justify-between px-1 mb-2 pt-1 text-xs">
         <button
           onClick={() => setIsSettingsOpen(true)}
@@ -84,7 +222,7 @@ export const WishlistTab: React.FC = () => {
               : isLight
               ? 'bg-white border-slate-300 text-slate-800 hover:border-slate-400'
               : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white hover:border-slate-500'
-          } border text-xs font-bold transition-all shadow-sm min-h-[42px]`}
+          } border text-xs font-bold transition-all shadow-sm min-h-[44px] cursor-pointer`}
           title="Wishlist Filters"
         >
           <SlidersHorizontal
@@ -108,7 +246,7 @@ export const WishlistTab: React.FC = () => {
         {wishlistItems.length > 0 && (
           <button
             onClick={addAllWishlistToCart}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs font-bold hover:bg-emerald-500 hover:text-black transition-colors shadow-sm min-h-[42px]"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs font-bold hover:bg-emerald-500 hover:text-black transition-colors shadow-sm min-h-[44px] cursor-pointer"
           >
             <ShoppingBag className="w-4 h-4" />
             <span>Add All to Cart</span>
@@ -116,10 +254,9 @@ export const WishlistTab: React.FC = () => {
         )}
       </div>
 
-      {/* Spacer maintaining exact spacing between header and cards without gradient underline */}
       <div className="mb-4 h-0" />
 
-      {/* 3x3 Grid matching the exact sketch from IMG_0313 (right) with silver border frames! */}
+      {/* 3x3 Grid matching sketch with silver frames */}
       {sortedItems.length > 0 ? (
         <div className="grid grid-cols-3 gap-2.5">
           {sortedItems.map((item) => (
@@ -140,15 +277,12 @@ export const WishlistTab: React.FC = () => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
 
-                {/* Subtle gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
 
-                {/* Price tag in bottom right of image */}
                 <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/85 backdrop-blur-sm border border-slate-800 text-[10px] font-mono font-bold text-white">
                   ${item.price}
                 </div>
 
-                {/* Match score pill in top left */}
                 {item.matchScore && (
                   <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded-full ${isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'} text-[9px] font-mono font-bold text-white shadow-sm`}>
                     {item.matchScore}%
@@ -171,17 +305,18 @@ export const WishlistTab: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Quick Add to Cart Button */}
+                {/* Quick Add to Cart Button - Automatically removes from wishlist since added to cart */}
                 <div className={`mt-2 pt-1 border-t ${isLight ? 'border-slate-100' : 'border-slate-800/80'} flex items-center justify-between`}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       addToCart(item);
-                      showToast(`Added ${item.name} to cart`, `$${item.price} • ${item.brand}`, 'green');
+                      removeItemFromWishlist(item.id);
+                      showToast(`Added to cart`, `${item.name} moved to cart`, 'green');
                     }}
-                    className="w-full py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95"
+                    className="w-full py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95 cursor-pointer min-h-[30px]"
                   >
-                    <ShoppingBag className="w-2.5 h-2.5" />
+                    <ShoppingBag className="w-3 h-3" />
                     <span>Cart</span>
                   </button>
                 </div>
@@ -195,44 +330,47 @@ export const WishlistTab: React.FC = () => {
           <div className={`w-12 h-12 rounded-full ${isLight ? 'bg-slate-200 text-slate-500' : 'bg-slate-800 text-slate-400'} flex items-center justify-center mx-auto mb-3`}>
             <ShoppingBag className="w-6 h-6" />
           </div>
-          <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} mb-1`}>Your wishlist is empty</h3>
+          <h3 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'} mb-1`}>No saved pieces yet</h3>
           <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} mb-4 max-w-xs mx-auto`}>
-            Swipe right on clothes you love in the Swipe tab to save them here.
+            Tap the bookmark ribbon on items in the Swipe tab to save them here.
           </p>
-          <button
-            onClick={() => setActiveTab('swipe')}
-            className={`px-4 py-2 rounded-full ${
-              isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'
-            } hover:opacity-95 text-white text-xs font-black transition-all shadow-lg`}
-          >
-            Start Swiping
-          </button>
+          {onClose ? (
+            <button
+              onClick={onClose}
+              className={`px-5 py-2.5 rounded-full ${
+                isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'
+              } hover:opacity-95 text-white text-xs font-black transition-all shadow-lg cursor-pointer`}
+            >
+              Back to Swiping
+            </button>
+          ) : (
+            <button
+              onClick={() => setActiveTab('swipe')}
+              className={`px-5 py-2.5 rounded-full ${
+                isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'
+              } hover:opacity-95 text-white text-xs font-black transition-all shadow-lg cursor-pointer`}
+            >
+              Start Swiping
+            </button>
+          )}
         </div>
       )}
 
-      {/* Item Action Modal (When tapping an item in the 3x3 grid) */}
+      {/* Item Action Modal - Positioned near top of screen */}
       {selectedItemForAction && (
         <div
           onClick={() => setSelectedItemForAction(null)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
             className={`${
-              isLight
-                ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
-                : 'bg-slate-950 border-slate-700 text-white shadow-2xl'
-            } border rounded-2xl max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain my-auto cursor-default relative`}
+              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
+            } border rounded-2xl max-w-sm w-full p-4 space-y-3 shadow-2xl relative animate-in zoom-in-95 duration-200 cursor-default mt-2 sm:mt-4 mb-20 max-h-[88vh] overflow-y-auto overscroll-contain`}
           >
-            {/* Floating Close Button */}
             <button
               onClick={() => setSelectedItemForAction(null)}
-              className={`sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full ${
-                isLight
-                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
-              } border backdrop-blur-md shadow-lg transition-all`}
-              title="Close window"
+              className="absolute top-3 right-3 p-1.5 rounded-full bg-slate-800/80 text-slate-400 hover:text-white"
             >
               <X className="w-4 h-4" />
             </button>
@@ -268,18 +406,19 @@ export const WishlistTab: React.FC = () => {
               </span>
             </div>
 
-            {/* Actions */}
+            {/* Actions: Add to Cart removes from wishlist */}
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => {
                   addToCart(selectedItemForAction);
+                  removeItemFromWishlist(selectedItemForAction.id);
                   setSelectedItemForAction(null);
-                  showToast(`Added ${selectedItemForAction.name} to cart`, 'Ready for checkout', 'green');
+                  showToast(`Added to cart`, `${selectedItemForAction.name} moved to cart`, 'green');
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-500/20"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-500/20 cursor-pointer min-h-[42px]"
               >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Add to Cart (${selectedItemForAction.price})</span>
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add to Cart</span>
               </button>
 
               <button
@@ -287,12 +426,8 @@ export const WishlistTab: React.FC = () => {
                   setSendItemModalItem(selectedItemForAction);
                   setSelectedItemForAction(null);
                 }}
-                className={`p-2.5 rounded-xl border transition-colors ${
-                  isLight
-                    ? 'border-slate-300 bg-white text-slate-700 hover:text-pink-600 hover:border-pink-600'
-                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-pink-400 hover:border-pink-500'
-                }`}
-                title="Send to Friend via Chat"
+                className="px-3 py-2.5 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/40 text-xs font-bold flex items-center justify-center gap-1 transition-colors min-h-[42px]"
+                title="Send to Friend"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -302,7 +437,7 @@ export const WishlistTab: React.FC = () => {
                   removeItemFromWishlist(selectedItemForAction.id);
                   setSelectedItemForAction(null);
                 }}
-                className="p-2.5 rounded-xl border border-red-500/40 bg-red-950/20 text-red-400 hover:bg-red-950/40 transition-colors"
+                className="p-2.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/40 transition-colors flex items-center justify-center min-h-[42px]"
                 title="Remove from Wishlist"
               >
                 <Trash2 className="w-4 h-4" />
@@ -312,57 +447,47 @@ export const WishlistTab: React.FC = () => {
         </div>
       )}
 
-      {/* Wishlist Settings Modal */}
+      {/* Filter / Sort Settings Modal - Positioned near top of screen */}
       {isSettingsOpen && (
         <div
           onClick={() => setIsSettingsOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
             className={`${
-              isLight
-                ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
-                : 'bg-slate-950 border-slate-700 text-white shadow-2xl'
-            } border rounded-2xl max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain my-auto cursor-default relative`}
+              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
+            } border rounded-2xl max-w-sm w-full p-4 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200 cursor-default mt-2 sm:mt-4 mb-20 max-h-[88vh] overflow-y-auto overscroll-contain`}
           >
-            {/* Floating Close Button */}
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className={`sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full ${
-                isLight
-                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
-              } border backdrop-blur-md shadow-lg transition-all`}
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className={`flex items-center pb-2 border-b ${isLight ? 'border-slate-200 text-slate-900' : 'border-slate-800 text-white'} pr-10`}>
-              <h3 className="text-sm font-extrabold flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
-                <span>Wishlist Filters</span>
+            <div className="flex items-center justify-between pb-2 border-b border-inherit">
+              <h3 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                Wishlist Filter & Sort
               </h3>
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className={`p-1.5 rounded-full ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-slate-800 text-slate-400'}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Category Filter */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-1">
                 <label className={`text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                  Category
+                  Filter by Category
                 </label>
-                <span className={`text-[10px] font-mono font-bold ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
-                  {categoryFilter.length === 0
-                    ? 'All Categories'
-                    : categoryFilter.length === 1
-                    ? categoryFilter[0]
-                    : `(${categoryFilter.length} Selected)`}
-                </span>
+                {categoryFilter.length > 0 && (
+                  <button
+                    onClick={() => setCategoryFilter([])}
+                    className="text-[10px] font-bold text-pink-500 hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {['all', 'outerwear', 'tops', 'bottoms', 'knitwear', 'footwear', 'accessories'].map((cat) => {
-                  const isAll = cat === 'all';
+                {['All', 'Tops', 'Outerwear', 'Bottoms', 'Footwear', 'Accessories', 'Knitwear'].map((cat) => {
+                  const isAll = cat === 'All';
                   const isSelected = isAll
                     ? categoryFilter.length === 0
                     : categoryFilter.some((c) => c.toLowerCase() === cat.toLowerCase());
@@ -370,9 +495,8 @@ export const WishlistTab: React.FC = () => {
                   return (
                     <button
                       key={cat}
-                      type="button"
-                      onClick={() => toggleCategory(cat)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border capitalize transition-all ${
+                      onClick={() => toggleCategory(cat.toLowerCase())}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                         isSelected
                           ? isLight
                             ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
@@ -424,6 +548,7 @@ export const WishlistTab: React.FC = () => {
                 onClick={() => {
                   addAllWishlistToCart();
                   setIsSettingsOpen(false);
+                  if (onClose) onClose();
                 }}
                 className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold transition-colors shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
               >

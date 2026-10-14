@@ -54,7 +54,7 @@ export const SendItemModal: React.FC = () => {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-sm rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] cursor-default ${
+        className={`w-full max-w-sm rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] cursor-default animate-popup ${
           isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
         }`}
       >

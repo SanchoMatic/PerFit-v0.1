@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ShoppingBag,
   Trash2,
@@ -15,9 +15,399 @@ import {
   Send,
   Bookmark,
   BookmarkCheck,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { ClothingItem } from '../../types';
+import { ClothingItem, CartItem } from '../../types';
+
+// Interactive swipeable cart item row with Twitter-inbox style swipe actions
+const SwipeableCartItemRow: React.FC<{
+  ci: CartItem;
+  isLight: boolean;
+  onInspect: (item: ClothingItem) => void;
+  onRemove: (itemId: string, size?: string) => void;
+  onSaveForLater: (itemId: string, size?: string) => void;
+  onUpdateQty: (itemId: string, delta: number, size?: string) => void;
+  onUpdateOptions: (itemId: string, currentSize: string, currentColor: string, newSize?: string, newColor?: string) => void;
+}> = ({
+  ci,
+  isLight,
+  onInspect,
+  onRemove,
+  onSaveForLater,
+  onUpdateQty,
+  onUpdateOptions,
+}) => {
+  const [offsetX, setOffsetX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isExiting, setIsExiting] = useState<'left' | 'right' | null>(null);
+  const [isSizeMenuOpen, setIsSizeMenuOpen] = useState(false);
+  const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
+
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
+
+  const availableSizes = ci.item.sizes && ci.item.sizes.length > 0 ? ci.item.sizes : ['XS', 'S', 'M', 'L', 'XL'];
+  const availableColors = ci.item.colors && ci.item.colors.length > 0 ? ci.item.colors : ['Black', 'White', 'Gray'];
+
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, select, input, .dropdown-menu')) return;
+    setIsDragging(true);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    startX.current = clientX;
+    startY.current = clientY;
+    isHorizontalSwipe.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!isDragging || isExiting) return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const dx = clientX - startX.current;
+    const dy = clientY - startY.current;
+
+    if (isHorizontalSwipe.current === null) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        isHorizontalSwipe.current = Math.abs(dx) > Math.abs(dy);
+      }
+    }
+
+    if (isHorizontalSwipe.current === false) {
+      setIsDragging(false);
+      return;
+    }
+
+    if (isHorizontalSwipe.current) {
+      // Damped horizontal translation
+      setOffsetX(dx);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging || isExiting) return;
+    setIsDragging(false);
+
+    if (offsetX > 75) {
+      // Swiped right -> Save for Later (Moved back to wishlist)
+      setIsExiting('right');
+      setTimeout(() => {
+        onSaveForLater(ci.item.id, ci.selectedSize);
+      }, 220);
+    } else if (offsetX < -75) {
+      // Swiped left -> Delete from cart
+      setIsExiting('left');
+      setTimeout(() => {
+        onRemove(ci.item.id, ci.selectedSize);
+      }, 220);
+    } else {
+      // Spring back
+      setOffsetX(0);
+    }
+  };
+
+  const isAnyMenuOpen = isSizeMenuOpen || isColorMenuOpen;
+  const currentTranslate = isExiting === 'right' ? 360 : isExiting === 'left' ? -360 : offsetX;
+
+  // Smooth color blending with the card as swipe progresses
+  const swipeBlendColor =
+    offsetX > 5
+      ? isLight
+        ? `rgba(244, 63, 94, ${Math.min(0.18, (offsetX / 100) * 0.18)})`
+        : `rgba(219, 39, 119, ${Math.min(0.28, (offsetX / 100) * 0.28)})`
+      : offsetX < -5
+      ? `rgba(239, 68, 68, ${Math.min(0.25, (-offsetX / 100) * 0.25)})`
+      : undefined;
+
+  return (
+    <div
+      className={`relative select-none py-3.5 touch-pan-y ${isAnyMenuOpen ? 'z-40' : 'z-10'}`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleTouchStart}
+      onMouseMove={handleTouchMove}
+      onMouseUp={handleTouchEnd}
+    >
+      {/* Twitter-style revealed swipe action backgrounds isolated in overflow-hidden container */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-2xl">
+        {/* 1. Left Background (Revealed when swiping right -> Save for later / Wishlist) */}
+        <div
+          style={{ opacity: offsetX > 8 ? Math.min(1, offsetX / 50) : 0 }}
+          className={`absolute inset-0 flex items-center justify-start pl-5 transition-opacity ${
+            offsetX > 75
+              ? isLight
+                ? 'cosmic-gradient-bg-light text-white'
+                : 'cosmic-gradient-bg text-white'
+              : 'bg-pink-600/40 text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2 font-black text-xs text-white">
+            <Bookmark className={`w-5 h-5 text-white transition-transform ${offsetX > 75 ? 'scale-125' : ''}`} />
+            <span className="text-white">Save for later</span>
+          </div>
+        </div>
+
+        {/* 2. Right Background (Revealed when swiping left -> Delete) */}
+        <div
+          style={{ opacity: offsetX < -8 ? Math.min(1, -offsetX / 50) : 0 }}
+          className={`absolute inset-0 flex items-center justify-end pr-5 transition-opacity ${
+            offsetX < -75 ? 'bg-red-600 text-white' : 'bg-red-950/60 text-red-300'
+          }`}
+        >
+          <div className="flex items-center gap-2 font-black text-xs text-white">
+            <span className="text-white">Delete</span>
+            <Trash2 className={`w-5 h-5 text-white transition-transform ${offsetX < -75 ? 'scale-125' : ''}`} />
+          </div>
+        </div>
+      </div>
+
+      {/* Front interactive row with gradual color blend */}
+      <div
+        style={{
+          transform: `translate3d(${currentTranslate}px, 0, 0)`,
+          backgroundColor: swipeBlendColor,
+          transition: isDragging ? 'none' : 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1), background-color 220ms ease-out',
+        }}
+        className={`relative z-10 flex items-center justify-between gap-3.5 p-2 rounded-2xl ${
+          swipeBlendColor ? '' : isLight ? 'bg-white' : 'bg-slate-950'
+        } transition-colors`}
+      >
+        {/* Garment Image / Thumbnail - ONLY tapping image or title opens inspect info */}
+        <div
+          onClick={() => onInspect(ci.item)}
+          className="w-18 h-22 sm:w-20 sm:h-24 rounded-2xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 relative shadow-md cursor-pointer hover:border-pink-600 hover:scale-[1.02] transition-all"
+          title="Tap image to view info"
+        >
+          <img
+            src={ci.item.image}
+            alt={ci.item.name}
+            className="w-full h-full object-cover block pointer-events-none"
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80';
+            }}
+          />
+          <div className="absolute inset-0 bg-black/5 hover:bg-black/0 transition-colors pointer-events-none" />
+        </div>
+
+        {/* Item Details */}
+        <div className="flex-1 min-w-0">
+          <span className={`text-[10px] uppercase font-bold block tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
+            {ci.item.brand}
+          </span>
+
+          {/* ONLY tapping title opens inspect info */}
+          <h3
+            onClick={() => onInspect(ci.item)}
+            className={`text-xs font-bold ${isLight ? 'text-sky-950' : 'text-white'} truncate mb-1.5 cursor-pointer hover:underline`}
+            title="Tap title to view info"
+          >
+            {ci.item.name}
+          </h3>
+
+          {/* Dropdown menus for Size and Color - independent clickable dropdowns */}
+          <div className="flex items-center gap-2 text-[11px] mb-2 relative">
+            {/* Size Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsSizeMenuOpen(!isSizeMenuOpen);
+                  setIsColorMenuOpen(false);
+                }}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-colors cursor-pointer ${
+                  isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
+                    : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200'
+                }`}
+                title="Change Size"
+              >
+                <span>Size: {ci.selectedSize}</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {isSizeMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsSizeMenuOpen(false);
+                    }}
+                  />
+                  <div className={`dropdown-menu absolute top-full left-0 mt-1 w-28 ${
+                    isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
+                  } border rounded-xl shadow-xl py-1 z-40 max-h-44 overflow-y-auto`}>
+                    {availableSizes.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateOptions(ci.item.id, ci.selectedSize, ci.selectedColor, s, undefined);
+                          setIsSizeMenuOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-1.5 text-left text-xs font-semibold flex items-center justify-between ${
+                          s === ci.selectedSize
+                            ? isLight ? 'bg-pink-50 text-pink-600 font-bold' : 'bg-pink-950/50 text-pink-400 font-bold'
+                            : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        <span>{s}</span>
+                        {s === ci.selectedSize && <Check className="w-3 h-3" />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Color Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsColorMenuOpen(!isColorMenuOpen);
+                  setIsSizeMenuOpen(false);
+                }}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-colors cursor-pointer ${
+                  isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
+                    : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200'
+                }`}
+                title="Change Color"
+              >
+                <span className="truncate max-w-[80px]">{ci.selectedColor}</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {isColorMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsColorMenuOpen(false);
+                    }}
+                  />
+                  <div className={`dropdown-menu absolute top-full left-0 mt-1 w-32 ${
+                    isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
+                  } border rounded-xl shadow-xl py-1 z-40 max-h-44 overflow-y-auto`}>
+                    {availableColors.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateOptions(ci.item.id, ci.selectedSize, ci.selectedColor, undefined, c);
+                          setIsColorMenuOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-1.5 text-left text-xs font-semibold flex items-center justify-between ${
+                          c === ci.selectedColor
+                            ? isLight ? 'bg-pink-50 text-pink-600 font-bold' : 'bg-pink-950/50 text-pink-400 font-bold'
+                            : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        <span className="truncate">{c}</span>
+                        {c === ci.selectedColor && <Check className="w-3 h-3" />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Quantity Stepper & Save for Later (10% larger) */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQty(ci.item.id, -1, ci.selectedSize);
+                }}
+                className={`w-7 h-7 min-w-[28px] min-h-[28px] rounded-lg ${
+                  isLight
+                    ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+                } border flex items-center justify-center transition-colors cursor-pointer`}
+                title="Decrease"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <span className={`text-xs font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} px-1.5 min-w-[20px] text-center`}>
+                {ci.quantity}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQty(ci.item.id, 1, ci.selectedSize);
+                }}
+                className={`w-7 h-7 min-w-[28px] min-h-[28px] rounded-lg ${
+                  isLight
+                    ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300'
+                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+                } border flex items-center justify-center transition-colors cursor-pointer`}
+                title="Increase"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Direct Save for later button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSaveForLater(ci.item.id, ci.selectedSize);
+              }}
+              className="text-[11px] font-bold text-pink-500 hover:text-pink-400 flex items-center gap-1 transition-colors px-1 py-1 cursor-pointer"
+              title="Save to Wishlist"
+            >
+              <Bookmark className="w-3.5 h-3.5 text-pink-500" />
+              <span>Save for later</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Price & Delete Button (10% larger) */}
+        <div className="flex flex-col items-end justify-between self-stretch py-1 flex-shrink-0">
+          <div className="text-right">
+            <span className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} font-mono block`}>
+              ${ci.item.price * ci.quantity}
+            </span>
+            {ci.quantity > 1 && (
+              <span className="text-[10px] text-slate-400 block font-mono">
+                ${ci.item.price} ea
+              </span>
+            )}
+          </div>
+
+          {/* Trash Button - 10% larger */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(ci.item.id, ci.selectedSize);
+            }}
+            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/70 hover:text-red-200 transition-all flex items-center justify-center shadow-sm cursor-pointer"
+            title="Remove Item"
+          >
+            <Trash2 className="w-4 h-4" strokeWidth={2.2} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const CartTab: React.FC = () => {
   const {
@@ -25,6 +415,7 @@ export const CartTab: React.FC = () => {
     savedForLaterItems,
     removeFromCart,
     updateCartQuantity,
+    updateCartItemOptions,
     clearCart,
     saveForLater,
     moveToCartFromSaved,
@@ -92,14 +483,14 @@ export const CartTab: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-[max(12px,env(safe-area-inset-top))] max-w-md mx-auto">
-      {/* Top Header - Shopping Bag inside a silver circle (number bubble removed as requested) */}
-      <div className="flex flex-col items-center justify-center my-3">
-        {/* Silver-gray circle with shopping bag icon - Clean, no number bubble */}
-        <div className={`w-16 h-16 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-600 text-slate-200'} border-2 flex items-center justify-center shadow-md mb-2 relative group`}>
-          <ShoppingBag className="w-8 h-8 text-pink-600" strokeWidth={1.8} />
+      {/* Top Header - Shopping Bag inside a silver circle scaled up HUD */}
+      <div className="flex flex-col items-center justify-center my-4">
+        {/* Silver-gray circle with shopping bag icon in white */}
+        <div className={`w-18 h-18 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-600 text-slate-200'} border-2 flex items-center justify-center shadow-lg mb-2.5 relative group`}>
+          <ShoppingBag className="w-9 h-9 text-white" strokeWidth={1.8} />
         </div>
-        <h1 className={`text-base font-extrabold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Your Cart</h1>
-        <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+        <h1 className={`text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Your Cart</h1>
+        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'} mt-0.5`}>
           {totalItemsCount > 0
             ? `${totalItemsCount} items selected`
             : 'Your shopping bag is currently empty'}
@@ -108,180 +499,78 @@ export const CartTab: React.FC = () => {
 
       {cartItems.length > 0 ? (
         <div className="mt-4">
-          {/* Cart Item List with Sketch-style Line Dividers */}
+          {/* Cart Item List with Sketch-style Line Dividers & Twitter-style swipe actions */}
           <div className={`divide-y-2 ${isLight ? 'divide-slate-200 border-slate-200' : 'divide-slate-800 border-slate-800'} border-y-2`}>
             {cartItems.map((ci) => (
-              <div
+              <SwipeableCartItemRow
                 key={`${ci.item.id}-${ci.selectedSize}-${ci.selectedColor}`}
-                className="py-4 flex items-center justify-between gap-3 group"
-              >
-                {/* Garment Image / Icon - Clickable to open more info */}
-                <div
-                  onClick={() => setInspectItem(ci.item)}
-                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 relative shadow-md cursor-pointer hover:border-pink-600 hover:scale-[1.02] transition-all"
-                  title="Click to view more info"
-                >
-                  <img
-                    src={ci.item.image}
-                    alt={ci.item.name}
-                    className="w-full h-full object-cover block"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/5 hover:bg-black/0 transition-colors" />
-                </div>
-
-                {/* Item Details - Clickable to view more info */}
-                <div
-                  onClick={() => setInspectItem(ci.item)}
-                  className="flex-1 min-w-0 cursor-pointer group/details"
-                  title="Click to view more info"
-                >
-                  <span className={`text-[10px] uppercase font-bold block tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
-                    {ci.item.brand}
-                  </span>
-                  <h3 className={`text-xs font-bold ${isLight ? 'text-sky-950' : 'text-white'} truncate mb-1`}>
-                    {ci.item.name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                    <span className={`${isLight ? 'bg-slate-200 text-slate-700' : 'bg-slate-800/80 text-slate-300'} px-1.5 py-0.5 rounded text-[10px]`}>
-                      Size: {ci.selectedSize}
-                    </span>
-                    <span className={`truncate ${isLight ? 'text-slate-500' : 'text-slate-400'} text-[10px]`}>
-                      {ci.selectedColor}
-                    </span>
-                  </div>
-
-                  {/* Quantity Stepper & Save for Later */}
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateCartQuantity(ci.item.id, -1, ci.selectedSize);
-                        }}
-                        className={`w-6 h-6 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
-                        title="Decrease"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'} px-1.5 min-w-[18px] text-center`}>
-                        {ci.quantity}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateCartQuantity(ci.item.id, 1, ci.selectedSize);
-                        }}
-                        className={`w-6 h-6 rounded-md ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300' : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'} border flex items-center justify-center transition-colors`}
-                        title="Increase"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    {/* Save for later button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        saveForLater(ci.item.id, ci.selectedSize);
-                      }}
-                      className="text-[11px] font-semibold text-pink-500 hover:text-pink-400 flex items-center gap-1 transition-colors px-1 py-0.5"
-                      title="Save for later"
-                    >
-                      <Bookmark className="w-3 h-3 text-pink-500" />
-                      <span>Save for later</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Price & Delete */}
-                <div className="flex flex-col items-end justify-between self-stretch py-1">
-                  <div className="text-right">
-                    <span className={`text-sm font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} font-mono block`}>
-                      ${ci.item.price * ci.quantity}
-                    </span>
-                    {ci.quantity > 1 && (
-                      <span className="text-[10px] text-slate-400 block">
-                        ${ci.item.price} ea
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Trash Button */}
-                  <button
-                    onClick={() => removeFromCart(ci.item.id, ci.selectedSize)}
-                    className="w-8 h-8 rounded-xl bg-red-950/40 text-red-400 hover:bg-red-900/70 hover:text-red-200 transition-all flex items-center justify-center shadow-sm"
-                    title="Remove Item"
-                  >
-                    <Trash2 className="w-4 h-4" strokeWidth={2.2} />
-                  </button>
-                </div>
-              </div>
+                ci={ci}
+                isLight={isLight}
+                onInspect={(item) => setInspectItem(item)}
+                onRemove={(itemId, size) => removeFromCart(itemId, size)}
+                onSaveForLater={(itemId, size) => saveForLater(itemId, size)}
+                onUpdateQty={(itemId, delta, size) => updateCartQuantity(itemId, delta, size)}
+                onUpdateOptions={(itemId, curSize, curColor, newSize, newColor) =>
+                  updateCartItemOptions(itemId, curSize, curColor, newSize, newColor)
+                }
+              />
             ))}
           </div>
 
           {/* Promo Code Input */}
           <form onSubmit={handleApplyPromo} className="mt-5 flex gap-2">
             <div className="relative flex-1">
-              <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Tag className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
                 placeholder="Promo Code (e.g. AESTHRO20)"
-                className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 uppercase tracking-wider focus:outline-none focus:border-pink-600"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 uppercase tracking-wider focus:outline-none focus:border-emerald-500"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-pink-600 hover:bg-slate-700 transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-black text-white transition-colors cursor-pointer shadow-sm"
             >
               Apply
             </button>
           </form>
 
           {/* Order Summary Breakdown */}
-          <div className="mt-5 p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
+          <div className="mt-5 p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5 text-xs">
             <div className="flex justify-between text-slate-400">
-              <span>Subtotal</span>
-              <span className="text-white font-mono">${cartTotal}</span>
+              <span className="text-slate-300">Subtotal</span>
+              <span className="text-white font-mono font-bold">${cartTotal}</span>
             </div>
 
             {promoDiscount > 0 && (
-              <div className="flex justify-between text-pink-600 font-semibold">
+              <div className="flex justify-between text-emerald-400 font-semibold">
                 <span>VIP Discount (20%)</span>
                 <span className="font-mono">-${discountAmount}</span>
               </div>
             )}
 
             <div className="flex justify-between text-slate-400">
-              <span>Estimated Shipping</span>
-              <span className="text-white font-mono">
-                {shipping === 0 ? <span className="text-pink-600 font-semibold">FREE</span> : `$${shipping}`}
+              <span className="text-slate-300">Estimated Shipping</span>
+              <span className="text-white font-mono font-bold">
+                {shipping === 0 ? <span className="text-white font-black">FREE</span> : `$${shipping}`}
               </span>
             </div>
 
-            <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline text-sm">
-              <span className="font-extrabold text-white">Total</span>
-              <span className="text-lg font-black text-pink-600 font-mono">
+            <div className="pt-2.5 border-t border-slate-800 flex justify-between items-baseline text-sm">
+              <span className="font-black text-white text-base">Total</span>
+              <span className="text-xl font-black text-white font-mono">
                 ${finalTotal}
               </span>
             </div>
           </div>
 
-          {/* Checkout Button */}
+          {/* Checkout Button - Vibrant Green */}
           <button
             onClick={handleCheckout}
             disabled={isCheckingOut}
-            className={`w-full mt-4 py-3.5 rounded-2xl ${
-              isLight
-                ? 'cosmic-gradient-bg-light shadow-pink-600/25'
-                : 'cosmic-gradient-bg shadow-pink-600/35'
-            } text-white font-black text-sm tracking-wide flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-xl active:scale-[0.99] disabled:opacity-60`}
+            className="w-full mt-4 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-base tracking-wide flex items-center justify-center gap-2 transition-all shadow-xl shadow-emerald-950/40 active:scale-[0.99] border border-emerald-500/50 disabled:opacity-60 cursor-pointer"
           >
             {isCheckingOut ? (
               <div className="flex items-center gap-2">
@@ -291,27 +580,28 @@ export const CartTab: React.FC = () => {
             ) : (
               <>
                 <span>Secure Checkout • ${finalTotal}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-5 h-5" />
               </>
             )}
           </button>
 
-          <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-slate-500">
-            <ShieldCheck className="w-3.5 h-3.5 text-pink-600" />
+          {/* Encrypted Shield in Green */}
+          <div className="mt-3.5 flex items-center justify-center gap-2 text-xs text-slate-400">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
             <span>Encrypted checkout • Free 30-day returns • Guaranteed Authentic</span>
           </div>
 
           {/* Saved For Later List Under Checkout Button */}
           {savedForLaterItems.length > 0 && (
             <div className="mt-8 pt-6 border-t-2 border-slate-800">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3.5">
                 <div className="flex items-center gap-2">
-                  <BookmarkCheck className="w-4 h-4 text-pink-500" />
-                  <h2 className={`text-sm font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  <BookmarkCheck className="w-4 h-4 text-white" />
+                  <h2 className="text-base font-black text-white">
                     Saved for Later
                   </h2>
                 </div>
-                <span className="text-xs text-slate-400 font-mono">
+                <span className="text-xs text-slate-300 font-mono font-bold">
                   {savedForLaterItems.length} {savedForLaterItems.length === 1 ? 'item' : 'items'}
                 </span>
               </div>
@@ -531,15 +821,15 @@ export const CartTab: React.FC = () => {
         </div>
       )}
 
-      {/* Garment Details Modal */}
+      {/* Garment Details Modal positioned near top of screen */}
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden overscroll-contain animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border rounded-2xl max-w-sm w-full p-5 pb-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain cursor-default relative my-auto`}
+            className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border rounded-2xl max-w-sm w-full p-5 pb-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[88vh] overflow-y-auto overscroll-contain cursor-default relative mt-2 sm:mt-4 mb-20`}
           >
             {/* Floating Close Button */}
             <button

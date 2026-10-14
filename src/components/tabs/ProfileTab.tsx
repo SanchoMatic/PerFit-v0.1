@@ -49,6 +49,39 @@ import { AestheticQuizModal } from '../quiz/AestheticQuizModal';
 import { INITIAL_CATALOG } from '../../data/mockCatalog';
 import { ClothingItem, Friend, SharedOutfit } from '../../types';
 
+// Simple 3-line cascade icon with the same color gradient as the swipe tab icon
+const CascadeIcon: React.FC<{ className?: string; isLight?: boolean }> = ({
+  className,
+  isLight = false,
+}) => {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className || 'w-4 h-4'}
+    >
+      <defs>
+        <linearGradient
+          id="profileCascadeGrad"
+          gradientUnits="userSpaceOnUse"
+          x1="3"
+          y1="0"
+          x2="21"
+          y2="0"
+        >
+          <stop offset="0%" stopColor="#db2777" />
+          <stop offset="55%" stopColor={isLight ? '#f43f5e' : '#818cf8'} />
+          <stop offset="100%" stopColor={isLight ? '#fb7185' : '#c084fc'} />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="5" width="18" height="2.5" rx="1.25" fill="url(#profileCascadeGrad)" />
+      <rect x="5" y="11" width="14" height="2.5" rx="1.25" fill="url(#profileCascadeGrad)" />
+      <rect x="7" y="17" width="10" height="2.5" rx="1.25" fill="url(#profileCascadeGrad)" />
+    </svg>
+  );
+};
+
 type ProfileSubView =
   | 'none'
   | 'menu'
@@ -196,12 +229,13 @@ export const ProfileTab: React.FC = () => {
     }
   }, [defaultOutfits]);
 
-  // Swipeable profile tabs gesture state
+  // Swipeable profile tabs gesture state - lock to either vertical scroll OR horizontal tab swipe
   const PROFILE_TABS = ['outfits', 'moodboards', 'collection'] as const;
   const activeTabIndex = PROFILE_TABS.indexOf(profileTab);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipingTabs, setIsSwipingTabs] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const gestureAxisRef = useRef<'horizontal' | 'vertical' | null>(null);
   const tabContentRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -209,7 +243,8 @@ export const ProfileTab: React.FC = () => {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
     };
-    setIsSwipingTabs(true);
+    gestureAxisRef.current = null;
+    setIsSwipingTabs(false);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -217,11 +252,27 @@ export const ProfileTab: React.FC = () => {
     const diffX = e.touches[0].clientX - touchStartRef.current.x;
     const diffY = e.touches[0].clientY - touchStartRef.current.y;
 
-    // Do not intercept vertical scrolling
-    if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffX) < 12) {
+    // Recognize ONLY one input at a time: determine axis after 8px threshold
+    if (gestureAxisRef.current === null) {
+      if (Math.abs(diffX) > 8 || Math.abs(diffY) > 8) {
+        if (Math.abs(diffX) >= Math.abs(diffY)) {
+          gestureAxisRef.current = 'horizontal';
+          setIsSwipingTabs(true);
+        } else {
+          gestureAxisRef.current = 'vertical';
+          setIsSwipingTabs(false);
+        }
+      } else {
+        return;
+      }
+    }
+
+    // If scrolling vertically, completely ignore horizontal tab gesture
+    if (gestureAxisRef.current === 'vertical') {
       return;
     }
 
+    // If swiping horizontally, manage tab offset cleanly without vertical interference
     let clamped = diffX;
     if ((activeTabIndex === 0 && diffX > 0) || (activeTabIndex === 2 && diffX < 0)) {
       clamped = diffX * 0.25;
@@ -230,15 +281,17 @@ export const ProfileTab: React.FC = () => {
   };
 
   const handleTouchEnd = () => {
-    if (!touchStartRef.current) return;
-    if (swipeOffset < -50 && activeTabIndex < 2) {
-      setProfileTab(PROFILE_TABS[activeTabIndex + 1]);
-    } else if (swipeOffset > 50 && activeTabIndex > 0) {
-      setProfileTab(PROFILE_TABS[activeTabIndex - 1]);
+    if (gestureAxisRef.current === 'horizontal' && touchStartRef.current) {
+      if (swipeOffset < -50 && activeTabIndex < 2) {
+        setProfileTab(PROFILE_TABS[activeTabIndex + 1]);
+      } else if (swipeOffset > 50 && activeTabIndex > 0) {
+        setProfileTab(PROFILE_TABS[activeTabIndex - 1]);
+      }
     }
     setSwipeOffset(0);
     setIsSwipingTabs(false);
     touchStartRef.current = null;
+    gestureAxisRef.current = null;
   };
 
   const containerWidth = tabContentRef.current?.offsetWidth || 380;
@@ -497,7 +550,7 @@ export const ProfileTab: React.FC = () => {
       />
 
       {selectedOutfitDetail ? (
-        <div className="page-slide-forward space-y-2.5">
+        <div className="page-slide-forward space-y-2.5 pt-[max(1.25rem,env(safe-area-inset-top,24px)+12px)]">
           {/* Header Bar with Back Button and Small Simple Edit Button */}
           <div
             className={`flex items-center justify-between pb-2 border-b ${
@@ -510,14 +563,14 @@ export const ProfileTab: React.FC = () => {
                   setSelectedOutfitDetail(null);
                   setIsEditingOutfit(false);
                 }}
-                className={`p-2 rounded-full ${
+                className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center ${
                   isLight
                     ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
                     : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
-                } border transition-colors shadow-sm`}
+                } border transition-colors shadow-sm cursor-pointer`}
                 title="Back to Outfits"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-5 h-5" />
               </button>
               <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'} px-3 py-1.5 rounded-xl border shadow-sm`}>
                 <span className="text-[10px] font-mono uppercase text-pink-600 font-bold block">
@@ -844,7 +897,7 @@ export const ProfileTab: React.FC = () => {
           </div>
         </div>
       ) : selectedMoodboardDetail ? (
-        <div className="page-slide-forward space-y-4">
+        <div className="page-slide-forward space-y-4 pt-[max(1.25rem,env(safe-area-inset-top,24px)+12px)]">
           {/* Header Bar with Back Button and Small Simple Edit Button */}
           <div
             className={`flex items-center justify-between pb-3 border-b ${
@@ -857,14 +910,14 @@ export const ProfileTab: React.FC = () => {
                   setSelectedMoodboardDetail(null);
                   setIsEditingMoodboard(false);
                 }}
-                className={`p-2 rounded-full ${
+                className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center ${
                   isLight
                     ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
                     : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
-                } border transition-colors shadow-sm`}
+                } border transition-colors shadow-sm cursor-pointer`}
                 title="Back to Moodboards"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-5 h-5" />
               </button>
               <div className={`${isLight ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'} px-3 py-1.5 rounded-xl border shadow-sm`}>
                 <h2 className={`text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -1214,8 +1267,8 @@ export const ProfileTab: React.FC = () => {
         </div>
       ) : activeSubView === 'none' ? (
         <div className="page-slide-forward -mx-4 -mt-4">
-          {/* 1. Header Background Banner Image - Sized to fully accommodate iPhone safe areas & top action buttons */}
-          <div className="relative z-0 min-h-[168px] h-[calc(140px+env(safe-area-inset-top,0px))] w-full bg-slate-900 border-b border-slate-800">
+          {/* 1. Header Background Banner Image - Shortened by 40% to accommodate compact profile header */}
+          <div className="relative z-0 min-h-[100px] h-[calc(84px+env(safe-area-inset-top,0px))] w-full bg-slate-900 border-b border-slate-800">
             <img
               src={
                 userProfile.coverImageUrl ||
@@ -1227,12 +1280,12 @@ export const ProfileTab: React.FC = () => {
             {/* Elegant vignette gradients */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/50" />
 
-            {/* Top Right Actions: Chat Button & Settings Gear - Side-by-side with full clearance so nothing is cut off on modern phones */}
-            <div className="absolute top-[max(12px,env(safe-area-inset-top))] right-3.5 z-20 flex items-center gap-2.5">
-              {/* Chat Button - Full mobile size with unread badge */}
+            {/* Top Right Actions: Chat Button & Settings Gear - Scaled up UI HUD */}
+            <div className="absolute top-[max(8px,env(safe-area-inset-top))] right-3 z-20 flex items-center gap-2.5">
+              {/* Chat Button - Unread badge */}
               <button
                 onClick={() => setIsInboxOpen(true)}
-                className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/75 hover:bg-black/95 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-xl group flex items-center justify-center relative active:scale-95"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-xl group flex items-center justify-center relative active:scale-95 cursor-pointer"
                 title="Direct & Group Messages"
               >
                 <MessageSquare className="w-5 h-5 text-white group-hover:text-pink-300 transition-colors" />
@@ -1246,7 +1299,7 @@ export const ProfileTab: React.FC = () => {
               {/* Settings Gear Icon */}
               <button
                 onClick={() => setActiveSubView('menu')}
-                className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-black/75 hover:bg-black/95 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-xl flex items-center justify-center active:scale-95"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-md border border-white/25 text-white hover:text-pink-300 hover:border-pink-300 transition-all shadow-xl flex items-center justify-center active:scale-95 cursor-pointer"
                 title="Settings & Menu"
               >
                 <SettingsIcon className="w-5 h-5" />
@@ -1255,16 +1308,21 @@ export const ProfileTab: React.FC = () => {
           </div>
 
           <div className="px-4">
-            {/* 2. Avatar Overlapping Cover (Layered in front with z-10) & Edit Profile Button */}
-            <div className="flex items-end justify-between -mt-11 mb-3 relative z-10">
-              {/* Interactive Circular Avatar */}
+            {/* 2. Avatar Overlapping Cover & Condensed Edit Profile Pencil Button */}
+            <div className="flex items-end justify-between -mt-9 mb-3 relative z-10">
+              {/* Interactive Circular Avatar with Condensed Edit Profile Button */}
               <div
-                onClick={() => avatarInputRef.current?.click()}
+                onClick={() => {
+                  setEditName(userProfile.name);
+                  setEditHandle(userProfile.handle);
+                  setEditBio(userProfile.bio);
+                  setIsEditProfileOpen(true);
+                }}
                 className="relative cursor-pointer group"
-                title="Tap to change profile photo"
+                title="Edit Profile"
               >
                 <div
-                  className={`w-20 h-20 rounded-full ${
+                  className={`w-22 h-22 rounded-full ${
                     isLight ? 'bg-slate-200 border-white ring-slate-300' : 'bg-slate-800 border-black ring-slate-800'
                   } border-4 ring-2 group-hover:ring-pink-300 flex items-center justify-center overflow-hidden shadow-2xl transition-all`}
                 >
@@ -1276,7 +1334,7 @@ export const ProfileTab: React.FC = () => {
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-full bg-black/70 flex items-center justify-center text-white font-bold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-black/70 flex items-center justify-center text-white font-bold text-xl">
                         {userProfile.name.charAt(0)}
                       </div>
                     </div>
@@ -1284,46 +1342,46 @@ export const ProfileTab: React.FC = () => {
                 </div>
 
                 <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Camera className="w-6 h-6 text-white" />
+                  <Edit3 className="w-6 h-6 text-white" />
                 </div>
 
-                <span className={`absolute bottom-0 right-0 w-6 h-6 rounded-full ${isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'} ring-2 ring-black flex items-center justify-center shadow-md`}>
-                  <Camera className="w-3.5 h-3.5 text-white" />
-                </span>
+                {/* Condensed Edit Profile Button (Pencil Symbol replacing redundant Edit Profile Picture button) */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditName(userProfile.name);
+                    setEditHandle(userProfile.handle);
+                    setEditBio(userProfile.bio);
+                    setIsEditProfileOpen(true);
+                  }}
+                  className={`absolute bottom-0 right-0 w-7 h-7 rounded-full ${
+                    isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'
+                  } ring-2 ring-black flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer`}
+                  title="Edit Profile"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-white" />
+                </button>
               </div>
-
-              {/* Edit Profile Button (Opens Simple Popup Modal) */}
-              <button
-                onClick={() => {
-                  setEditName(userProfile.name);
-                  setEditHandle(userProfile.handle);
-                  setEditBio(userProfile.bio);
-                  setIsEditProfileOpen(true);
-                }}
-                className={`px-3.5 py-1.5 rounded-xl ${
-                  isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-900' : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-white'
-                } border hover:border-pink-400 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm`}
-              >
-                <Edit3 className="w-3.5 h-3.5" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
-                <span>Edit Profile</span>
-              </button>
             </div>
 
-            {/* 3. User Name & Handle + Glowing Gradient Pro Member Badge */}
+            {/* 3. User Name & Handle + Condensed Pro Member Badge with Cascade Icon */}
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   {userProfile.name}
                 </h1>
+                {/* Condensed Pro Style Member Badge with same symbol and gradient as swipe tab icon */}
                 <span
-                  className={`text-[10px] font-extrabold px-3 py-0.5 rounded-full ${
+                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
                     isLight
-                      ? 'cosmic-gradient-glow-badge-light text-slate-900'
-                      : 'cosmic-gradient-glow-badge text-white'
-                  } tracking-wide inline-flex items-center gap-1`}
+                      ? 'cosmic-gradient-bg-light shadow-pink-600/25 text-white'
+                      : 'cosmic-gradient-bg shadow-pink-600/40 text-white'
+                  } tracking-wide inline-flex items-center gap-1.5 shadow-sm`}
+                  title="Pro Style Member"
                 >
-                  <span className={`text-[8px] ${isLight ? 'text-pink-600' : 'text-pink-400'}`}>✦</span>
-                  <span>{userProfile.membership}</span>
+                  <CascadeIcon className="w-3.5 h-3.5" isLight={isLight} />
+                  <span>PRO</span>
                 </span>
               </div>
               <p className={`text-xs font-mono font-bold ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>{userProfile.handle}</p>
@@ -1858,7 +1916,7 @@ export const ProfileTab: React.FC = () => {
         </div>
       ) : activeSubView === 'menu' ? (
         /* Top Right Gear Menu Screen: settings, account, data, stats, help in exact order */
-        <div className="page-slide-forward">
+        <div className="page-slide-forward pt-[max(1.25rem,env(safe-area-inset-top,24px)+12px)]">
           {/* Header */}
           <div
             className={`flex items-center gap-3 mb-5 pb-3 border-b ${
@@ -1867,11 +1925,11 @@ export const ProfileTab: React.FC = () => {
           >
             <button
               onClick={() => setActiveSubView('none')}
-              className={`p-2.5 min-w-[42px] min-h-[42px] rounded-full flex items-center justify-center ${
+              className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center ${
                 isLight
                   ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black'
                   : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
-              } border`}
+              } border cursor-pointer`}
               title="Back to Profile"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -1934,7 +1992,7 @@ export const ProfileTab: React.FC = () => {
         </div>
       ) : (
         /* Subview Detail Page */
-        <div className="page-slide-forward">
+        <div className="page-slide-forward pt-[max(1.25rem,env(safe-area-inset-top,24px)+12px)]">
           {/* Back Navigation Bar */}
           <div className={`flex items-center gap-3 mb-5 pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
             <button
@@ -1946,7 +2004,7 @@ export const ProfileTab: React.FC = () => {
                 }
                 setActiveCollectionDetailId(null);
               }}
-              className={`p-2.5 min-w-[42px] min-h-[42px] rounded-full flex items-center justify-center ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'} border transition-colors`}
+              className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700 hover:text-black' : 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'} border transition-colors cursor-pointer`}
               title="Back"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -4013,7 +4071,7 @@ export const ProfileTab: React.FC = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 border ${
+            className={`w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-popup border ${
               isLight
                 ? 'bg-white border-slate-200 text-slate-900'
                 : 'bg-slate-950 border-slate-700 text-white'
@@ -4208,8 +4266,8 @@ export const ProfileTab: React.FC = () => {
               <X className="w-4 h-4" />
             </button>
 
-            {/* Friend Cover Banner (Shortened by 25% to h-28, layered z-0 behind avatar) */}
-            <div className="relative z-0 h-28 w-full overflow-hidden bg-slate-900 -mt-10">
+            {/* Friend Cover Banner (Shortened by 40% to h-[68px], layered z-0 behind avatar) */}
+            <div className="relative z-0 h-[68px] w-full overflow-hidden bg-slate-900 -mt-8">
               <img
                 src={selectedFriend.coverImage || 'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=800&q=80'}
                 alt={selectedFriend.name}
@@ -4220,7 +4278,7 @@ export const ProfileTab: React.FC = () => {
 
             <div className="px-5 pb-6">
               {/* Avatar overlapping banner (Layered in front with relative z-10) */}
-              <div className="flex items-end justify-between -mt-10 mb-2 relative z-10">
+              <div className="flex items-end justify-between -mt-8 mb-2 relative z-10">
                 <div className="w-20 h-20 rounded-full border-4 border-black ring-2 ring-black overflow-hidden bg-slate-800 shadow-xl relative z-10">
                   <img
                     src={selectedFriend.avatar}
@@ -4337,17 +4395,17 @@ export const ProfileTab: React.FC = () => {
         </div>
       )}
 
-      {/* Inspect Item Modal with controlled scroll bounds */}
+      {/* Inspect Item Modal positioned near top of screen */}
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
             className={`w-full max-w-sm rounded-2xl p-5 border ${
               isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'
-            } shadow-2xl space-y-4 relative cursor-default max-h-[85vh] overflow-y-auto overscroll-contain my-auto`}
+            } shadow-2xl space-y-4 relative cursor-default max-h-[88vh] overflow-y-auto overscroll-contain mt-2 sm:mt-4 mb-20`}
           >
             {/* Floating Close Button */}
             <button

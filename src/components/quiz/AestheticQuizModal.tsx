@@ -102,7 +102,7 @@ export const AestheticQuizModal: React.FC<AestheticQuizModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-slate-950 border border-slate-700 rounded-2xl max-w-md w-full p-5 text-white shadow-2xl relative max-h-[85vh] flex flex-col justify-between overflow-y-auto overscroll-contain my-auto animate-in zoom-in-95 duration-200 cursor-default pb-5"
+        className="bg-slate-950 border border-slate-700 rounded-2xl max-w-md w-full p-5 text-white shadow-2xl relative max-h-[85vh] flex flex-col justify-between overflow-y-auto overscroll-contain my-auto animate-popup cursor-default pb-5"
       >
         {/* Floating Close Button */}
         <button

@@ -87,6 +87,7 @@ interface AppContextType {
   addToCart: (item: ClothingItem, size?: string, color?: string) => void;
   removeFromCart: (itemId: string, size?: string) => void;
   updateCartQuantity: (itemId: string, delta: number, size?: string) => void;
+  updateCartItemOptions: (itemId: string, currentSize: string, currentColor: string, newSize?: string, newColor?: string) => void;
   clearCart: () => void;
   saveForLater: (itemId: string, size?: string) => void;
   moveToCartFromSaved: (itemId: string, size?: string) => void;
@@ -685,6 +686,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const last = swipeHistory[swipeHistory.length - 1];
     setSwipeHistory((prev) => prev.slice(0, -1));
     setSwipedItemIds((prev) => prev.filter((id) => id !== last.id));
+    // If the undone card was saved to wishlist, remove it from saved wishlist so it re-appears in deck
+    setSavedWishlistItemIds((prev) => prev.filter((id) => id !== last.id));
 
     if (last.action === 'like') {
       setLikedItemIds((prev) => prev.filter((id) => id !== last.id));
@@ -782,7 +785,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }));
       return [...prev, ...newItems];
     });
-    showToast(`Added ${wishlistItems.length} items to Cart!`, 'Ready for checkout', 'green');
+    // Remove from wishlist as they are moved to cart
+    setSavedWishlistItemIds([]);
+    showToast(`Added ${wishlistItems.length} items to Cart!`, 'Moved to cart for checkout', 'green');
     setActiveTab('cart');
   }, [wishlistItems, showToast]);
 
@@ -829,6 +834,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, []);
 
+  const updateCartItemOptions = useCallback(
+    (itemId: string, currentSize: string, currentColor: string, newSize?: string, newColor?: string) => {
+      setCartItems((prev) =>
+        prev.map((ci) => {
+          if (ci.item.id === itemId && ci.selectedSize === currentSize && ci.selectedColor === currentColor) {
+            return {
+              ...ci,
+              selectedSize: newSize || ci.selectedSize,
+              selectedColor: newColor || ci.selectedColor,
+            };
+          }
+          return ci;
+        })
+      );
+    },
+    []
+  );
+
   const clearCart = useCallback(() => {
     setCartItems([]);
     showToast('Cart cleared', '', 'silver');
@@ -841,6 +864,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return ci.item.id === itemId;
       });
       if (target) {
+        // Move back to saved wishlist as requested
+        setSavedWishlistItemIds((prev) => (prev.includes(target.item.id) ? prev : [...prev, target.item.id]));
         setSavedForLaterItems((prevSaved) => {
           const exists = prevSaved.some(
             (s) => s.item.id === target.item.id && s.selectedSize === target.selectedSize
@@ -848,7 +873,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (exists) return prevSaved;
           return [...prevSaved, target];
         });
-        showToast('Saved for Later', `${target.item.name} moved to saved list`, 'green');
+        showToast('Moved to Wishlist', `${target.item.name} moved back to saved wishlist`, 'green');
       }
       return prevCart.filter((ci) => {
         if (size) return !(ci.item.id === itemId && ci.selectedSize === size);
@@ -1445,6 +1470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addToCart,
         removeFromCart,
         updateCartQuantity,
+        updateCartItemOptions,
         clearCart,
         saveForLater,
         moveToCartFromSaved,

@@ -6,7 +6,7 @@ import { CosmicSkyBackground } from './components/CosmicSkyBackground';
 import { InboxModal } from './components/chat/InboxModal';
 import { SendItemModal } from './components/chat/SendItemModal';
 import { SwipeTab } from './components/tabs/SwipeTab';
-import { WishlistTab } from './components/tabs/WishlistTab';
+import { TryOnTab } from './components/tabs/TryOnTab';
 import { CartTab } from './components/tabs/CartTab';
 import { ProfileTab } from './components/tabs/ProfileTab';
 import { UploadTab } from './components/tabs/UploadTab';
@@ -53,14 +53,38 @@ const CosmicGradientSvgDefs: React.FC = () => {
 
 const MainContent: React.FC = () => {
   const { activeTab } = useApp();
+  const scrollPositions = React.useRef<Record<string, number>>({});
+  const prevTabRef = React.useRef(activeTab);
+
+  React.useEffect(() => {
+    if (prevTabRef.current) {
+      scrollPositions.current[prevTabRef.current] = window.scrollY || document.documentElement.scrollTop;
+    }
+    prevTabRef.current = activeTab;
+
+    const savedY = scrollPositions.current[activeTab] || 0;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: savedY, left: 0, behavior: 'instant' });
+    });
+  }, [activeTab]);
 
   return (
-    <main key={activeTab} className="flex-1 w-full overflow-x-hidden animate-page-enter relative z-10">
-      {activeTab === 'swipe' && <SwipeTab />}
-      {activeTab === 'wishlist' && <WishlistTab />}
-      {activeTab === 'cart' && <CartTab />}
-      {activeTab === 'upload' && <UploadTab />}
-      {activeTab === 'profile' && <ProfileTab />}
+    <main className="flex-1 w-full overflow-x-hidden relative z-10">
+      <div className={activeTab === 'swipe' ? 'block' : 'hidden'}>
+        <SwipeTab />
+      </div>
+      <div className={activeTab === 'try-on' ? 'block' : 'hidden'}>
+        <TryOnTab />
+      </div>
+      <div className={activeTab === 'cart' ? 'block' : 'hidden'}>
+        <CartTab />
+      </div>
+      <div className={activeTab === 'upload' ? 'block' : 'hidden'}>
+        <UploadTab />
+      </div>
+      <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
+        <ProfileTab />
+      </div>
     </main>
   );
 };
@@ -140,12 +164,14 @@ const AppShell: React.FC = () => {
   const { userProfile, activeTab, tabResetTimestamp } = useApp();
   const isLight = userProfile.preferences.theme === 'light';
 
-  // Always scroll to the top of the tab whenever switched or reset
+  // Only scroll to top when active tab is intentionally re-tapped to reset
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [activeTab, tabResetTimestamp]);
+    if (tabResetTimestamp > 0) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [tabResetTimestamp]);
 
   return (
     <div

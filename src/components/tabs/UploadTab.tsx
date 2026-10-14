@@ -664,7 +664,7 @@ export const UploadTab: React.FC = () => {
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden overscroll-contain animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -672,7 +672,7 @@ export const UploadTab: React.FC = () => {
               isLight
                 ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
                 : 'bg-slate-950 border-slate-700 text-white shadow-2xl'
-            } border rounded-2xl max-w-sm w-full p-5 pb-5 space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain cursor-default relative my-auto`}
+            } border rounded-2xl max-w-sm w-full p-5 pb-5 space-y-4 animate-popup max-h-[85vh] overflow-y-auto overscroll-contain cursor-default relative mt-2 sm:mt-4 mb-24`}
           >
             {/* Floating Close Button */}
             <button

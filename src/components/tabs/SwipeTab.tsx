@@ -14,10 +14,12 @@ import {
   AlertCircle,
   TrendingUp,
   Send,
+  Search,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ClothingItem } from '../../types';
 import { TRENDING_AESTHETICS_25 } from '../../data/aesthetics';
+import { WishlistTab } from './WishlistTab';
 
 export const SwipeTab: React.FC = () => {
   const {
@@ -50,6 +52,7 @@ export const SwipeTab: React.FC = () => {
     addToCart,
     isItemInWishlist,
     toggleWishlist,
+    wishlistItems,
     setActiveTab,
     activeTab,
     tabResetTimestamp,
@@ -64,7 +67,11 @@ export const SwipeTab: React.FC = () => {
   const [isUndoing, setIsUndoing] = useState(false);
   const [isBrandMenuOpen, setIsBrandMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isSavedOverlayOpen, setIsSavedOverlayOpen] = useState(false);
+  const [isSavingThrow, setIsSavingThrow] = useState(false);
+  const [savedButtonBump, setSavedButtonBump] = useState(false);
   const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
+  const [brandSearchQuery, setBrandSearchQuery] = useState('');
 
   // Reset any modals/menus when tapping the Swipe tab
   useEffect(() => {
@@ -73,42 +80,32 @@ export const SwipeTab: React.FC = () => {
     setIsBrandMenuOpen(false);
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    setIsSavedOverlayOpen(false); // Close saved wishlist overlay when user taps on swipe tab icon
   }, [activeTab, tabResetTimestamp]);
 
-  // Lock scrolling app-wide while on the Swipe tab to prevent accidental pull/scroll gestures while swiping
+  // Lock scrolling strictly while on main swipe tab, but enable scrolling on wishlist overlay
   useEffect(() => {
-    const originalBodyOverflow = document.body.style.overflow;
-    const originalBodyTouchAction = document.body.style.touchAction;
-    const originalDocOverflow = document.documentElement.style.overflow;
-    const originalDocTouchAction = document.documentElement.style.touchAction;
-
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-    document.documentElement.style.overflow = 'hidden';
-    document.documentElement.style.touchAction = 'none';
-
-    const preventTouchScroll = (e: TouchEvent) => {
-      // Allow internal scrolling inside open filter modal, inspect modal, or brand dropdown
-      if ((e.target as HTMLElement).closest('.overflow-y-auto')) {
-        return;
-      }
-      if (e.cancelable) {
-        e.preventDefault();
-      }
-    };
-
-    window.addEventListener('touchmove', preventTouchScroll, { passive: false });
-
+    if (activeTab === 'swipe' && !isSavedOverlayOpen) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.touchAction = 'none';
+      window.scrollTo(0, 0);
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.touchAction = '';
+    }
     return () => {
-      document.body.style.overflow = originalBodyOverflow;
-      document.body.style.touchAction = originalBodyTouchAction;
-      document.documentElement.style.overflow = originalDocOverflow;
-      document.documentElement.style.touchAction = originalDocTouchAction;
-      window.removeEventListener('touchmove', preventTouchScroll);
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.touchAction = '';
     };
-  }, []);
+  }, [activeTab, isSavedOverlayOpen]);
 
+  // Swipe gestures and deck state
   const startPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isMovedRef = useRef<boolean>(false);
   const isSwipingRef = useRef<boolean>(false);
@@ -172,6 +169,13 @@ export const SwipeTab: React.FC = () => {
     return ['all', ...sorted];
   }, [catalog]);
 
+  // Filtered brands matching search bar query
+  const searchedBrands = useMemo(() => {
+    if (!brandSearchQuery.trim()) return availableBrands;
+    const q = brandSearchQuery.toLowerCase().trim();
+    return availableBrands.filter((b) => b === 'all' || b.toLowerCase().includes(q));
+  }, [availableBrands, brandSearchQuery]);
+
   const categories = ['all', 'Outerwear', 'Tops', 'Bottoms', 'Knitwear', 'Footwear', 'Accessories'];
   const aesthetics = ['all', ...TRENDING_AESTHETICS_25];
   const sizes = ['all', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'M Tall', 'L Tall'];
@@ -180,6 +184,7 @@ export const SwipeTab: React.FC = () => {
   const triggerLike = () => {
     if (!currentItem || hasReachedDailyLimit || tossState || isSwipingRef.current) return;
     isSwipingRef.current = true;
+    setDragOffset({ x: 0, y: 0 }); // Clear drag offset immediately to prevent next card from jumping
     setTossState('like');
     setTimeout(() => {
       swipe('like', currentItem);
@@ -188,13 +193,14 @@ export const SwipeTab: React.FC = () => {
       setIsDragging(false);
       setTimeout(() => {
         isSwipingRef.current = false;
-      }, 50);
+      }, 60);
     }, 280);
   };
 
   const triggerDislike = () => {
     if (!currentItem || hasReachedDailyLimit || tossState || isSwipingRef.current) return;
     isSwipingRef.current = true;
+    setDragOffset({ x: 0, y: 0 }); // Clear drag offset immediately to prevent next card from jumping
     setTossState('dislike');
     setTimeout(() => {
       swipe('dislike', currentItem);
@@ -203,17 +209,42 @@ export const SwipeTab: React.FC = () => {
       setIsDragging(false);
       setTimeout(() => {
         isSwipingRef.current = false;
-      }, 50);
+      }, 60);
     }, 280);
   };
 
   const handleUndo = () => {
-    if (!canUndo || tossState !== null || isSwipingRef.current) return;
+    if (!canUndo || tossState !== null || isSwipingRef.current || isSavingThrow) return;
     setIsUndoing(true);
     undoLastSwipe();
     setTimeout(() => {
       setIsUndoing(false);
-    }, 700);
+    }, 600);
+  };
+
+  // 10 & 15. Save button throws product card to top right Saved button with slowed down, smooth curve
+  const triggerSaveThrow = () => {
+    if (!currentItem || tossState !== null || isSwipingRef.current || isSavingThrow) return;
+    isSwipingRef.current = true;
+    setDragOffset({ x: 0, y: 0 });
+    setIsSavingThrow(true);
+
+    // Smooth, slowed-down shrink and throw into top-right Saved button (approx 650ms)
+    setTimeout(() => {
+      setSavedButtonBump(true);
+      swipe('like', currentItem);
+      toggleWishlist(currentItem);
+
+      setTimeout(() => {
+        setSavedButtonBump(false);
+      }, 350);
+    }, 550);
+
+    setTimeout(() => {
+      setIsSavingThrow(false);
+      setDragOffset({ x: 0, y: 0 });
+      isSwipingRef.current = false;
+    }, 680);
   };
 
   // Drag handlers for desktop and mobile
@@ -294,113 +325,13 @@ export const SwipeTab: React.FC = () => {
         }}
       />
 
-      {/* Top Header - Brands pill perfectly centered in 3-column layout */}
+      {/* Top Header - Filter on top left, Brands pill in center, Saved on top right */}
       <header className="grid grid-cols-3 items-center w-full z-20 mb-2">
+        {/* Top Left: Filter Preferences Button */}
         <div className="justify-self-start flex items-center">
-          {/* Cosmic astro mark without title text to keep the aesthetic and 3-column alignment identical */}
-          <span className="text-xl font-black tracking-wider text-pink-600 font-mono leading-none flex items-center">
-            <span className={`text-base ${isLight ? 'text-indigo-600' : 'text-pink-600'} select-none animate-cosmic-shimmer`}>✦</span>
-          </span>
-        </div>
-
-        {/* Center "Brands" Pill dropdown - Allows multiple brands to be selected at once */}
-        <div className="justify-self-center relative flex justify-center">
-          <button
-            onClick={() => setIsBrandMenuOpen(!isBrandMenuOpen)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-              isLight
-                ? 'cosmic-gradient-border-light text-slate-800 hover:shadow-sm'
-                : 'cosmic-gradient-border text-white hover:shadow-sm'
-            } text-sm font-bold tracking-wide shadow-sm transition-colors max-w-[160px] min-h-[40px]`}
-          >
-            <span className="truncate">
-              {brandFilter.length === 0 || brandFilter.includes('all')
-                ? 'Brands'
-                : brandFilter.length === 1
-                ? brandFilter[0]
-                : `Brands (${brandFilter.length})`}
-            </span>
-            <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
-          </button>
-
-          {isBrandMenuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-30"
-                onClick={() => setIsBrandMenuOpen(false)}
-              />
-              <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 w-52 ${
-                isLight ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/60' : 'bg-slate-900 border-slate-700 text-white shadow-black/80'
-              } border rounded-2xl shadow-2xl py-2 z-40 max-h-72 flex flex-col`}>
-                <div className="px-3.5 py-1.5 flex items-center justify-between border-b border-inherit mb-1">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
-                    Select Brands
-                  </span>
-                  {brandFilter.length > 0 && !brandFilter.includes('all') && (
-                    <button
-                      type="button"
-                      onClick={() => setBrandFilter('all')}
-                      className={`text-[10px] font-bold ${isLight ? 'text-slate-600 hover:text-black' : 'text-slate-400 hover:text-white'}`}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <div className="overflow-y-auto max-h-52 px-1">
-                  {availableBrands.map((b) => {
-                    const isAll = b === 'all';
-                    const isSelected = isAll
-                      ? brandFilter.length === 0 || brandFilter.includes('all')
-                      : brandFilter.some((x) => x.toLowerCase() === b.toLowerCase());
-
-                    return (
-                      <button
-                        key={b}
-                        type="button"
-                        onClick={() => {
-                          if (isAll) {
-                            setBrandFilter('all');
-                          } else {
-                            toggleBrandFilter(b);
-                          }
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between mb-0.5 ${
-                          isSelected
-                            ? isLight
-                              ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
-                              : 'cosmic-gradient-bg text-white font-bold shadow-sm shadow-pink-600/40'
-                            : isLight
-                            ? 'hover:bg-slate-100 text-slate-700'
-                            : 'hover:bg-slate-800 text-slate-300'
-                        }`}
-                      >
-                        <span className="truncate">{b === 'all' ? 'All Brands' : b}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-white flex-shrink-0 ml-1" />}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="p-2 border-t border-inherit mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsBrandMenuOpen(false)}
-                    className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      isLight ? 'cosmic-gradient-bg-light text-white shadow-sm' : 'cosmic-gradient-bg text-white shadow-sm'
-                    }`}
-                  >
-                    Done {brandFilter.length > 0 ? `(${brandFilter.length})` : ''}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Filter Sliders Button - Uses gradient styling instead of plain pinkish red */}
-        <div className="justify-self-end flex items-center">
           <button
             onClick={() => setIsFilterModalOpen(true)}
-            className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full border transition-colors relative shadow-sm flex items-center justify-center ${
+            className={`p-2.5 min-w-[48px] min-h-[48px] rounded-full border transition-colors relative shadow-sm flex items-center justify-center cursor-pointer ${
               categoryFilter.length > 0 || itemTypeFilter !== 'single' || sizeFilter !== 'all' || priceRangeFilter.active
                 ? isLight
                   ? 'cosmic-gradient-border-light text-slate-900 bg-white'
@@ -424,27 +355,198 @@ export const SwipeTab: React.FC = () => {
             )}
           </button>
         </div>
+
+        {/* Center "Brands" Pill dropdown - Allows multiple brands to be selected at once */}
+        <div className="justify-self-center relative flex justify-center">
+          <button
+            onClick={() => setIsBrandMenuOpen(!isBrandMenuOpen)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+              isLight
+                ? 'cosmic-gradient-border-light text-slate-800 hover:shadow-sm'
+                : 'cosmic-gradient-border text-white hover:shadow-sm'
+            } text-sm font-bold tracking-wide shadow-sm transition-colors max-w-[160px] min-h-[44px] cursor-pointer`}
+          >
+            <span className="truncate">
+              {brandFilter.length === 0 || brandFilter.includes('all')
+                ? 'Brands'
+                : brandFilter.length === 1
+                ? brandFilter[0]
+                : `Brands (${brandFilter.length})`}
+            </span>
+            <ChevronDown className="w-4 h-4 flex-shrink-0" style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }} />
+          </button>
+
+          {isBrandMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setIsBrandMenuOpen(false)}
+              />
+              <div className={`absolute top-full mt-2 left-1/2 -translate-x-1/2 w-56 ${
+                isLight ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/60' : 'bg-slate-900 border-slate-700 text-white shadow-black/80'
+              } border rounded-2xl shadow-2xl py-2 z-40 max-h-80 flex flex-col animate-popup`}>
+                <div className="px-3.5 py-1.5 flex items-center justify-between border-b border-inherit">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
+                    Select Brands
+                  </span>
+                  {brandFilter.length > 0 && !brandFilter.includes('all') && (
+                    <button
+                      type="button"
+                      onClick={() => setBrandFilter('all')}
+                      className={`text-[10px] font-bold ${isLight ? 'text-slate-600 hover:text-black' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Simple Brand Search Bar placed right in between Select Brands and All Brands */}
+                <div className="px-2.5 py-1.5 border-b border-inherit">
+                  <div
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs ${
+                      isLight ? 'bg-slate-100 text-slate-800' : 'bg-slate-800/90 text-white'
+                    }`}
+                  >
+                    <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Search brands..."
+                      value={brandSearchQuery}
+                      onChange={(e) => setBrandSearchQuery(e.target.value)}
+                      className="w-full bg-transparent outline-none text-xs placeholder:text-slate-500"
+                    />
+                    {brandSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setBrandSearchQuery('')}
+                        className="text-slate-400 hover:text-white cursor-pointer"
+                        title="Clear search"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="overflow-y-auto max-h-52 px-1 pt-1">
+                  {searchedBrands.length === 0 ? (
+                    <div className="p-3 text-center text-xs text-slate-500">
+                      No brands found matching "{brandSearchQuery}"
+                    </div>
+                  ) : (
+                    searchedBrands.map((b) => {
+                      const isAll = b === 'all';
+                      const isSelected = isAll
+                        ? brandFilter.length === 0 || brandFilter.includes('all')
+                        : brandFilter.some((x) => x.toLowerCase() === b.toLowerCase());
+
+                      return (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => {
+                            if (isAll) {
+                              setBrandFilter('all');
+                            } else {
+                              toggleBrandFilter(b);
+                            }
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between mb-0.5 ${
+                            isSelected
+                              ? isLight
+                                ? 'cosmic-gradient-bg-light text-white font-bold shadow-sm shadow-pink-600/30'
+                                : 'cosmic-gradient-bg text-white font-bold shadow-sm shadow-pink-600/40'
+                              : isLight
+                              ? 'hover:bg-slate-100 text-slate-700'
+                              : 'hover:bg-slate-800 text-slate-300'
+                          }`}
+                        >
+                          <span className="truncate">{b === 'all' ? 'All Brands' : b}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-white flex-shrink-0 ml-1" />}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="p-2 border-t border-inherit mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsBrandMenuOpen(false)}
+                    className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      isLight ? 'cosmic-gradient-bg-light text-white shadow-sm' : 'cosmic-gradient-bg text-white shadow-sm'
+                    }`}
+                  >
+                    Done {brandFilter.length > 0 ? `(${brandFilter.length})` : ''}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Top Right: Saved / Wishlist button with quantity bubble indicator */}
+        <div className="justify-self-end flex items-center">
+          <button
+            onClick={() => setIsSavedOverlayOpen(true)}
+            className={`p-2.5 min-w-[48px] min-h-[48px] rounded-full border transition-transform relative shadow-sm flex items-center justify-center cursor-pointer ${
+              savedButtonBump ? 'scale-125 ring-4 ring-pink-500/50' : 'hover:scale-105 active:scale-95'
+            } ${
+              wishlistItems.length > 0
+                ? isLight
+                  ? 'cosmic-gradient-border-light text-pink-600 bg-white'
+                  : 'cosmic-gradient-border text-pink-400 bg-slate-950'
+                : isLight
+                ? 'border-slate-300 bg-white text-slate-800 hover:text-black hover:border-slate-400'
+                : 'border-slate-700 bg-slate-900 text-slate-200 hover:text-white hover:border-slate-500'
+            }`}
+            title="Saved Items"
+          >
+            <Bookmark
+              className="w-5 h-5 transition-transform"
+              style={
+                wishlistItems.length > 0
+                  ? { fill: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})`, stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }
+                  : undefined
+              }
+            />
+            {wishlistItems.length > 0 && (
+              <span
+                className={`absolute -top-1 -right-1 ${
+                  isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'
+                } text-white font-black text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-md ring-2 ring-black/40 ${
+                  savedButtonBump ? 'scale-125' : ''
+                }`}
+              >
+                {wishlistItems.length > 99 ? '99+' : wishlistItems.length}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Main Tinder Card Deck Canvas - Hard limit on height so it never overlaps buttons or header */}
       <div className="relative flex-1 flex items-center justify-center my-auto z-10 w-full max-h-[min(54vh,460px)] min-h-[350px]">
         {currentItem ? (
           <div className="relative w-full h-full max-h-[min(54vh,460px)] flex items-center justify-center">
-            {/* Background Card Preview for depth with smooth scale transition */}
+            {/* Background Card Preview for depth with smooth rising/expanding scale transition - Kept perfectly still */}
             {nextItem && (
               <div
+                key={nextItem.id}
                 style={{
-                  transform: tossState
-                    ? 'translate3d(0, 0, 0) scale(1)'
-                    : `translate3d(0, ${Math.max(0, 10 - (Math.abs(dragOffset.x) / 100) * 10)}px, 0) scale(${Math.min(1, 0.94 + (Math.abs(dragOffset.x) / 200) * 0.06)})`,
-                  opacity: tossState
-                    ? 1
-                    : Math.min(1, 0.6 + (Math.abs(dragOffset.x) / 160) * 0.4),
-                  transition: tossState
-                    ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
-                    : isDragging
-                    ? 'none'
-                    : 'transform 200ms ease-out, opacity 200ms ease-out',
+                  transform:
+                    tossState || isSavingThrow
+                      ? 'translate3d(0, 0, 0) scale(1)'
+                      : `translate3d(0, 0, 0) scale(${Math.min(1, 0.94 + (Math.abs(dragOffset.x) / 200) * 0.06)})`,
+                  opacity:
+                    tossState || isSavingThrow
+                      ? 1
+                      : Math.min(1, 0.6 + (Math.abs(dragOffset.x) / 160) * 0.4),
+                  transition:
+                    tossState || isSavingThrow
+                      ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
+                      : isDragging
+                      ? 'none'
+                      : 'transform 200ms ease-out, opacity 200ms ease-out',
                 }}
                 className="absolute w-[94%] h-[95%] rounded-3xl bg-slate-900 border border-slate-800 overflow-hidden pointer-events-none"
               >
@@ -456,8 +558,9 @@ export const SwipeTab: React.FC = () => {
               </div>
             )}
 
-            {/* Active Front Card - Highlighting product only without human model focus. Tapping opens more info */}
+            {/* Active Front Card - Keyed by currentItem.id so new card is never manipulated prematurely or slides backward */}
             <div
+              key={currentItem.id}
               onMouseDown={handleTouchStart}
               onMouseMove={handleTouchMove}
               onMouseUp={handleTouchEnd}
@@ -471,10 +574,16 @@ export const SwipeTab: React.FC = () => {
                 }
               }}
               style={{
-                transform: `translate3d(${cardTranslateX}px, ${cardTranslateY}px, 0) rotate(${rotation}deg)`,
-                opacity: cardOpacity,
+                transform: isSavingThrow
+                  ? 'translate3d(calc(44vw), -55vh, 0) scale(0.1) rotate(16deg)'
+                  : isUndoing
+                  ? 'translate3d(0, 0, 0) scale(1)'
+                  : `translate3d(${cardTranslateX}px, ${cardTranslateY}px, 0) rotate(${rotation}deg)`,
+                opacity: isSavingThrow ? 0.05 : cardOpacity,
                 cursor: isDragging ? 'grabbing' : 'pointer',
-                transition: tossState
+                transition: isSavingThrow
+                  ? 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms ease-out'
+                  : tossState
                   ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
                   : isDragging
                   ? 'none'
@@ -486,7 +595,9 @@ export const SwipeTab: React.FC = () => {
                     ? `rgba(239, 68, 68, ${effectiveDislikeOpacity})`
                     : 'rgb(51 65 85)',
               }}
-              className="relative w-full h-full max-h-[min(54vh,460px)] rounded-3xl overflow-hidden border-2 bg-slate-950 shadow-2xl select-none flex flex-col justify-between"
+              className={`relative w-full h-full max-h-[min(54vh,460px)] rounded-3xl overflow-hidden border-2 bg-slate-950 shadow-2xl select-none flex flex-col justify-between ${
+                isUndoing ? 'animate-in zoom-in-95 duration-300 ring-2 ring-amber-400/80 shadow-[0_0_25px_rgba(251,191,36,0.5)]' : ''
+              }`}
             >
               {/* Garment Image Area (Focused directly on clothing item) */}
               <div className="relative flex-1 w-full min-h-0 overflow-hidden bg-slate-900 flex items-center justify-center">
@@ -643,49 +754,47 @@ export const SwipeTab: React.FC = () => {
       </div>
 
       {/* Bottom Swiping Controls:
-          From Left to Right:
-          1. Dislike (Pass / Swipe Left) - Larger button for mobile
-          2. Undo (RotateCcw) - Larger button for mobile
-          3. Save (Bookmark / Add to Wishlist) - Larger button for mobile
-          4. Like (Thumbs Up / Swipe Right) - Larger button for mobile
+          Brought closer to the center, enlarged ~10% for mobile
+          1. Dislike (Pass / Swipe Left)
+          2. Undo (RotateCcw)
+          3. Save (Bookmark - throws card into top right 'saved' button & acts as like for stats)
+          4. Like (Thumbs Up / Swipe Right)
       */}
-      <div className="relative z-20 flex items-center justify-between px-2 pt-1 pb-1 flex-shrink-0">
-        {/* 1. Red Dislike Corner Button - Enlarged for mobile */}
+      <div className="relative z-20 flex items-center justify-center gap-3.5 sm:gap-5 px-4 pt-1 pb-1 flex-shrink-0">
+        {/* 1. Red Dislike Button - Circular aspect-square & brought closer to center */}
         <button
           onClick={triggerDislike}
-          disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
-          className="relative group p-4 sm:p-5 w-[76px] h-[76px] min-w-[76px] min-h-[76px] rounded-3xl bg-transparent border-2 border-red-500/60 hover:bg-red-500/10 hover:border-red-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-md flex items-center justify-center disabled:opacity-40"
+          disabled={!currentItem || hasReachedDailyLimit || tossState !== null || isSavingThrow}
+          className="relative group w-[76px] h-[76px] min-w-[76px] min-h-[76px] aspect-square rounded-full bg-red-950/20 border-2 border-red-500/80 hover:bg-red-500/15 hover:border-red-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-red-500/15 flex items-center justify-center disabled:opacity-40 cursor-pointer"
           title="Pass / Dislike (Swipe Left)"
         >
           <ThumbsDown className="w-8 h-8 sm:w-9 sm:h-9 relative z-10 fill-red-500 text-red-500 stroke-red-500" strokeWidth={1.5} />
         </button>
 
-        {/* Center Controls: Undo + Save button - Enlarged for mobile */}
+        {/* Center Controls: Undo + Save button - 10% larger */}
         <div className="flex items-center gap-3">
-          {/* 2. Undo Button - Enlarged */}
+          {/* 2. Undo Button */}
           <button
             onClick={handleUndo}
-            disabled={!canUndo || tossState !== null}
-            className={`w-[52px] h-[52px] min-w-[52px] min-h-[52px] rounded-full border transition-all duration-300 shadow-md flex items-center justify-center ${
+            disabled={!canUndo || tossState !== null || isSavingThrow}
+            className={`w-[54px] h-[54px] min-w-[54px] min-h-[54px] aspect-square rounded-full border transition-all duration-300 shadow-md flex items-center justify-center cursor-pointer ${
               canUndo
                 ? 'border-amber-400 bg-amber-950/50 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-300 hover:text-amber-200 hover:scale-105 active:scale-95 animate-pulse'
                 : 'border-slate-800 bg-slate-900/60 text-slate-500 opacity-30 pointer-events-none'
             }`}
             title="Undo last swipe"
           >
-            <RotateCcw className="w-5 h-5" />
+            <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
 
-          {/* 3. Save Button - Enlarged */}
+          {/* 3. Save Button - Throws card to top right Saved button & treated as like for stats */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (currentItem) {
-                toggleWishlist(currentItem);
-              }
+              triggerSaveThrow();
             }}
-            disabled={!currentItem || tossState !== null}
-            className={`w-[52px] h-[52px] min-w-[52px] min-h-[52px] rounded-full transition-all shadow-md flex items-center justify-center group ${
+            disabled={!currentItem || tossState !== null || isSavingThrow}
+            className={`w-[54px] h-[54px] min-w-[54px] min-h-[54px] aspect-square rounded-full transition-all shadow-md flex items-center justify-center group cursor-pointer ${
               currentItem && isItemInWishlist(currentItem.id)
                 ? `${isLight ? 'cosmic-gradient-bg-light' : 'cosmic-gradient-bg'} text-white shadow-[0_0_16px_rgba(219,39,119,0.55)] border-2 border-transparent`
                 : isLight
@@ -695,21 +804,21 @@ export const SwipeTab: React.FC = () => {
             title={currentItem && isItemInWishlist(currentItem.id) ? 'Saved in Wishlist' : 'Save to Wishlist'}
           >
             <Bookmark
-              className={`w-5 h-5 transition-transform ${
+              className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform ${
                 currentItem && isItemInWishlist(currentItem.id) ? 'fill-white text-white scale-110' : ''
               }`}
             />
           </button>
         </div>
 
-        {/* 4. Green Like Corner Button - Enlarged for mobile */}
+        {/* 4. Green Like Button - Circular aspect-square & brought closer to center */}
         <button
           onClick={triggerLike}
-          disabled={!currentItem || hasReachedDailyLimit || tossState !== null}
-          className="relative group p-4 sm:p-5 w-[76px] h-[76px] min-w-[76px] min-h-[76px] rounded-3xl bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-600/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] flex items-center justify-center disabled:opacity-40"
+          disabled={!currentItem || hasReachedDailyLimit || tossState !== null || isSavingThrow}
+          className="relative group w-[76px] h-[76px] min-w-[76px] min-h-[76px] aspect-square rounded-full bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-600/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] flex items-center justify-center disabled:opacity-40 cursor-pointer"
           title="Like & Curate (Swipe Right)"
         >
-          <ThumbsUp className="w-8 h-8 sm:w-9 sm:h-9 relative z-10 fill-transparent stroke-white/90 text-transparent" strokeWidth={2.4} />
+          <ThumbsUp className="w-8 h-8 sm:w-9 sm:h-9 relative z-10 fill-transparent stroke-white text-transparent" strokeWidth={2.4} />
         </button>
       </div>
 
@@ -717,11 +826,11 @@ export const SwipeTab: React.FC = () => {
       {hasReachedDailyLimit && (
         <div
           onClick={() => bypassSwipeLimit()}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden overscroll-contain animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain cursor-default relative my-auto`}
+            className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[88vh] overflow-y-auto overscroll-contain cursor-default relative pb-5 mt-2 sm:mt-4 mb-20`}
           >
             {/* Floating Close Button */}
             <button
@@ -755,7 +864,9 @@ export const SwipeTab: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('wishlist')}
+                onClick={() => {
+                  setIsSavedOverlayOpen(true);
+                }}
                 className="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-bold text-xs hover:text-white"
               >
                 Review Saved Wishlist
@@ -769,7 +880,7 @@ export const SwipeTab: React.FC = () => {
       {isFilterModalOpen && (
         <div
           onClick={() => setIsFilterModalOpen(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden overscroll-contain animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -777,7 +888,7 @@ export const SwipeTab: React.FC = () => {
               isLight
                 ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
                 : 'bg-slate-900 border-slate-700 text-white shadow-2xl'
-            } border rounded-2xl max-w-sm w-full p-5 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain cursor-default relative my-auto`}
+            } border rounded-2xl max-w-sm w-full p-5 animate-popup max-h-[88vh] overflow-y-auto overscroll-contain cursor-default relative pb-5 mt-2 sm:mt-4 mb-20`}
           >
             {/* Floating Close Button */}
             <button
@@ -994,15 +1105,15 @@ export const SwipeTab: React.FC = () => {
         </div>
       )}
 
-      {/* Garment Details Modal (Tapping product card opens this) */}
+      {/* Garment Details Modal (Tapping product card opens this) - Positioned near top of screen */}
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-hidden overscroll-contain animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain cursor-default relative pb-5 my-auto`}
+            className={`${isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'} border rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 animate-popup max-h-[88vh] overflow-y-auto overscroll-contain cursor-default relative pb-5 mt-2 sm:mt-4 mb-24`}
           >
             {/* Floating Close Button */}
             <button
@@ -1109,6 +1220,13 @@ export const SwipeTab: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 4. Saved Overlay (Wishlist) dropping down from top with smooth bouncy animation */}
+      {isSavedOverlayOpen && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl overflow-y-auto overscroll-contain animate-wishlist-dropdown pb-28">
+          <WishlistTab onClose={() => setIsSavedOverlayOpen(false)} isOverlay={true} />
         </div>
       )}
     </div>

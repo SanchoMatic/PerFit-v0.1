@@ -29,7 +29,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
       onClick={onClose}
     >
       <div
-        className={`border rounded-2xl max-w-sm w-full p-5 pb-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto overscroll-contain relative cursor-default my-auto ${
+        className={`border rounded-2xl max-w-sm w-full p-5 pb-5 shadow-2xl space-y-4 animate-popup max-h-[85vh] overflow-y-auto overscroll-contain relative cursor-default my-auto ${
           isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
         }`}
         onClick={(e) => e.stopPropagation()}

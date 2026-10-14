@@ -1,4 +1,4 @@
-export type TabType = 'swipe' | 'wishlist' | 'cart' | 'upload' | 'profile';
+export type TabType = 'swipe' | 'try-on' | 'cart' | 'upload' | 'profile' | 'wishlist';
 
 export interface ClothingItem {
   id: string;
