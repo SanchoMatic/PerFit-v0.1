@@ -303,6 +303,8 @@ export const SwipeTab: React.FC = () => {
   const rotation = tossState === 'like' ? 22 : tossState === 'dislike' ? -22 : dragOffset.x * 0.08;
   const effectiveLikeOpacity = tossState === 'like' ? 1 : Math.min(1, Math.max(0, dragOffset.x / 80));
   const effectiveDislikeOpacity = tossState === 'dislike' ? 1 : Math.min(1, Math.max(0, -dragOffset.x / 80));
+  const dragProgress = Math.min(1, Math.abs(dragOffset.x) / 120);
+  const nextCardDetailsOpacity = tossState || isSavingThrow ? 1 : Math.min(1, 0.65 + dragProgress * 0.35);
 
   const cardTranslateX = tossState === 'like' ? 440 : tossState === 'dislike' ? -440 : dragOffset.x;
   const cardTranslateY = tossState ? -25 : dragOffset.y;
@@ -528,7 +530,7 @@ export const SwipeTab: React.FC = () => {
       <div className="relative flex-1 flex items-center justify-center my-auto z-10 w-full max-h-[min(54vh,460px)] min-h-[350px]">
         {currentItem ? (
           <div className="relative w-full h-full max-h-[min(54vh,460px)] flex items-center justify-center">
-            {/* Background Card Preview for depth with smooth rising/expanding scale transition - Kept perfectly still */}
+            {/* Background / Following Card: Smoothly comes forward all the way to scale(1) with details already present and fading to full opacity */}
             {nextItem && (
               <div
                 key={nextItem.id}
@@ -536,25 +538,121 @@ export const SwipeTab: React.FC = () => {
                   transform:
                     tossState || isSavingThrow
                       ? 'translate3d(0, 0, 0) scale(1)'
-                      : `translate3d(0, 0, 0) scale(${Math.min(1, 0.94 + (Math.abs(dragOffset.x) / 200) * 0.06)})`,
+                      : `translate3d(0, ${(1 - dragProgress) * 10}px, 0) scale(${0.95 + dragProgress * 0.05})`,
                   opacity:
                     tossState || isSavingThrow
                       ? 1
-                      : Math.min(1, 0.6 + (Math.abs(dragOffset.x) / 160) * 0.4),
+                      : Math.min(1, 0.82 + dragProgress * 0.18),
                   transition:
                     tossState || isSavingThrow
-                      ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
+                      ? isSavingThrow
+                        ? 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms ease-out'
+                        : 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
                       : isDragging
                       ? 'none'
-                      : 'transform 200ms ease-out, opacity 200ms ease-out',
+                      : 'transform 220ms ease-out, opacity 220ms ease-out',
                 }}
-                className="absolute w-[94%] h-[95%] rounded-3xl bg-slate-900 border border-slate-800 overflow-hidden pointer-events-none"
+                className="absolute w-full h-full max-h-[min(54vh,460px)] rounded-3xl overflow-hidden border-2 border-slate-700/80 bg-slate-950 shadow-2xl select-none flex flex-col justify-between pointer-events-none"
               >
-                <img
-                  src={nextItem.image}
-                  alt={nextItem.name}
-                  className="w-full h-full object-cover grayscale-30"
-                />
+                {/* Garment Image Area */}
+                <div className="relative flex-1 w-full min-h-0 overflow-hidden bg-slate-900 flex items-center justify-center">
+                  <img
+                    src={nextItem.image}
+                    alt={nextItem.name}
+                    className="w-full h-full object-cover pointer-events-none"
+                    draggable={false}
+                  />
+
+                  {/* Dark Vignette Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
+
+                  {/* Details & Badges Layer - Details already present, smoothly becoming 100% opaque as swipe completes */}
+                  <div
+                    style={{
+                      opacity: nextCardDetailsOpacity,
+                      transition:
+                        tossState || isSavingThrow
+                          ? isSavingThrow
+                            ? 'opacity 650ms ease-out'
+                            : 'opacity 280ms ease-out'
+                          : isDragging
+                          ? 'none'
+                          : 'opacity 220ms ease-out',
+                    }}
+                    className="absolute inset-0 pointer-events-none"
+                  >
+                    {/* Item Type & Match Score Badges */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        {nextItem.isBundle ? (
+                          <span className="px-2.5 py-1 rounded-full bg-pink-600 text-white text-[10px] font-black tracking-wider uppercase shadow-md shadow-pink-600/30">
+                            Outfit Bundle
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-slate-700 text-slate-300 text-[10px] font-bold tracking-wider uppercase">
+                            {nextItem.category}
+                          </span>
+                        )}
+                      </div>
+
+                      {nextItem.matchScore && (
+                        <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full ${isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'} text-white text-xs font-mono font-bold shadow-md`}>
+                          <Sparkles className="w-3 h-3 text-white" />
+                          <span>{nextItem.matchScore}% Match</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Brand & Garment Headline Overlay */}
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="flex items-baseline justify-between mb-1">
+                        <span className={`text-xs font-extrabold uppercase tracking-widest ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'} drop-shadow`}>
+                          {nextItem.brand}
+                        </span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xl font-black text-white font-mono drop-shadow">
+                            ${nextItem.price}
+                          </span>
+                          {nextItem.originalPrice && (
+                            <span className="text-xs text-slate-400 line-through font-mono">
+                              ${nextItem.originalPrice}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <h2 className={`text-lg font-extrabold leading-tight drop-shadow mb-1 ${isLight ? 'text-sky-950' : 'text-white'}`}>
+                        {nextItem.name}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Quick Bar */}
+                <div
+                  style={{
+                    opacity: nextCardDetailsOpacity,
+                    transition:
+                      tossState || isSavingThrow
+                        ? isSavingThrow
+                          ? 'opacity 650ms ease-out'
+                          : 'opacity 280ms ease-out'
+                        : isDragging
+                        ? 'none'
+                        : 'opacity 220ms ease-out',
+                  }}
+                  className="px-4 py-2.5 bg-slate-950/95 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 z-20"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-300 font-semibold text-xs">Fit: {nextItem.fit}</span>
+                    <span>•</span>
+                    <span className="text-slate-300 text-xs">{nextItem.material.split(' ')[0]}</span>
+                  </div>
+                  <div className="px-4 py-2 rounded-xl bg-emerald-500 text-black text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-500/20 min-h-[38px] opacity-90">
+                    <ShoppingBag className="w-4 h-4 stroke-[2.2]" />
+                    <span>Add to Cart</span>
+                  </div>
+                </div>
               </div>
             )}
 

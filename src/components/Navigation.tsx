@@ -61,7 +61,7 @@ export const Navigation: React.FC = () => {
   const { activeTab, setActiveTab, resetActiveTab, cartCount, userProfile } = useApp();
   const isLight = userProfile.preferences.theme === 'light';
 
-  // 16. Tab order: swipe, try-on, cart, upload (for you), profile (swapped try-on and for you)
+  // Tab order: swipe, for you, cart, try on, profile
   const navItems: Array<{
     id: TabType;
     label: string;
@@ -79,9 +79,9 @@ export const Navigation: React.FC = () => {
       icon: (props) => <CascadeIcon {...props} isLight={isLight} />,
     },
     {
-      id: 'try-on',
-      label: 'Try On',
-      icon: Shirt,
+      id: 'upload',
+      label: 'For You',
+      icon: Heart,
     },
     {
       id: 'cart',
@@ -90,9 +90,9 @@ export const Navigation: React.FC = () => {
       badge: cartCount > 0 ? cartCount : undefined,
     },
     {
-      id: 'upload',
-      label: 'For You',
-      icon: Heart,
+      id: 'try-on',
+      label: 'Try On',
+      icon: Shirt,
     },
     {
       id: 'profile',

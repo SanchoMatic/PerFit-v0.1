@@ -123,7 +123,7 @@ const SwipeableCartItemRow: React.FC<{
 
   return (
     <div
-      className={`relative select-none py-3.5 touch-pan-y ${isAnyMenuOpen ? 'z-40' : 'z-10'}`}
+      className={`relative select-none touch-pan-y ${isAnyMenuOpen ? 'z-40' : 'z-10'}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -131,47 +131,63 @@ const SwipeableCartItemRow: React.FC<{
       onMouseMove={handleTouchMove}
       onMouseUp={handleTouchEnd}
     >
-      {/* Twitter-style revealed swipe action backgrounds isolated in overflow-hidden container */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-2xl">
-        {/* 1. Left Background (Revealed when swiping right -> Save for later / Wishlist) */}
-        <div
-          style={{ opacity: offsetX > 8 ? Math.min(1, offsetX / 50) : 0 }}
-          className={`absolute inset-0 flex items-center justify-start pl-5 transition-opacity ${
-            offsetX > 75
-              ? isLight
-                ? 'cosmic-gradient-bg-light text-white'
-                : 'cosmic-gradient-bg text-white'
-              : 'bg-pink-600/40 text-white'
-          }`}
-        >
-          <div className="flex items-center gap-2 font-black text-xs text-white">
-            <Bookmark className={`w-5 h-5 text-white transition-transform ${offsetX > 75 ? 'scale-125' : ''}`} />
-            <span className="text-white">Save for later</span>
+      {/* Revealed swipe action backgrounds reaching edge-to-edge between dividing lines */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* 1. Left Indicator: Revealed when swiping right -> Save for later / Wishlist */}
+        {offsetX > 0 && (
+          <div
+            style={{
+              opacity: Math.min(1, Math.max(0, (offsetX - 8) / 50)),
+              transform: `translate3d(${Math.min(0, (offsetX - 70) * 0.4)}px, 0, 0)`,
+            }}
+            className={`absolute inset-0 flex items-center justify-start pl-5 transition-opacity ${
+              offsetX > 75
+                ? isLight
+                  ? 'cosmic-gradient-bg-light text-white'
+                  : 'cosmic-gradient-bg text-white'
+                : isLight
+                ? 'bg-pink-100 text-pink-700'
+                : 'bg-pink-950/70 text-pink-300'
+            }`}
+          >
+            <div className="flex items-center gap-2 font-black text-xs text-white">
+              <Bookmark className={`w-5 h-5 text-white transition-transform ${offsetX > 75 ? 'scale-125' : ''}`} />
+              <span className="text-white">Save for later</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 2. Right Background (Revealed when swiping left -> Delete) */}
-        <div
-          style={{ opacity: offsetX < -8 ? Math.min(1, -offsetX / 50) : 0 }}
-          className={`absolute inset-0 flex items-center justify-end pr-5 transition-opacity ${
-            offsetX < -75 ? 'bg-red-600 text-white' : 'bg-red-950/60 text-red-300'
-          }`}
-        >
-          <div className="flex items-center gap-2 font-black text-xs text-white">
-            <span className="text-white">Delete</span>
-            <Trash2 className={`w-5 h-5 text-white transition-transform ${offsetX < -75 ? 'scale-125' : ''}`} />
+        {/* 2. Right Indicator: Revealed when swiping left -> Delete */}
+        {offsetX < 0 && (
+          <div
+            style={{
+              opacity: Math.min(1, Math.max(0, (-offsetX - 8) / 50)),
+              transform: `translate3d(${Math.max(0, ((-offsetX) - 70) * -0.4)}px, 0, 0)`,
+            }}
+            className={`absolute inset-0 flex items-center justify-end pr-5 transition-opacity ${
+              offsetX < -75
+                ? 'bg-red-600 text-white'
+                : isLight
+                ? 'bg-red-100 text-red-700'
+                : 'bg-red-950/70 text-red-300'
+            }`}
+          >
+            <div className="flex items-center gap-2 font-black text-xs text-white">
+              <span className="text-white">Delete</span>
+              <Trash2 className={`w-5 h-5 text-white transition-transform ${offsetX < -75 ? 'scale-125' : ''}`} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Front interactive row with gradual color blend */}
+      {/* Front interactive row reaching completely from top to bottom of grey lines */}
       <div
         style={{
           transform: `translate3d(${currentTranslate}px, 0, 0)`,
           backgroundColor: swipeBlendColor,
           transition: isDragging ? 'none' : 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1), background-color 220ms ease-out',
         }}
-        className={`relative z-10 flex items-center justify-between gap-3.5 p-2 rounded-2xl ${
+        className={`relative z-10 flex items-center justify-between gap-3.5 py-3.5 px-3 ${
           swipeBlendColor ? '' : isLight ? 'bg-white' : 'bg-slate-950'
         } transition-colors`}
       >

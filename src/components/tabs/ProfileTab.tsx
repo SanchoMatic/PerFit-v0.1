@@ -1371,17 +1371,16 @@ export const ProfileTab: React.FC = () => {
                 <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   {userProfile.name}
                 </h1>
-                {/* Condensed Pro Style Member Badge with same symbol and gradient as swipe tab icon */}
+                {/* Condensed Pro Style Member (PSM) Badge with same symbol and gradient as swipe tab icon */}
                 <span
-                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                  className={`w-6 h-6 rounded-full ${
                     isLight
                       ? 'cosmic-gradient-bg-light shadow-pink-600/25 text-white'
                       : 'cosmic-gradient-bg shadow-pink-600/40 text-white'
-                  } tracking-wide inline-flex items-center gap-1.5 shadow-sm`}
+                  } inline-flex items-center justify-center shadow-sm`}
                   title="Pro Style Member"
                 >
                   <CascadeIcon className="w-3.5 h-3.5" isLight={isLight} />
-                  <span>PRO</span>
                 </span>
               </div>
               <p className={`text-xs font-mono font-bold ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>{userProfile.handle}</p>
