@@ -57,6 +57,57 @@ export const InboxModal: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const groupPhotoInputRef = useRef<HTMLInputElement>(null);
 
+  // Pull down to exit gesture on chat conversation list (same behavior and indicator as wishlist page)
+  const [pullY, setPullY] = useState(0);
+  const [isDismissing, setIsDismissing] = useState(false);
+  const touchStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartY = useRef(0);
+  const isPullingDown = useRef<boolean>(false);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const PULL_THRESHOLD = 70;
+
+  const handleListTouchStart = (e: React.TouchEvent) => {
+    if (viewState !== 'list' || isDismissing) return;
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    const scrollTop = listScrollRef.current ? listScrollRef.current.scrollTop : 0;
+    touchStartY.current = scrollTop <= 2 ? touch.clientY : 0;
+    isPullingDown.current = false;
+  };
+
+  const handleListTouchMove = (e: React.TouchEvent) => {
+    if (viewState !== 'list' || isDismissing || touchStartY.current === 0) return;
+    const touch = e.touches[0];
+    const dy = touch.clientY - touchStartY.current;
+    const dx = touch.clientX - touchStartPos.current.x;
+
+    if (dy > 8 && dy > Math.abs(dx) * 1.5) {
+      isPullingDown.current = true;
+      setPullY(Math.min(dy * 0.5, 120));
+    } else if (dy <= 0) {
+      setPullY(0);
+      isPullingDown.current = false;
+    }
+  };
+
+  const handleListTouchEnd = () => {
+    if (viewState !== 'list' || isDismissing) return;
+    if (isPullingDown.current && pullY >= PULL_THRESHOLD) {
+      setIsDismissing(true);
+      setTimeout(() => {
+        setIsInboxOpen(false);
+        setIsDismissing(false);
+        setPullY(0);
+      }, 200);
+    } else {
+      setPullY(0);
+    }
+    touchStartY.current = 0;
+    isPullingDown.current = false;
+  };
+
+  const pullProgress = Math.min(1, pullY / PULL_THRESHOLD);
+
   // When activeConversationId changes from outside (e.g. sent fit or open chat)
   useEffect(() => {
     if (activeConversationId) {
@@ -156,14 +207,82 @@ export const InboxModal: React.FC = () => {
     <div
       className={`fixed inset-0 z-50 flex flex-col w-full h-[100dvh] max-h-[100dvh] overflow-hidden ${
         isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'
-      } pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] animate-in fade-in duration-200 cursor-default`}
+      } pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] animate-in slide-in-from-bottom-6 duration-300 ease-out cursor-default`}
     >
       <div className="flex flex-col flex-1 w-full max-w-3xl mx-auto h-full overflow-hidden">
         {/* ============================================================
-            VIEW 1: INBOX LIST (Twitter / Facebook style inboxes)
+            VIEW 1: INBOX LIST (Twitter / Facebook style inboxes with vanish-mode pull down to exit)
            ============================================================ */}
         {viewState === 'list' && (
-          <div className="flex flex-col h-full">
+          <div
+            ref={listScrollRef}
+            onTouchStart={handleListTouchStart}
+            onTouchMove={handleListTouchMove}
+            onTouchEnd={handleListTouchEnd}
+            style={{
+              transform: isDismissing
+                ? 'translate3d(0, 100%, 0)'
+                : pullY > 0
+                ? `translate3d(0, ${pullY}px, 0)`
+                : undefined,
+              transition: isDismissing
+                ? 'transform 200ms ease-out, opacity 200ms ease-out'
+                : pullY === 0
+                ? 'transform 240ms cubic-bezier(0.16, 1, 0.3, 1)'
+                : 'none',
+              opacity: isDismissing ? 0 : 1,
+            }}
+            className="flex flex-col h-full relative"
+          >
+            {/* Vanish-mode style Pull-Down Exit Indicator (matching wishlist page) */}
+            <div
+              className="sticky top-1 z-30 flex flex-col items-center justify-center pointer-events-none py-0.5 transition-opacity duration-150"
+              style={{
+                opacity: pullY > 4 ? Math.min(1, (pullY - 4) / 22) : 0,
+              }}
+            >
+              <div
+                className={`rounded-full transition-all duration-200 flex items-center justify-center shadow-xl relative ${
+                  pullY >= PULL_THRESHOLD
+                    ? 'w-10 h-10 bg-slate-900 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.7)] scale-105'
+                    : 'w-9 h-9 bg-slate-950/95 border-2 border-slate-700/80 shadow-md scale-95'
+                }`}
+                style={{
+                  transform: `scale(${0.8 + pullProgress * 0.25}) rotate(${pullProgress * 90}deg)`,
+                }}
+              >
+                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
+                  <circle
+                    cx="50%"
+                    cy="50%"
+                    r="14"
+                    fill="none"
+                    stroke={pullY >= PULL_THRESHOLD ? '#34d399' : '#64748b'}
+                    strokeWidth="2.5"
+                    strokeDasharray="88"
+                    strokeDashoffset={88 - pullProgress * 88}
+                    strokeLinecap="round"
+                    className="transition-all duration-75"
+                  />
+                </svg>
+                <X
+                  className={`transition-colors relative z-10 ${
+                    pullY >= PULL_THRESHOLD
+                      ? 'w-4 h-4 text-emerald-300 stroke-[3]'
+                      : 'w-3.5 h-3.5 text-slate-300 stroke-[2.2]'
+                  }`}
+                />
+              </div>
+              <span
+                className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 transition-colors ${
+                  pullY >= PULL_THRESHOLD
+                    ? 'text-emerald-400 font-black drop-shadow'
+                    : 'text-slate-400'
+                }`}
+              >
+                exit
+              </span>
+            </div>
             {/* Header - Optimized horizontal layout with extra space for title & status */}
             <div
               className={`px-4 py-3 border-b flex items-center justify-between gap-2 ${

@@ -84,7 +84,7 @@ interface AppContextType {
   // Cart & Purchases
   cartItems: CartItem[];
   savedForLaterItems: CartItem[];
-  addToCart: (item: ClothingItem, size?: string, color?: string) => void;
+  addToCart: (item: ClothingItem, size?: string, color?: string, startPos?: { x: number; y: number }, skipFlyAnimation?: boolean) => void;
   removeFromCart: (itemId: string, size?: string) => void;
   updateCartQuantity: (itemId: string, delta: number, size?: string) => void;
   updateCartItemOptions: (itemId: string, currentSize: string, currentColor: string, newSize?: string, newColor?: string) => void;
@@ -96,6 +96,8 @@ interface AppContextType {
   cartCount: number;
   purchasedItems: ClothingItem[];
   addPurchasedItems: (items: ClothingItem[]) => void;
+  cartFlyingItem: { item: ClothingItem; startX: number; startY: number } | null;
+  triggerCartFly: (item: ClothingItem, startX?: number, startY?: number) => void;
 
   // Algorithm & Profile
   algorithmProfile: AlgorithmProfile;
@@ -375,6 +377,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Cart
   const [cartItems, setCartItems] = useState<CartItem[]>(INITIAL_CART_ITEMS);
   const [savedForLaterItems, setSavedForLaterItems] = useState<CartItem[]>([]);
+  const [cartFlyingItem, setCartFlyingItem] = useState<{ item: ClothingItem; startX: number; startY: number } | null>(null);
+
+  const triggerCartFly = useCallback((item: ClothingItem, startX?: number, startY?: number) => {
+    const x = startX ?? (typeof window !== 'undefined' ? window.innerWidth / 2 : 200);
+    const y = startY ?? (typeof window !== 'undefined' ? window.innerHeight / 2 : 300);
+    setCartFlyingItem({ item, startX: x, startY: y });
+    setTimeout(() => {
+      setCartFlyingItem(null);
+    }, 650);
+  }, []);
+
   const [purchasedItems, setPurchasedItems] = useState<ClothingItem[]>(() => [
     INITIAL_CATALOG[1], // Arc'teryx Beta LT Jacket
     INITIAL_CATALOG[2], // Salomon XT-6 Expanse
@@ -787,28 +800,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     // Remove from wishlist as they are moved to cart
     setSavedWishlistItemIds([]);
-    showToast(`Added ${wishlistItems.length} items to Cart!`, 'Moved to cart for checkout', 'green');
     setActiveTab('cart');
-  }, [wishlistItems, showToast]);
+  }, [wishlistItems]);
 
   // Cart operations
-  const addToCart = useCallback((item: ClothingItem, size?: string, color?: string) => {
-    const selectedSize = size || item.sizes[0] || 'M';
-    const selectedColor = color || item.colors[0] || 'Default';
+  const addToCart = useCallback(
+    (
+      item: ClothingItem,
+      size?: string,
+      color?: string,
+      startPos?: { x: number; y: number },
+      skipFlyAnimation?: boolean
+    ) => {
+      const selectedSize = size || item.sizes[0] || 'M';
+      const selectedColor = color || item.colors[0] || 'Default';
 
-    setCartItems((prev) => {
-      const existingIndex = prev.findIndex(
-        (ci) => ci.item.id === item.id && ci.selectedSize === selectedSize && ci.selectedColor === selectedColor
-      );
-      if (existingIndex >= 0) {
-        const next = [...prev];
-        next[existingIndex].quantity += 1;
-        return next;
+      setCartItems((prev) => {
+        const existingIndex = prev.findIndex(
+          (ci) => ci.item.id === item.id && ci.selectedSize === selectedSize && ci.selectedColor === selectedColor
+        );
+        if (existingIndex >= 0) {
+          const next = [...prev];
+          next[existingIndex].quantity += 1;
+          return next;
+        }
+        return [...prev, { item, quantity: 1, selectedSize, selectedColor }];
+      });
+
+      // App-wide: trigger smooth shrink and toss to nav bar cart icon
+      if (!skipFlyAnimation) {
+        triggerCartFly(item, startPos?.x, startPos?.y);
       }
-      return [...prev, { item, quantity: 1, selectedSize, selectedColor }];
-    });
-    showToast('Added to Cart', `${item.name} (${selectedSize})`, 'green');
-  }, [showToast]);
+    },
+    [triggerCartFly]
+  );
 
   const removeFromCart = useCallback((itemId: string, size?: string) => {
     setCartItems((prev) =>
@@ -1479,6 +1504,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cartCount,
         purchasedItems,
         addPurchasedItems,
+        cartFlyingItem,
+        triggerCartFly,
         algorithmProfile,
         updateAlgorithmWeight,
         applyQuizResults,

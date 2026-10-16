@@ -111,19 +111,9 @@ const SwipeableCartItemRow: React.FC<{
   const isAnyMenuOpen = isSizeMenuOpen || isColorMenuOpen;
   const currentTranslate = isExiting === 'right' ? 360 : isExiting === 'left' ? -360 : offsetX;
 
-  // Smooth color blending with the card as swipe progresses
-  const swipeBlendColor =
-    offsetX > 5
-      ? isLight
-        ? `rgba(244, 63, 94, ${Math.min(0.18, (offsetX / 100) * 0.18)})`
-        : `rgba(219, 39, 119, ${Math.min(0.28, (offsetX / 100) * 0.28)})`
-      : offsetX < -5
-      ? `rgba(239, 68, 68, ${Math.min(0.25, (-offsetX / 100) * 0.25)})`
-      : undefined;
-
   return (
     <div
-      className={`relative select-none touch-pan-y ${isAnyMenuOpen ? 'z-40' : 'z-10'}`}
+      className={`relative select-none touch-pan-y my-1.5 rounded-2xl overflow-hidden ${isAnyMenuOpen ? 'z-40' : 'z-10'}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -131,23 +121,22 @@ const SwipeableCartItemRow: React.FC<{
       onMouseMove={handleTouchMove}
       onMouseUp={handleTouchEnd}
     >
-      {/* Revealed swipe action backgrounds reaching edge-to-edge between dividing lines */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* 1. Left Indicator: Revealed when swiping right -> Save for later / Wishlist */}
+      {/* Revealed swipe action backgrounds - strictly visible only from the side being slid open (iOS/Twitter style) */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+        {/* 1. Left Indicator: Revealed strictly on the left when swiping right -> Save for later / Wishlist */}
         {offsetX > 0 && (
           <div
             style={{
-              opacity: Math.min(1, Math.max(0, (offsetX - 8) / 50)),
-              transform: `translate3d(${Math.min(0, (offsetX - 70) * 0.4)}px, 0, 0)`,
+              opacity: Math.min(1, Math.max(0, (offsetX - 6) / 45)),
             }}
-            className={`absolute inset-0 flex items-center justify-start pl-5 transition-opacity ${
+            className={`absolute inset-y-0 left-0 w-full flex items-center justify-start pl-5 transition-opacity ${
               offsetX > 75
                 ? isLight
                   ? 'cosmic-gradient-bg-light text-white'
                   : 'cosmic-gradient-bg text-white'
                 : isLight
                 ? 'bg-pink-100 text-pink-700'
-                : 'bg-pink-950/70 text-pink-300'
+                : 'bg-pink-950/90 text-pink-300'
             }`}
           >
             <div className="flex items-center gap-2 font-black text-xs text-white">
@@ -157,19 +146,18 @@ const SwipeableCartItemRow: React.FC<{
           </div>
         )}
 
-        {/* 2. Right Indicator: Revealed when swiping left -> Delete */}
+        {/* 2. Right Indicator: Revealed strictly on the right when swiping left -> Delete */}
         {offsetX < 0 && (
           <div
             style={{
-              opacity: Math.min(1, Math.max(0, (-offsetX - 8) / 50)),
-              transform: `translate3d(${Math.max(0, ((-offsetX) - 70) * -0.4)}px, 0, 0)`,
+              opacity: Math.min(1, Math.max(0, (-offsetX - 6) / 45)),
             }}
-            className={`absolute inset-0 flex items-center justify-end pr-5 transition-opacity ${
+            className={`absolute inset-y-0 right-0 w-full flex items-center justify-end pr-5 transition-opacity ${
               offsetX < -75
                 ? 'bg-red-600 text-white'
                 : isLight
                 ? 'bg-red-100 text-red-700'
-                : 'bg-red-950/70 text-red-300'
+                : 'bg-red-950/90 text-red-300'
             }`}
           >
             <div className="flex items-center gap-2 font-black text-xs text-white">
@@ -180,16 +168,17 @@ const SwipeableCartItemRow: React.FC<{
         )}
       </div>
 
-      {/* Front interactive row reaching completely from top to bottom of grey lines */}
+      {/* Front interactive row: 100% OPAQUE with rounded-2xl so indicators never shine through the card body */}
       <div
         style={{
           transform: `translate3d(${currentTranslate}px, 0, 0)`,
-          backgroundColor: swipeBlendColor,
-          transition: isDragging ? 'none' : 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1), background-color 220ms ease-out',
+          transition: isDragging ? 'none' : 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
-        className={`relative z-10 flex items-center justify-between gap-3.5 py-3.5 px-3 ${
-          swipeBlendColor ? '' : isLight ? 'bg-white' : 'bg-slate-950'
-        } transition-colors`}
+        className={`relative z-10 flex items-center justify-between gap-3.5 py-3.5 px-3 rounded-2xl border ${
+          isLight
+            ? 'bg-white border-slate-200 shadow-sm text-slate-900'
+            : 'bg-slate-900 border-slate-800 shadow-md text-white'
+        }`}
       >
         {/* Garment Image / Thumbnail - ONLY tapping image or title opens inspect info */}
         <div
@@ -501,9 +490,13 @@ export const CartTab: React.FC = () => {
     <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-[max(12px,env(safe-area-inset-top))] max-w-md mx-auto">
       {/* Top Header - Shopping Bag inside a silver circle scaled up HUD */}
       <div className="flex flex-col items-center justify-center my-4">
-        {/* Silver-gray circle with shopping bag icon in white */}
+        {/* Silver-gray circle with shopping bag icon with cosmic gradient */}
         <div className={`w-18 h-18 rounded-full ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-slate-800/80 border-slate-600 text-slate-200'} border-2 flex items-center justify-center shadow-lg mb-2.5 relative group`}>
-          <ShoppingBag className="w-9 h-9 text-white" strokeWidth={1.8} />
+          <ShoppingBag
+            className="w-9 h-9"
+            style={{ stroke: `url(#${isLight ? 'cosmicCascadeGradLight' : 'cosmicCascadeGrad'})` }}
+            strokeWidth={1.8}
+          />
         </div>
         <h1 className={`text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Your Cart</h1>
         <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'} mt-0.5`}>
@@ -601,10 +594,10 @@ export const CartTab: React.FC = () => {
             )}
           </button>
 
-          {/* Encrypted Shield in Green */}
-          <div className="mt-3.5 flex items-center justify-center gap-2 text-xs text-slate-400">
+          {/* Encrypted Shield in Green - Centered under the checkout button */}
+          <div className="mt-3.5 w-full flex items-center justify-center text-center gap-1.5 text-xs text-slate-400 px-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            <span>Encrypted checkout • Free 30-day returns • Guaranteed Authentic</span>
+            <span className="text-center font-medium">Encrypted checkout • Free 30-day returns • Guaranteed Authentic</span>
           </div>
 
           {/* Saved For Later List Under Checkout Button */}

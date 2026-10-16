@@ -123,7 +123,6 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           <button
             onClick={() => {
               addToCart(item, selectedSize, selectedColor);
-              showToast('Added to Cart', `${item.name} ($${item.price})`, 'green');
               onClose();
             }}
             className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-black text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20 active:scale-[0.99]"

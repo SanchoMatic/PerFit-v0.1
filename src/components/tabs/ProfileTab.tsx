@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Users,
   BarChart3,
@@ -529,8 +529,93 @@ export const ProfileTab: React.FC = () => {
     setIsEditingMoodboard(false);
   };
 
+  // Swipe back gesture by pulling anywhere on pages with a back button (like settings) to return left to previous page
+  const [swipeBackX, setSwipeBackX] = useState(0);
+  const [isSwipeBackDismissing, setIsSwipeBackDismissing] = useState(false);
+  const swipeBackTouchStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isSwipingBack = useRef(false);
+
+  const canGoBack =
+    Boolean(selectedOutfitDetail) ||
+    Boolean(selectedMoodboardDetail) ||
+    activeSubView !== 'none';
+
+  const triggerGoBack = useCallback(() => {
+    if (selectedOutfitDetail) {
+      setSelectedOutfitDetail(null);
+      setIsEditingOutfit(false);
+    } else if (selectedMoodboardDetail) {
+      setSelectedMoodboardDetail(null);
+      setIsEditingMoodboard(false);
+    } else if (['settings', 'account', 'data', 'stats', 'privacy', 'help'].includes(activeSubView)) {
+      setActiveSubView('menu');
+    } else if (activeSubView !== 'none') {
+      setActiveSubView('none');
+      setActiveCollectionDetailId(null);
+    }
+  }, [selectedOutfitDetail, selectedMoodboardDetail, activeSubView]);
+
+  const handlePageTouchStart = (e: React.TouchEvent) => {
+    if (!canGoBack || isSwipeBackDismissing) return;
+    const touch = e.touches[0];
+    swipeBackTouchStart.current = { x: touch.clientX, y: touch.clientY };
+    isSwipingBack.current = false;
+  };
+
+  const handlePageTouchMove = (e: React.TouchEvent) => {
+    if (!canGoBack || isSwipeBackDismissing) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - swipeBackTouchStart.current.x;
+    const dy = touch.clientY - swipeBackTouchStart.current.y;
+
+    // Primarily horizontal pull to the right to go back
+    if (dx > 10 && dx > Math.abs(dy) * 1.2) {
+      isSwipingBack.current = true;
+      setSwipeBackX(Math.min(dx * 0.75, 240));
+    } else if (dx <= 0) {
+      setSwipeBackX(0);
+      isSwipingBack.current = false;
+    }
+  };
+
+  const handlePageTouchEnd = () => {
+    if (!canGoBack || isSwipeBackDismissing) return;
+    if (isSwipingBack.current && swipeBackX >= 70) {
+      setIsSwipeBackDismissing(true);
+      setTimeout(() => {
+        triggerGoBack();
+        setIsSwipeBackDismissing(false);
+        setSwipeBackX(0);
+      }, 200);
+    } else {
+      setSwipeBackX(0);
+    }
+    isSwipingBack.current = false;
+  };
+
   return (
-    <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-4 max-w-md mx-auto">
+    <div
+      onTouchStart={handlePageTouchStart}
+      onTouchMove={handlePageTouchMove}
+      onTouchEnd={handlePageTouchEnd}
+      style={
+        canGoBack
+          ? {
+              transform: isSwipeBackDismissing
+                ? 'translate3d(100%, 0, 0)'
+                : swipeBackX > 0
+                ? `translate3d(${swipeBackX}px, 0, 0)`
+                : undefined,
+              transition: isSwipeBackDismissing
+                ? 'transform 200ms ease-out'
+                : swipeBackX === 0
+                ? 'transform 220ms cubic-bezier(0.16, 1, 0.3, 1)'
+                : 'none',
+            }
+          : undefined
+      }
+      className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-4 max-w-md mx-auto"
+    >
       {/* Hidden file input for tapping on profile photo to upload/change */}
       <input
         ref={avatarInputRef}
@@ -1371,16 +1456,18 @@ export const ProfileTab: React.FC = () => {
                 <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   {userProfile.name}
                 </h1>
-                {/* Condensed Pro Style Member (PSM) Badge with same symbol and gradient as swipe tab icon */}
+                {/* Condensed Pro Style Member (PSM) Badge with gradient outline, white badge fill, and gradient icon */}
                 <span
-                  className={`w-6 h-6 rounded-full ${
+                  className={`w-6 h-6 rounded-full p-[1.5px] ${
                     isLight
-                      ? 'cosmic-gradient-bg-light shadow-pink-600/25 text-white'
-                      : 'cosmic-gradient-bg shadow-pink-600/40 text-white'
+                      ? 'cosmic-gradient-bg-light shadow-pink-600/25'
+                      : 'cosmic-gradient-bg shadow-pink-600/40'
                   } inline-flex items-center justify-center shadow-sm`}
                   title="Pro Style Member"
                 >
-                  <CascadeIcon className="w-3.5 h-3.5" isLight={isLight} />
+                  <span className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                    <CascadeIcon className="w-3.5 h-3.5" isLight={isLight} />
+                  </span>
                 </span>
               </div>
               <p className={`text-xs font-mono font-bold ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>{userProfile.handle}</p>
@@ -1915,7 +2002,7 @@ export const ProfileTab: React.FC = () => {
         </div>
       ) : activeSubView === 'menu' ? (
         /* Top Right Gear Menu Screen: settings, account, data, stats, help in exact order */
-        <div className="page-slide-forward pt-[max(1.25rem,env(safe-area-inset-top,24px)+12px)]">
+        <div className="page-slide-forward pt-[max(1.25rem,env(safe-area-inset-top,24px)+12px)] animate-in slide-in-from-right-8 duration-300 ease-out">
           {/* Header */}
           <div
             className={`flex items-center gap-3 mb-5 pb-3 border-b ${
@@ -4454,7 +4541,6 @@ export const ProfileTab: React.FC = () => {
               <button
                 onClick={() => {
                   addToCart(inspectItem);
-                  showToast('Added to Cart', `${inspectItem.name} (${inspectItem.brand})`, 'green');
                   setInspectItem(null);
                 }}
                 className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-500/20"

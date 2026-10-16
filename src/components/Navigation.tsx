@@ -61,6 +61,20 @@ export const Navigation: React.FC = () => {
   const { activeTab, setActiveTab, resetActiveTab, cartCount, userProfile } = useApp();
   const isLight = userProfile.preferences.theme === 'light';
 
+  // Cart bump bounce animation when items are added to cart
+  const [isCartBumping, setIsCartBumping] = useState(false);
+  const prevCartCountRef = useRef(cartCount);
+
+  useEffect(() => {
+    if (cartCount > prevCartCountRef.current) {
+      setIsCartBumping(true);
+      const timer = setTimeout(() => setIsCartBumping(false), 450);
+      prevCartCountRef.current = cartCount;
+      return () => clearTimeout(timer);
+    }
+    prevCartCountRef.current = cartCount;
+  }, [cartCount]);
+
   // Tab order: swipe, for you, cart, try on, profile
   const navItems: Array<{
     id: TabType;
@@ -218,8 +232,8 @@ export const Navigation: React.FC = () => {
         onTouchCancel={handleTouchEnd}
         className={`pointer-events-auto relative w-full max-w-sm sm:max-w-md ${
           isLight
-            ? 'bg-white/94 border-slate-200/90 text-zinc-900 shadow-[0_8px_32px_0_rgba(0,0,0,0.12),inset_0_1px_1px_0_rgba(255,255,255,0.95)]'
-            : 'bg-neutral-950/92 border-white/20 text-white shadow-[0_8px_32px_0_rgba(0,0,0,0.65),inset_0_1px_1px_0_rgba(255,255,255,0.22)]'
+            ? 'bg-white/84 border-slate-200/90 text-zinc-900 shadow-[0_8px_32px_0_rgba(0,0,0,0.12),inset_0_1px_1px_0_rgba(255,255,255,0.95)]'
+            : 'bg-neutral-950/82 border-white/20 text-white shadow-[0_8px_32px_0_rgba(0,0,0,0.65),inset_0_1px_1px_0_rgba(255,255,255,0.22)]'
         } border rounded-full backdrop-blur-3xl backdrop-saturate-150 p-1 select-none touch-none transition-shadow`}
       >
         <div
@@ -250,6 +264,7 @@ export const Navigation: React.FC = () => {
             const isTabActive = activeTab === item.id;
             const isHighlighted = currentHoverIndex === idx;
             const Icon = item.icon;
+            const isThisCartBumping = item.id === 'cart' && isCartBumping;
 
             return (
               <button
@@ -272,7 +287,9 @@ export const Navigation: React.FC = () => {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <div className="relative w-10 h-10 flex items-center justify-center">
+                <div className={`relative w-10 h-10 flex items-center justify-center transition-transform duration-300 ${
+                  isThisCartBumping ? 'scale-125' : 'scale-100'
+                }`}>
                   <Icon
                     className="w-5 h-5 transition-transform duration-150"
                     strokeWidth={isHighlighted || isTabActive ? 2.5 : 2}
@@ -289,7 +306,9 @@ export const Navigation: React.FC = () => {
                         isLight
                           ? 'cosmic-gradient-bg-light shadow-pink-600/30'
                           : 'cosmic-gradient-bg shadow-pink-600/50'
-                      } text-white font-black text-[9px] min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-sm pointer-events-none ring-1 ring-white/30`}
+                      } text-white font-black text-[9px] min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-sm pointer-events-none ring-1 ring-white/30 transition-transform duration-300 ${
+                        isThisCartBumping ? 'scale-125' : 'scale-100'
+                      }`}
                     >
                       {item.badge > 99 ? '99+' : item.badge}
                     </span>

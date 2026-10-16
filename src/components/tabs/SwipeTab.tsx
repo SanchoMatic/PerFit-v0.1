@@ -68,7 +68,12 @@ export const SwipeTab: React.FC = () => {
   const [isBrandMenuOpen, setIsBrandMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSavedOverlayOpen, setIsSavedOverlayOpen] = useState(false);
-  const [isSavingThrow, setIsSavingThrow] = useState(false);
+  const [savedThrowCard, setSavedThrowCard] = useState<ClothingItem | null>(null);
+  const [savedThrowAnimating, setSavedThrowAnimating] = useState(false);
+  const [cartThrowCard, setCartThrowCard] = useState<ClothingItem | null>(null);
+  const [cartThrowAnimating, setCartThrowAnimating] = useState(false);
+  const [fadingGlow, setFadingGlow] = useState<'like' | 'dislike' | null>(null);
+  const [glowFadingOut, setGlowFadingOut] = useState(false);
   const [savedButtonBump, setSavedButtonBump] = useState(false);
   const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
   const [brandSearchQuery, setBrandSearchQuery] = useState('');
@@ -180,41 +185,51 @@ export const SwipeTab: React.FC = () => {
   const aesthetics = ['all', ...TRENDING_AESTHETICS_25];
   const sizes = ['all', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'M Tall', 'L Tall'];
 
-  // Toss animations for Like and Dislike (smooth Tinder-like toss, strictly one card at a time)
+  // Toss animations for Like and Dislike with gradual glow fade-to-zero
   const triggerLike = () => {
     if (!currentItem || hasReachedDailyLimit || tossState || isSwipingRef.current) return;
     isSwipingRef.current = true;
-    setDragOffset({ x: 0, y: 0 }); // Clear drag offset immediately to prevent next card from jumping
+    setDragOffset({ x: 0, y: 0 }); // Clear drag offset immediately
     setTossState('like');
     setTimeout(() => {
       swipe('like', currentItem);
       setTossState(null);
       setDragOffset({ x: 0, y: 0 });
       setIsDragging(false);
+      // Gradually reduce gradient glow to zero instead of abruptly cutting off
+      setFadingGlow('like');
+      setGlowFadingOut(true);
       setTimeout(() => {
+        setFadingGlow(null);
+        setGlowFadingOut(false);
         isSwipingRef.current = false;
-      }, 60);
+      }, 450);
     }, 280);
   };
 
   const triggerDislike = () => {
     if (!currentItem || hasReachedDailyLimit || tossState || isSwipingRef.current) return;
     isSwipingRef.current = true;
-    setDragOffset({ x: 0, y: 0 }); // Clear drag offset immediately to prevent next card from jumping
+    setDragOffset({ x: 0, y: 0 }); // Clear drag offset immediately
     setTossState('dislike');
     setTimeout(() => {
       swipe('dislike', currentItem);
       setTossState(null);
       setDragOffset({ x: 0, y: 0 });
       setIsDragging(false);
+      // Gradually reduce gradient glow to zero instead of abruptly cutting off
+      setFadingGlow('dislike');
+      setGlowFadingOut(true);
       setTimeout(() => {
+        setFadingGlow(null);
+        setGlowFadingOut(false);
         isSwipingRef.current = false;
-      }, 60);
+      }, 450);
     }, 280);
   };
 
   const handleUndo = () => {
-    if (!canUndo || tossState !== null || isSwipingRef.current || isSavingThrow) return;
+    if (!canUndo || tossState !== null || isSwipingRef.current || savedThrowCard || cartThrowCard) return;
     setIsUndoing(true);
     undoLastSwipe();
     setTimeout(() => {
@@ -222,29 +237,68 @@ export const SwipeTab: React.FC = () => {
     }, 600);
   };
 
-  // 10 & 15. Save button throws product card to top right Saved button with slowed down, smooth curve
+  // Save button throws product card to top right Saved button without glitching or returning into stack
   const triggerSaveThrow = () => {
-    if (!currentItem || tossState !== null || isSwipingRef.current || isSavingThrow) return;
+    if (!currentItem || tossState !== null || isSwipingRef.current || savedThrowCard || cartThrowCard) return;
     isSwipingRef.current = true;
     setDragOffset({ x: 0, y: 0 });
-    setIsSavingThrow(true);
+    const itemToSave = currentItem;
+    setSavedThrowCard(itemToSave);
+    setSavedThrowAnimating(false);
 
-    // Smooth, slowed-down shrink and throw into top-right Saved button (approx 650ms)
+    requestAnimationFrame(() => {
+      setSavedThrowAnimating(true);
+    });
+
+    // Advance stack after slight delay so throw start is visually clear
+    setTimeout(() => {
+      swipe('like', itemToSave);
+      toggleWishlist(itemToSave);
+    }, 120);
+
+    // Bump saved button when card arrives
     setTimeout(() => {
       setSavedButtonBump(true);
-      swipe('like', currentItem);
-      toggleWishlist(currentItem);
-
       setTimeout(() => {
         setSavedButtonBump(false);
       }, 350);
     }, 550);
 
+    // Complete saving throw animation cleanly
     setTimeout(() => {
-      setIsSavingThrow(false);
+      setSavedThrowCard(null);
+      setSavedThrowAnimating(false);
       setDragOffset({ x: 0, y: 0 });
       isSwipingRef.current = false;
-    }, 680);
+    }, 660);
+  };
+
+  // Bottom quick bar / card Add to Cart throws product card down into nav bar cart icon
+  const triggerCartThrow = (item?: ClothingItem) => {
+    const targetItem = item || currentItem;
+    if (!targetItem || tossState !== null || isSwipingRef.current || savedThrowCard || cartThrowCard) return;
+    isSwipingRef.current = true;
+    setDragOffset({ x: 0, y: 0 });
+    setCartThrowCard(targetItem);
+    setCartThrowAnimating(false);
+
+    requestAnimationFrame(() => {
+      setCartThrowAnimating(true);
+    });
+
+    // Advance stack and add to cart (skip generic fly because card itself is tossing)
+    setTimeout(() => {
+      swipe('like', targetItem);
+      addToCart(targetItem, undefined, undefined, undefined, true);
+    }, 120);
+
+    // Complete cart toss animation cleanly
+    setTimeout(() => {
+      setCartThrowCard(null);
+      setCartThrowAnimating(false);
+      setDragOffset({ x: 0, y: 0 });
+      isSwipingRef.current = false;
+    }, 620);
   };
 
   // Drag handlers for desktop and mobile
@@ -304,7 +358,8 @@ export const SwipeTab: React.FC = () => {
   const effectiveLikeOpacity = tossState === 'like' ? 1 : Math.min(1, Math.max(0, dragOffset.x / 80));
   const effectiveDislikeOpacity = tossState === 'dislike' ? 1 : Math.min(1, Math.max(0, -dragOffset.x / 80));
   const dragProgress = Math.min(1, Math.abs(dragOffset.x) / 120);
-  const nextCardDetailsOpacity = tossState || isSavingThrow ? 1 : Math.min(1, 0.65 + dragProgress * 0.35);
+  const nextCardDetailsOpacity =
+    tossState || savedThrowCard || cartThrowCard ? 1 : Math.min(1, 0.65 + dragProgress * 0.35);
 
   const cardTranslateX = tossState === 'like' ? 440 : tossState === 'dislike' ? -440 : dragOffset.x;
   const cardTranslateY = tossState ? -25 : dragOffset.y;
@@ -312,18 +367,23 @@ export const SwipeTab: React.FC = () => {
 
   return (
     <div className="relative min-h-[calc(100dvh-64px)] h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] overflow-hidden flex flex-col justify-between pb-20 px-4 pt-[max(8px,env(safe-area-inset-top))] max-w-md mx-auto select-none touch-none overscroll-none">
-      {/* Dynamic Gradual Gradient Glow matching Like (green), Dislike (red), or Undo (goldish yellow lower-middle) */}
+      {/* Dynamic Gradual Gradient Glow: gradually reduces to zero after decision animation finishes */}
       <div
-        className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-200 ease-out"
+        className="pointer-events-none fixed inset-0 z-0 transition-opacity ease-out"
         style={{
+          transitionDuration: glowFadingOut ? '450ms' : '150ms',
           opacity: isUndoing
             ? 0.95
+            : glowFadingOut
+            ? 0
+            : fadingGlow
+            ? 0.75
             : Math.max(effectiveLikeOpacity, effectiveDislikeOpacity) * 0.85,
           background: isUndoing
             ? 'radial-gradient(ellipse at 50% 68%, rgba(245, 158, 11, 0.7) 0%, rgba(217, 119, 6, 0.3) 45%, transparent 75%)'
-            : effectiveLikeOpacity > 0.05 || tossState === 'like' || dragOffset.x > 0
-            ? `radial-gradient(ellipse at 70% 40%, rgba(16, 185, 129, ${effectiveLikeOpacity * 0.65}) 0%, rgba(16, 185, 129, 0.2) 45%, transparent 75%)`
-            : `radial-gradient(ellipse at 30% 40%, rgba(239, 68, 68, ${effectiveDislikeOpacity * 0.65}) 0%, rgba(239, 68, 68, 0.2) 45%, transparent 75%)`,
+            : (tossState === 'like' || fadingGlow === 'like' || effectiveLikeOpacity > 0.05 || dragOffset.x > 0)
+            ? `radial-gradient(ellipse at 70% 40%, rgba(16, 185, 129, 0.65) 0%, rgba(16, 185, 129, 0.2) 45%, transparent 75%)`
+            : `radial-gradient(ellipse at 30% 40%, rgba(239, 68, 68, 0.65) 0%, rgba(239, 68, 68, 0.2) 45%, transparent 75%)`,
         }}
       />
 
@@ -536,18 +596,16 @@ export const SwipeTab: React.FC = () => {
                 key={nextItem.id}
                 style={{
                   transform:
-                    tossState || isSavingThrow
+                    tossState || savedThrowCard || cartThrowCard
                       ? 'translate3d(0, 0, 0) scale(1)'
                       : `translate3d(0, ${(1 - dragProgress) * 10}px, 0) scale(${0.95 + dragProgress * 0.05})`,
                   opacity:
-                    tossState || isSavingThrow
+                    tossState || savedThrowCard || cartThrowCard
                       ? 1
                       : Math.min(1, 0.82 + dragProgress * 0.18),
                   transition:
-                    tossState || isSavingThrow
-                      ? isSavingThrow
-                        ? 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms ease-out'
-                        : 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
+                    tossState || savedThrowCard || cartThrowCard
+                      ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
                       : isDragging
                       ? 'none'
                       : 'transform 220ms ease-out, opacity 220ms ease-out',
@@ -571,10 +629,8 @@ export const SwipeTab: React.FC = () => {
                     style={{
                       opacity: nextCardDetailsOpacity,
                       transition:
-                        tossState || isSavingThrow
-                          ? isSavingThrow
-                            ? 'opacity 650ms ease-out'
-                            : 'opacity 280ms ease-out'
+                        tossState || savedThrowCard || cartThrowCard
+                          ? 'opacity 280ms ease-out'
                           : isDragging
                           ? 'none'
                           : 'opacity 220ms ease-out',
@@ -633,10 +689,8 @@ export const SwipeTab: React.FC = () => {
                   style={{
                     opacity: nextCardDetailsOpacity,
                     transition:
-                      tossState || isSavingThrow
-                        ? isSavingThrow
-                          ? 'opacity 650ms ease-out'
-                          : 'opacity 280ms ease-out'
+                      tossState || savedThrowCard || cartThrowCard
+                        ? 'opacity 280ms ease-out'
                         : isDragging
                         ? 'none'
                         : 'opacity 220ms ease-out',
@@ -672,16 +726,12 @@ export const SwipeTab: React.FC = () => {
                 }
               }}
               style={{
-                transform: isSavingThrow
-                  ? 'translate3d(calc(44vw), -55vh, 0) scale(0.1) rotate(16deg)'
-                  : isUndoing
+                transform: isUndoing
                   ? 'translate3d(0, 0, 0) scale(1)'
                   : `translate3d(${cardTranslateX}px, ${cardTranslateY}px, 0) rotate(${rotation}deg)`,
-                opacity: isSavingThrow ? 0.05 : cardOpacity,
+                opacity: cardOpacity,
                 cursor: isDragging ? 'grabbing' : 'pointer',
-                transition: isSavingThrow
-                  ? 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms ease-out'
-                  : tossState
+                transition: tossState
                   ? 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 280ms ease-out'
                   : isDragging
                   ? 'none'
@@ -799,11 +849,11 @@ export const SwipeTab: React.FC = () => {
                   onTouchEnd={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    addToCart(currentItem);
+                    triggerCartThrow(currentItem);
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    addToCart(currentItem);
+                    triggerCartThrow(currentItem);
                   }}
                   className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-black text-xs font-black transition-transform active:scale-95 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 min-h-[38px] cursor-pointer"
                 >
@@ -812,6 +862,44 @@ export const SwipeTab: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {/* 1. Dedicated saving throw card flying to top-right saved button */}
+            {savedThrowCard && (
+              <div
+                key={`saved-throw-${savedThrowCard.id}`}
+                style={{
+                  transform: savedThrowAnimating
+                    ? 'translate3d(calc(44vw), -55vh, 0) scale(0.08) rotate(16deg)'
+                    : 'translate3d(0, 0, 0) scale(1) rotate(0deg)',
+                  opacity: savedThrowAnimating ? 0.05 : 1,
+                  transition: 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms ease-out',
+                }}
+                className="absolute inset-0 w-full h-full max-h-[min(54vh,460px)] rounded-3xl overflow-hidden border-2 border-pink-500 bg-slate-950 shadow-2xl pointer-events-none z-40 flex flex-col justify-between"
+              >
+                <div className="relative flex-1 w-full min-h-0 overflow-hidden bg-slate-900">
+                  <img src={savedThrowCard.image} alt={savedThrowCard.name} className="w-full h-full object-cover" />
+                </div>
+              </div>
+            )}
+
+            {/* 2. Dedicated cart throw card flying to bottom nav bar cart icon */}
+            {cartThrowCard && (
+              <div
+                key={`cart-throw-${cartThrowCard.id}`}
+                style={{
+                  transform: cartThrowAnimating
+                    ? 'translate3d(0, 48vh, 0) scale(0.12) rotate(-8deg)'
+                    : 'translate3d(0, 0, 0) scale(1) rotate(0deg)',
+                  opacity: cartThrowAnimating ? 0.05 : 1,
+                  transition: 'transform 620ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 620ms ease-out',
+                }}
+                className="absolute inset-0 w-full h-full max-h-[min(54vh,460px)] rounded-3xl overflow-hidden border-2 border-emerald-400 bg-slate-950 shadow-2xl pointer-events-none z-40 flex flex-col justify-between"
+              >
+                <div className="relative flex-1 w-full min-h-0 overflow-hidden bg-slate-900">
+                  <img src={cartThrowCard.image} alt={cartThrowCard.name} className="w-full h-full object-cover" />
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Empty Deck State */
@@ -862,7 +950,7 @@ export const SwipeTab: React.FC = () => {
         {/* 1. Red Dislike Button - Circular aspect-square & brought closer to center */}
         <button
           onClick={triggerDislike}
-          disabled={!currentItem || hasReachedDailyLimit || tossState !== null || isSavingThrow}
+          disabled={!currentItem || hasReachedDailyLimit || tossState !== null || Boolean(savedThrowCard || cartThrowCard)}
           className="relative group w-[76px] h-[76px] min-w-[76px] min-h-[76px] aspect-square rounded-full bg-red-950/20 border-2 border-red-500/80 hover:bg-red-500/15 hover:border-red-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-red-500/15 flex items-center justify-center disabled:opacity-40 cursor-pointer"
           title="Pass / Dislike (Swipe Left)"
         >
@@ -874,7 +962,7 @@ export const SwipeTab: React.FC = () => {
           {/* 2. Undo Button */}
           <button
             onClick={handleUndo}
-            disabled={!canUndo || tossState !== null || isSavingThrow}
+            disabled={!canUndo || tossState !== null || Boolean(savedThrowCard || cartThrowCard)}
             className={`w-[54px] h-[54px] min-w-[54px] min-h-[54px] aspect-square rounded-full border transition-all duration-300 shadow-md flex items-center justify-center cursor-pointer ${
               canUndo
                 ? 'border-amber-400 bg-amber-950/50 text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.7)] hover:border-amber-300 hover:text-amber-200 hover:scale-105 active:scale-95 animate-pulse'
@@ -891,7 +979,7 @@ export const SwipeTab: React.FC = () => {
               e.stopPropagation();
               triggerSaveThrow();
             }}
-            disabled={!currentItem || tossState !== null || isSavingThrow}
+            disabled={!currentItem || tossState !== null || Boolean(savedThrowCard || cartThrowCard)}
             className={`w-[54px] h-[54px] min-w-[54px] min-h-[54px] aspect-square rounded-full transition-all shadow-md flex items-center justify-center group cursor-pointer ${
               currentItem && isItemInWishlist(currentItem.id)
                 ? `${isLight ? 'cosmic-gradient-bg-light' : 'cosmic-gradient-bg'} text-white shadow-[0_0_16px_rgba(219,39,119,0.55)] border-2 border-transparent`
@@ -912,7 +1000,7 @@ export const SwipeTab: React.FC = () => {
         {/* 4. Green Like Button - Circular aspect-square & brought closer to center */}
         <button
           onClick={triggerLike}
-          disabled={!currentItem || hasReachedDailyLimit || tossState !== null || isSavingThrow}
+          disabled={!currentItem || hasReachedDailyLimit || tossState !== null || Boolean(savedThrowCard || cartThrowCard)}
           className="relative group w-[76px] h-[76px] min-w-[76px] min-h-[76px] aspect-square rounded-full bg-emerald-600 hover:bg-emerald-500 border-2 border-emerald-400 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-600/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] flex items-center justify-center disabled:opacity-40 cursor-pointer"
           title="Like & Curate (Swipe Right)"
         >
@@ -1321,10 +1409,16 @@ export const SwipeTab: React.FC = () => {
         </div>
       )}
 
-      {/* 4. Saved Overlay (Wishlist) dropping down from top with smooth bouncy animation */}
+      {/* 4. Saved Overlay (Wishlist) dropping down from top over the swipe page */}
       {isSavedOverlayOpen && (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl overflow-y-auto overscroll-contain animate-wishlist-dropdown pb-28">
-          <WishlistTab onClose={() => setIsSavedOverlayOpen(false)} isOverlay={true} />
+        <div className="fixed inset-0 z-50 pointer-events-auto overflow-hidden">
+          {/* Subtle backdrop so the main swipe page is visible underneath and becomes gradually more visible on pull-down */}
+          <div className="fixed inset-0 bg-black/55 backdrop-blur-sm pointer-events-none transition-opacity duration-300" />
+          <div className="relative w-full h-full overflow-y-auto overscroll-contain animate-wishlist-dropdown pb-28">
+            <div className={`min-h-full ${isLight ? 'bg-white/98' : 'bg-slate-950/98'} shadow-2xl`}>
+              <WishlistTab onClose={() => setIsSavedOverlayOpen(false)} isOverlay={true} />
+            </div>
+          </div>
         </div>
       )}
     </div>

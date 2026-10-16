@@ -160,6 +160,42 @@ const PortraitModeOrientationHandler: React.FC = () => {
   );
 };
 
+// App-wide floating card toss animation to the nav bar cart icon
+const CartFlyingCardOverlay: React.FC = () => {
+  const { cartFlyingItem } = useApp();
+  if (!cartFlyingItem) return null;
+
+  const targetX = typeof window !== 'undefined' ? window.innerWidth / 2 : 200;
+  const targetY = typeof window !== 'undefined' ? window.innerHeight - 52 : 600;
+  const startX = cartFlyingItem.startX;
+  const startY = cartFlyingItem.startY;
+  const tx = targetX - startX;
+  const ty = targetY - startY;
+
+  return (
+    <div
+      key={`${cartFlyingItem.item.id}-${Date.now()}`}
+      className="fixed z-[9999] pointer-events-none select-none"
+      style={{
+        left: `${startX - 32}px`,
+        top: `${startY - 42}px`,
+        width: '64px',
+        height: '84px',
+        ['--toss-tx' as any]: `${tx}px`,
+        ['--toss-ty' as any]: `${ty}px`,
+      }}
+    >
+      <div className="w-full h-full rounded-2xl overflow-hidden border-2 border-emerald-400 shadow-2xl bg-slate-900 animate-toss-to-cart">
+        <img
+          src={cartFlyingItem.item.image}
+          alt={cartFlyingItem.item.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    </div>
+  );
+};
+
 const AppShell: React.FC = () => {
   const { userProfile, activeTab, tabResetTimestamp } = useApp();
   const isLight = userProfile.preferences.theme === 'light';
@@ -186,6 +222,7 @@ const AppShell: React.FC = () => {
       {/* Non-invasive cosmic night sky theme (dark) and day sky cosmic theme (light) */}
       <CosmicSkyBackground isLight={isLight} />
       <Toasts />
+      <CartFlyingCardOverlay />
       <MainContent />
       <InboxModal />
       <SendItemModal />

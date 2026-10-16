@@ -155,23 +155,22 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
         isOverlay ? 'pt-3' : 'pt-[max(8px,env(safe-area-inset-top))]'
       } max-w-md mx-auto relative`}
     >
-      {/* 1. Instagram Vanish Mode Style Pull-Down Exit Indicator (gradually reveals as user pulls down from top) */}
+      {/* 1. Instagram Vanish Mode Style Pull-Down Exit Indicator (stays high up, simple exit label) */}
       {isOverlay && (
         <div
-          className="sticky top-0 z-30 flex flex-col items-center justify-center pointer-events-none py-1 transition-all"
+          className="sticky top-1 z-30 flex flex-col items-center justify-center pointer-events-none py-0.5 transition-opacity duration-150"
           style={{
-            opacity: pullY > 5 ? Math.min(1, (pullY - 5) / 28) : 0,
-            transform: `translate3d(0, ${Math.min(pullY * 0.4, 28)}px, 0)`,
+            opacity: pullY > 4 ? Math.min(1, (pullY - 4) / 22) : 0,
           }}
         >
           <div
-            className={`rounded-full transition-all duration-200 flex items-center justify-center shadow-2xl relative ${
+            className={`rounded-full transition-all duration-200 flex items-center justify-center shadow-xl relative ${
               pullY >= PULL_THRESHOLD
-                ? 'w-11 h-11 bg-slate-900 border-2 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.8)] scale-110'
-                : 'w-10 h-10 bg-slate-950/95 border-2 border-slate-700/80 shadow-md scale-95'
+                ? 'w-10 h-10 bg-slate-900 border-2 border-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.7)] scale-105'
+                : 'w-9 h-9 bg-slate-950/95 border-2 border-slate-700/80 shadow-md scale-95'
             }`}
             style={{
-              transform: `scale(${0.75 + pullProgress * 0.35}) rotate(${pullProgress * 90}deg)`,
+              transform: `scale(${0.8 + pullProgress * 0.25}) rotate(${pullProgress * 90}deg)`,
             }}
           >
             {/* SVG Circular Fill Progress Meter around the exit X */}
@@ -179,12 +178,12 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
               <circle
                 cx="50%"
                 cy="50%"
-                r="16"
+                r="14"
                 fill="none"
                 stroke={pullY >= PULL_THRESHOLD ? '#34d399' : '#64748b'}
                 strokeWidth="2.5"
-                strokeDasharray="100"
-                strokeDashoffset={100 - pullProgress * 100}
+                strokeDasharray="88"
+                strokeDashoffset={88 - pullProgress * 88}
                 strokeLinecap="round"
                 className="transition-all duration-75"
               />
@@ -192,19 +191,19 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
             <X
               className={`transition-colors relative z-10 ${
                 pullY >= PULL_THRESHOLD
-                  ? 'w-5 h-5 text-emerald-300 stroke-[3]'
-                  : 'w-4 h-4 text-slate-300 stroke-[2.2]'
+                  ? 'w-4 h-4 text-emerald-300 stroke-[3]'
+                  : 'w-3.5 h-3.5 text-slate-300 stroke-[2.2]'
               }`}
             />
           </div>
           <span
-            className={`text-[10px] font-bold uppercase tracking-wider mt-1 transition-all ${
+            className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 transition-colors ${
               pullY >= PULL_THRESHOLD
-                ? 'text-emerald-400 scale-105 font-black drop-shadow'
+                ? 'text-emerald-400 font-black drop-shadow'
                 : 'text-slate-400'
             }`}
           >
-            {pullY >= PULL_THRESHOLD ? 'Release to exit' : 'Pull down to exit'}
+            exit
           </span>
         </div>
       )}
