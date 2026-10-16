@@ -1,724 +1,792 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
-  Upload as UploadIcon,
-  Plus,
-  ShoppingBag,
   Heart,
-  TrendingUp,
-  CheckCircle2,
-  RotateCcw,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  Flame,
-  X,
-  HelpCircle,
-  Send,
+  MessageCircle,
+  Share2,
+  ShoppingBag,
   Sparkles,
+  TrendingUp,
+  Bookmark,
+  Check,
+  Send,
+  X,
+  Flame,
+  ArrowUpRight,
+  Plus,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { DissectedGarment, ClothingItem } from '../../types';
+import { ClothingItem } from '../../types';
 import { INITIAL_CATALOG } from '../../data/mockCatalog';
+
+type ForYouFeedType = 'new-releases' | 'trending' | 'friends';
+
+interface FeedPost {
+  id: string;
+  author: {
+    name: string;
+    handle: string;
+    avatar: string;
+    verified?: boolean;
+    badge?: string;
+  };
+  timestamp: string;
+  content: string;
+  tag?: string;
+  item: ClothingItem;
+  likes: number;
+  comments: number;
+  reposts: number;
+}
 
 export const UploadTab: React.FC = () => {
   const {
-    currentDissection,
-    isAnalyzing,
-    uploadedImageUrl,
-    dissectImage,
-    addDissectedStyleToAlgorithm,
+    userProfile,
     addToCart,
     toggleWishlist,
     isItemInWishlist,
-    setActiveTab,
-    showToast,
-    activeTab,
-    tabResetTimestamp,
-    userProfile,
     setSendItemModalItem,
-    breakdownHistoryItems,
+    friends,
   } = useApp();
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const breakdownCarouselRef = useRef<HTMLDivElement>(null);
-  const [selectedGarmentId, setSelectedGarmentId] = useState<string | null>(null);
-  const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
-  const [showLookupInfo, setShowLookupInfo] = useState(false);
 
   const isLight = userProfile.preferences.theme === 'light';
 
-  const scrollBreakdownCarousel = (direction: 'left' | 'right') => {
-    if (breakdownCarouselRef.current) {
-      const offset = direction === 'left' ? -200 : 200;
-      breakdownCarouselRef.current.scrollBy({ left: offset, behavior: 'smooth' });
-    }
+  // Active sub-feed: 'new-releases', 'trending', or 'friends'
+  const [activeFeed, setActiveFeed] = useState<ForYouFeedType>('new-releases');
+  const [inspectItem, setInspectItem] = useState<ClothingItem | null>(null);
+
+  // Local likes tracking
+  const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
+
+  const togglePostLike = (postId: string) => {
+    setLikedPostIds((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
   };
 
-  // Return to main upload view when tab is clicked
-  useEffect(() => {
-    setInspectItem(null);
-  }, [activeTab, tabResetTimestamp]);
+  // Horizontal Twitter-style swipe gesture handling between sub-tabs
+  const touchStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isHorizontalSwipe = useRef<boolean | null>(null);
 
-  // Trending items for "Hot Right Now" carousel based on likes, wishlists, and purchases
-  const trendingItems = useMemo(() => {
-    const dept = userProfile.preferences.preferredDepartment || 'both';
-    return [...INITIAL_CATALOG]
-      .filter((i) => !i.isBundle)
-      .filter((item) => {
-        if (dept === 'men') return item.gender !== 'women';
-        if (dept === 'women') return item.gender !== 'men';
-        return true;
-      })
-      .sort((a, b) => {
-        const scoreA = (a.likeCount || 0) + (a.savedCount || 0) * 1.4 + (a.purchaseCount || 0) * 2;
-        const scoreB = (b.likeCount || 0) + (b.savedCount || 0) * 1.4 + (b.purchaseCount || 0) * 2;
-        return scoreB - scoreA;
-      });
-  }, [userProfile.preferences.preferredDepartment]);
+  const feedsOrder: ForYouFeedType[] = ['new-releases', 'trending', 'friends'];
 
-  // Automatic gentle rotation of trending items carousel
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (carouselRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-        if (scrollLeft + clientWidth >= scrollWidth - 10) {
-          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          carouselRef.current.scrollBy({ left: 160, behavior: 'smooth' });
-        }
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    isHorizontalSwipe.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isHorizontalSwipe.current === false) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+
+    if (isHorizontalSwipe.current === null) {
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        isHorizontalSwipe.current = Math.abs(dx) > Math.abs(dy) * 1.2;
       }
-    }, 3800);
-    return () => clearInterval(timer);
-  }, []);
-
-  const scrollCarousel = (direction: 'left' | 'right') => {
-    if (carouselRef.current) {
-      const offset = direction === 'left' ? -170 : 170;
-      carouselRef.current.scrollBy({ left: offset, behavior: 'smooth' });
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isHorizontalSwipe.current !== true) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const currentIndex = feedsOrder.indexOf(activeFeed);
 
-    if (!file.type.startsWith('image/')) {
-      showToast('Please upload an image file (PNG, JPG, WEBP)', '', 'red');
-      return;
+    if (dx < -55 && currentIndex < feedsOrder.length - 1) {
+      // Swiped Left -> Advance to next feed
+      setActiveFeed(feedsOrder[currentIndex + 1]);
+    } else if (dx > 55 && currentIndex > 0) {
+      // Swiped Right -> Go to previous feed
+      setActiveFeed(feedsOrder[currentIndex - 1]);
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      dissectImage(base64, file.type);
-    };
-    reader.readAsDataURL(file);
+    isHorizontalSwipe.current = null;
   };
 
-  const handleTriggerUpload = () => {
-    fileInputRef.current?.click();
-  };
+  // Filter catalog items for feeds
+  const catalog = useMemo(() => INITIAL_CATALOG.filter((i) => !i.isBundle), []);
 
-  const selectedGarment: DissectedGarment | undefined =
-    currentDissection?.items.find((g) => g.id === selectedGarmentId) ||
-    currentDissection?.items[0];
+  // 1. Mock Content: New Releases Feed (Chronological fresh drops)
+  const newReleasesPosts: FeedPost[] = useMemo(() => {
+    return [
+      {
+        id: 'nr-1',
+        author: {
+          name: 'Acne Studios',
+          handle: 'acnestudios',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+          badge: 'Brand Drop',
+        },
+        timestamp: '18m',
+        content: 'Drop 04: The 1996 Distressed Straight Leg. Cut from Japanese selvedge denim with hand-finished stone washing.',
+        tag: 'FW26 Capsule',
+        item: catalog[0] || INITIAL_CATALOG[0],
+        likes: 482,
+        comments: 38,
+        reposts: 54,
+      },
+      {
+        id: 'nr-2',
+        author: {
+          name: 'Lemaire Official',
+          handle: 'lemaire',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+          badge: 'New Release',
+        },
+        timestamp: '1h',
+        content: 'New Arrival: Dry Silk Twisted Collar Shirt. Drapes effortlessly with mother-of-pearl buttons and relaxed drop shoulders.',
+        tag: 'Limited Run',
+        item: catalog[1] || INITIAL_CATALOG[1],
+        likes: 890,
+        comments: 67,
+        reposts: 112,
+      },
+      {
+        id: 'nr-3',
+        author: {
+          name: 'Our Legacy Workshop',
+          handle: 'ourlegacy',
+          avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+        },
+        timestamp: '3h',
+        content: 'Just arrived in stores: Brushed Mohair Cardigan in Dusty Olive. Made from custom Italian yarn blend.',
+        tag: 'Restock Drop',
+        item: catalog[2] || INITIAL_CATALOG[2],
+        likes: 1240,
+        comments: 94,
+        reposts: 180,
+      },
+      {
+        id: 'nr-4',
+        author: {
+          name: 'Fear of God',
+          handle: 'fearofgod',
+          avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+          badge: 'Official',
+        },
+        timestamp: '5h',
+        content: 'Collection 8 Core Drop: Heavyweight Fleece Hoodie. French terry cotton with silicone brand plaque at hood.',
+        tag: 'Core Essentials',
+        item: catalog[3] || INITIAL_CATALOG[3],
+        likes: 2150,
+        comments: 142,
+        reposts: 310,
+      },
+      {
+        id: 'nr-5',
+        author: {
+          name: 'A-COLD-WALL*',
+          handle: 'acoldwall',
+          avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+        },
+        timestamp: '8h',
+        content: 'Technical Asymmetrical Utility Vest. Multi-compartment hardware pockets with waterproof taped seams.',
+        tag: 'Technical Wear',
+        item: catalog[4] || INITIAL_CATALOG[4],
+        likes: 980,
+        comments: 53,
+        reposts: 78,
+      },
+      {
+        id: 'nr-6',
+        author: {
+          name: 'Maison Margiela',
+          handle: 'margiela',
+          avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+          badge: 'Runway Drop',
+        },
+        timestamp: '12h',
+        content: 'The Replica Low-Top in Paint Splatter Nappa. Finished by hand with paint treatment that wears uniquely with age.',
+        tag: 'Iconic',
+        item: catalog[5] || INITIAL_CATALOG[5],
+        likes: 3420,
+        comments: 210,
+        reposts: 540,
+      },
+      {
+        id: 'nr-7',
+        author: {
+          name: 'Kith Classics',
+          handle: 'kith',
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+        },
+        timestamp: '1d',
+        content: 'Winter Palette: Heavy Herringbone Overcoat with satin interior lining and horn buttons.',
+        tag: 'Seasonal Drop',
+        item: catalog[6] || INITIAL_CATALOG[6],
+        likes: 1840,
+        comments: 118,
+        reposts: 220,
+      },
+    ];
+  }, [catalog]);
+
+  // 2. Mock Content: Trending Feed (Viral fashion moments & hot ranking pieces)
+  const trendingPosts: FeedPost[] = useMemo(() => {
+    return [
+      {
+        id: 'trend-1',
+        author: {
+          name: 'Fashion Intelligence',
+          handle: 'fashionintel',
+          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+          badge: 'Trend #1',
+        },
+        timestamp: '2h',
+        content: '🔥 Trending #1 this week: Wide pleated wool trousers paired with cropped structured outerwear. Community saves up 340%.',
+        tag: 'Top Trend #1',
+        item: catalog[7] || catalog[0] || INITIAL_CATALOG[0],
+        likes: 5420,
+        comments: 312,
+        reposts: 890,
+      },
+      {
+        id: 'trend-2',
+        author: {
+          name: 'Streetwear Daily',
+          handle: 'streetweardaily',
+          avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+          badge: 'Viral Fit',
+        },
+        timestamp: '4h',
+        content: 'The oversized vintage wash bomber silhouette has officially overtaken standard puffers in major cities. Here is the standout piece.',
+        tag: 'Viral Piece',
+        item: catalog[8] || catalog[1] || INITIAL_CATALOG[1],
+        likes: 4180,
+        comments: 245,
+        reposts: 670,
+      },
+      {
+        id: 'trend-3',
+        author: {
+          name: 'Curation Bureau',
+          handle: 'curationbureau',
+          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80',
+          verified: true,
+          badge: 'Trend #2',
+        },
+        timestamp: '6h',
+        content: 'Gorpcore meets quiet luxury: technical waterproof shells in muted earthy olive tones are the most saved aesthetic this month.',
+        tag: 'Most Saved',
+        item: catalog[9] || catalog[2] || INITIAL_CATALOG[2],
+        likes: 3820,
+        comments: 188,
+        reposts: 420,
+      },
+      {
+        id: 'trend-4',
+        author: {
+          name: 'Archive Fashion Hub',
+          handle: 'archivehub',
+          avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80',
+        },
+        timestamp: '10h',
+        content: 'Chunky lug-sole derbies and square-toe loafers remain undefeated for transitional styling. Over 2,100 user checkouts this week.',
+        tag: 'Footwear Trend',
+        item: catalog[10] || catalog[3] || INITIAL_CATALOG[3],
+        likes: 2980,
+        comments: 140,
+        reposts: 330,
+      },
+      {
+        id: 'trend-5',
+        author: {
+          name: 'Style Forecast',
+          handle: 'styleforecast',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
+          badge: 'Trend #3',
+        },
+        timestamp: '14h',
+        content: 'Mohair blends and open-gauge cardigans are hitting peak engagement on the swipe feed across all age groups.',
+        tag: 'Knitwear Surge',
+        item: catalog[11] || catalog[4] || INITIAL_CATALOG[4],
+        likes: 3670,
+        comments: 204,
+        reposts: 510,
+      },
+      {
+        id: 'trend-6',
+        author: {
+          name: 'Aesthetic Index',
+          handle: 'aestheticindex',
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=160&q=80',
+        },
+        timestamp: '1d',
+        content: 'Monochromatic charcoal and espresso brown layered fits are pacing +180% week-over-week. Minimalist luxury is leading the algorithm.',
+        tag: 'Palette Trend',
+        item: catalog[12] || catalog[5] || INITIAL_CATALOG[5],
+        likes: 4890,
+        comments: 320,
+        reposts: 740,
+      },
+    ];
+  }, [catalog]);
+
+  // 3. Mock Content: Friends Feed (Real-time social style updates from friends)
+  const friendsPosts: FeedPost[] = useMemo(() => {
+    const friendList = friends && friends.length > 0 ? friends : [
+      { id: 'f-1', name: 'Alex Chen', handle: 'alexchen', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80' },
+      { id: 'f-2', name: 'Mia Tanaka', handle: 'miatanaka', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=160&q=80' },
+      { id: 'f-3', name: 'Jordan Lee', handle: 'jordanlee', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80' },
+      { id: 'f-4', name: 'Marcus Vance', handle: 'marcusvance', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80' },
+      { id: 'f-5', name: 'Elena Rostova', handle: 'elenarostova', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80' },
+    ];
+
+    return [
+      {
+        id: 'friend-1',
+        author: {
+          name: friendList[0]?.name || 'Alex Chen',
+          handle: friendList[0]?.handle || 'alexchen',
+          avatar: friendList[0]?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
+          badge: 'Styled Fit',
+        },
+        timestamp: '25m',
+        content: 'Finally unboxed the boxy cropped poplin. The shoulder construction and fabric drape are on another level! ☕️✨',
+        tag: 'Wore Today',
+        item: catalog[0] || INITIAL_CATALOG[0],
+        likes: 42,
+        comments: 6,
+        reposts: 2,
+      },
+      {
+        id: 'friend-2',
+        author: {
+          name: friendList[1]?.name || 'Mia Tanaka',
+          handle: friendList[1]?.handle || 'miatanaka',
+          avatar: friendList[1]?.avatar || 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=160&q=80',
+          badge: 'Saved to Wishlist',
+        },
+        timestamp: '1h',
+        content: 'Saved this knit cardigan for fall layering. Should I grab the olive or charcoal colorway?',
+        tag: 'Wishlist Pick',
+        item: catalog[2] || INITIAL_CATALOG[2],
+        likes: 68,
+        comments: 14,
+        reposts: 3,
+      },
+      {
+        id: 'friend-3',
+        author: {
+          name: friendList[2]?.name || 'Jordan Lee',
+          handle: friendList[2]?.handle || 'jordanlee',
+          avatar: friendList[2]?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
+        },
+        timestamp: '3h',
+        content: 'Quality check on the selvedge straight legs: 10/10 heavy stiffness with zero break-in discomfort. Highly recommend.',
+        tag: 'Review',
+        item: catalog[1] || INITIAL_CATALOG[1],
+        likes: 95,
+        comments: 11,
+        reposts: 5,
+      },
+      {
+        id: 'friend-4',
+        author: {
+          name: friendList[3]?.name || 'Marcus Vance',
+          handle: friendList[3]?.handle || 'marcusvance',
+          avatar: friendList[3]?.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
+          badge: 'Added to Cart',
+        },
+        timestamp: '5h',
+        content: 'Copped the heavyweight hoodie during the morning restock before it sells out again. 🔥',
+        tag: 'Just Purchased',
+        item: catalog[3] || INITIAL_CATALOG[3],
+        likes: 124,
+        comments: 18,
+        reposts: 4,
+      },
+      {
+        id: 'friend-5',
+        author: {
+          name: friendList[4]?.name || 'Elena Rostova',
+          handle: friendList[4]?.handle || 'elenarostova',
+          avatar: friendList[4]?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80',
+        },
+        timestamp: '9h',
+        content: 'Sunday museum fit breakdown: minimalist structured coat paired with pleated trousers and leather Chelsea boots.',
+        tag: 'Fit Inspiration',
+        item: catalog[4] || INITIAL_CATALOG[4],
+        likes: 156,
+        comments: 23,
+        reposts: 9,
+      },
+      {
+        id: 'friend-6',
+        author: {
+          name: friendList[0]?.name || 'Alex Chen',
+          handle: friendList[0]?.handle || 'alexchen',
+          avatar: friendList[0]?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
+        },
+        timestamp: '1d',
+        content: 'Dissected an outfit from street fashion week using the camera tool. Matched with these exact trousers.',
+        tag: 'Look Dissection',
+        item: catalog[5] || INITIAL_CATALOG[5],
+        likes: 88,
+        comments: 9,
+        reposts: 6,
+      },
+    ];
+  }, [catalog, friends]);
+
+  // Current active posts depending on sub-tab
+  const currentPosts =
+    activeFeed === 'new-releases'
+      ? newReleasesPosts
+      : activeFeed === 'trending'
+      ? trendingPosts
+      : friendsPosts;
 
   return (
-    <div className="min-h-[calc(100vh-64px)] pb-28 px-4 pt-[max(16px,env(safe-area-inset-top))] max-w-md mx-auto">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-
-      {/* Screen Header - Simplified and clean */}
-      <div className="text-center mb-5">
-        <h1 className={`text-xl font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Outfit Breakdown</h1>
-        <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} mt-1`}>
-          scan photo to find clothing items
-        </p>
-      </div>
-
-      {!currentDissection && !isAnalyzing ? (
-        <div className="mt-2 space-y-3">
-          <div
-            onClick={handleTriggerUpload}
-            className={`group relative flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-dashed ${
-              isLight
-                ? 'border-slate-300 bg-white hover:border-pink-600 shadow-sm'
-                : 'border-slate-700 bg-slate-900/60 hover:border-pink-600 hover:bg-slate-900/90 shadow-xl shadow-black/50'
-            } transition-all duration-200 cursor-pointer text-center`}
-          >
-            {/* '?' Help Button on Upload Card */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowLookupInfo((prev) => !prev);
-              }}
-              className={`absolute top-3.5 right-3.5 p-2 rounded-full ${
-                isLight
-                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-                  : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-pink-600 border-slate-700'
-              } text-xs font-bold transition-all shadow-md z-10`}
-              title="How outfit lookup works"
-            >
-              <HelpCircle className="w-4 h-4" />
-            </button>
-
-            {/* Expandable Explanation of How Outfit Lookup Works */}
-            {showLookupInfo && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className={`w-full mb-4 p-3.5 rounded-2xl ${
-                  isLight
-                    ? 'bg-white border-pink-600/40 text-slate-800'
-                    : 'bg-slate-950/95 border-pink-600/40 text-slate-300'
-                } border text-left text-xs space-y-1.5 shadow-xl animate-in zoom-in-95 duration-150`}
-              >
-                <div className={`flex items-center justify-between pb-1 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
-                  <span className="font-extrabold text-pink-600 text-[11px] uppercase tracking-wider">
-                    How Outfit Lookup Works
-                  </span>
-                  <button
-                    onClick={() => setShowLookupInfo(false)}
-                    className={`p-1 rounded-full ${isLight ? 'text-slate-500 hover:text-black' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className={`space-y-1 ${isLight ? 'text-slate-700' : 'text-slate-300'} text-[11px] pt-0.5`}>
-                  <p>1. Upload or drop any full-outfit photo</p>
-                  <p>2. AI identifies each garment in the fit</p>
-                  <p>3. Match with catalog pieces to save or cart</p>
-                </div>
-              </div>
-            )}
-
-            {/* Top Plus Icon */}
-            <div className={`w-14 h-14 rounded-2xl ${
-              isLight
-                ? 'bg-slate-100 border-2 border-slate-300 text-slate-700 group-hover:border-pink-600 group-hover:text-pink-600'
-                : 'bg-slate-800 border-2 border-slate-600 text-slate-300 group-hover:border-pink-600 group-hover:text-pink-600'
-            } group-hover:scale-105 flex items-center justify-center transition-all duration-200 shadow-inner mb-4`}>
-              <Plus className="w-8 h-8" strokeWidth={2.5} />
-            </div>
-
-            {/* Prominent Upload Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleTriggerUpload();
-              }}
-              className={`relative w-full max-w-xs py-3.5 px-6 rounded-2xl ${
-                isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/40'
-              } text-white active:scale-[0.98] font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-xl transition-all duration-200`}
-            >
-              <UploadIcon className="w-4 h-4 text-white" strokeWidth={2.5} />
-              <span>Upload</span>
-            </button>
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="min-h-screen pb-32 max-w-md mx-auto select-none"
+    >
+      {/* Twitter-Style Sticky Top Nav Bar with 3 Horizontal Feeds */}
+      <header
+        className={`sticky top-0 z-40 ${
+          isLight ? 'bg-white/85 border-slate-200' : 'bg-slate-950/85 border-slate-800'
+        } backdrop-blur-xl border-b pt-[max(10px,env(safe-area-inset-top))] transition-colors`}
+      >
+        <div className="flex items-center justify-between px-4 pb-2">
+          <div className="flex items-center gap-1.5">
+            <span className={`text-base font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              For You
+            </span>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+              isLight ? 'bg-pink-50 text-pink-700 border border-pink-200' : 'bg-pink-950/60 text-pink-400 border border-pink-600/40'
+            }`}>
+              Feed
+            </span>
           </div>
 
-          {/* Middle: "Previously Found Items" Carousel (Breakdown Tool History) */}
-          <div className={`mt-6 pt-3 border-t ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
-            <div className="flex items-center justify-between mb-3 px-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-black flex items-center gap-1.5 tracking-tight text-pink-600">
-                  <Sparkles className="w-4 h-4 text-pink-600" />
-                  <span>Previously Found Items</span>
-                </span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                    isLight
-                      ? 'bg-pink-50 text-pink-700 border border-pink-200'
-                      : 'bg-pink-950/60 text-pink-400 border border-pink-600/40'
-                  }`}
-                >
-                  {breakdownHistoryItems.length}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => scrollBreakdownCarousel('left')}
-                  className={`p-1.5 rounded-full ${
-                    isLight
-                      ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                  } border transition-colors`}
-                  title="Previous"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollBreakdownCarousel('right')}
-                  className={`p-1.5 rounded-full ${
-                    isLight
-                      ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                  } border transition-colors`}
-                  title="Next"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
+          <span className="text-[11px] text-slate-400">
+            Swipe left / right to switch
+          </span>
+        </div>
 
-            {/* Previously Found Items Carousel Track */}
-            <div
-              ref={breakdownCarouselRef}
-              className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        {/* 3 Horizontal Sub-Tabs: New Releases, Trending, Friends (Twitter style) */}
+        <div className="grid grid-cols-3 text-center relative border-t border-slate-800/20">
+          <button
+            type="button"
+            onClick={() => setActiveFeed('new-releases')}
+            className={`py-3 text-xs font-black tracking-wide transition-colors relative cursor-pointer ${
+              activeFeed === 'new-releases'
+                ? isLight
+                  ? 'text-slate-950 font-extrabold'
+                  : 'text-white font-extrabold'
+                : isLight
+                ? 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>New Releases</span>
+            {activeFeed === 'new-releases' && (
+              <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full ${
+                isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'
+              } shadow-sm animate-in fade-in duration-150`} />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFeed('trending')}
+            className={`py-3 text-xs font-black tracking-wide transition-colors relative cursor-pointer ${
+              activeFeed === 'trending'
+                ? isLight
+                  ? 'text-slate-950 font-extrabold'
+                  : 'text-white font-extrabold'
+                : isLight
+                ? 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span className="flex items-center justify-center gap-1">
+              <Flame className="w-3.5 h-3.5 text-red-500 fill-red-500" />
+              <span>Trending</span>
+            </span>
+            {activeFeed === 'trending' && (
+              <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full ${
+                isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'
+              } shadow-sm animate-in fade-in duration-150`} />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFeed('friends')}
+            className={`py-3 text-xs font-black tracking-wide transition-colors relative cursor-pointer ${
+              activeFeed === 'friends'
+                ? isLight
+                  ? 'text-slate-950 font-extrabold'
+                  : 'text-white font-extrabold'
+                : isLight
+                ? 'text-slate-500 hover:text-slate-800'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>Friends</span>
+            {activeFeed === 'friends' && (
+              <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full ${
+                isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'
+              } shadow-sm animate-in fade-in duration-150`} />
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Twitter-Style Scroll Feed Container */}
+      <div className="divide-y divide-slate-800/40">
+        {currentPosts.map((post) => {
+          const isLiked = Boolean(likedPostIds[post.id]);
+          const isWishlisted = isItemInWishlist(post.item.id);
+
+          return (
+            <article
+              key={post.id}
+              className={`p-4 transition-colors hover:bg-slate-900/10 ${
+                isLight ? 'border-b border-slate-100 hover:bg-slate-50/70' : 'border-b border-slate-900 hover:bg-slate-900/30'
+              }`}
             >
-              {breakdownHistoryItems.map((item) => (
-                <div
-                  key={`breakdown-${item.id}`}
-                  onClick={() => setInspectItem(item)}
-                  className={`w-36 flex-shrink-0 snap-start rounded-2xl ${
-                    isLight
-                      ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                      : 'bg-slate-950 border-slate-800 hover:border-slate-700 shadow-md'
-                  } border overflow-hidden cursor-pointer group hover:border-pink-600 transition-all`}
-                >
-                  <div className="relative aspect-square w-full overflow-hidden bg-slate-900">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-sm border border-pink-500/30 text-[9px] font-mono font-bold text-pink-400">
-                      Breakdown
+              {/* Author Row */}
+              <div className="flex items-start gap-3">
+                <img
+                  src={post.author.avatar}
+                  alt={post.author.name}
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-slate-700/60 shadow-sm"
+                />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className={`text-sm font-black truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        {post.author.name}
+                      </span>
+                      {post.author.verified && (
+                        <span className="w-3.5 h-3.5 rounded-full bg-pink-500 flex items-center justify-center text-white text-[9px] font-black flex-shrink-0">
+                          ✓
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400 truncate">
+                        @{post.author.handle}
+                      </span>
+                      <span className="text-slate-500 text-xs">·</span>
+                      <span className="text-xs text-slate-400 flex-shrink-0">
+                        {post.timestamp}
+                      </span>
                     </div>
-                    <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/85 backdrop-blur-sm border border-slate-800 text-[10px] font-mono font-bold text-emerald-400">
-                      ${item.price}
-                    </div>
+
+                    {post.author.badge && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex-shrink-0 ${
+                        post.author.badge.includes('Trend')
+                          ? 'bg-red-950/70 text-red-400 border border-red-500/40'
+                          : isLight
+                          ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700'
+                      }`}>
+                        {post.author.badge}
+                      </span>
+                    )}
                   </div>
-                  <div className="p-2 space-y-1">
-                    <p className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'} truncate`}>
-                      {item.brand}
-                    </p>
-                    <p className={`text-[11px] font-bold ${isLight ? 'text-sky-950' : 'text-white'} truncate leading-tight`}>
-                      {item.name}
-                    </p>
-                    <div className="flex items-center justify-between pt-1 gap-1">
+
+                  {/* Caption / Post Text */}
+                  <p className={`text-xs mt-1 leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
+                    {post.content}
+                  </p>
+
+                  {/* Tag Pill if applicable */}
+                  {post.tag && (
+                    <div className="mt-1.5 mb-2">
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+                        isLight ? 'bg-pink-50 text-pink-600 border border-pink-200' : 'bg-pink-950/50 text-pink-400 border border-pink-500/30'
+                      }`}>
+                        #{post.tag}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Garment Product Card Attachment (Twitter style embed) */}
+                  <div
+                    onClick={() => setInspectItem(post.item)}
+                    className={`mt-2 rounded-2xl overflow-hidden border ${
+                      isLight
+                        ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                        : 'bg-slate-950 border-slate-800 hover:border-slate-700 shadow-md'
+                    } cursor-pointer group transition-all`}
+                  >
+                    <div className="relative aspect-[16/10] w-full bg-slate-900 overflow-hidden">
+                      <img
+                        src={post.item.image}
+                        alt={post.item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
+                      {/* Price badge */}
+                      <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/85 backdrop-blur-md font-mono text-xs font-bold text-emerald-400 border border-emerald-400/30 shadow-md">
+                        ${post.item.price}
+                      </span>
+
+                      {/* Brand badge */}
+                      <span className={`absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        isLight ? 'cosmic-gradient-bg-light' : 'cosmic-gradient-bg'
+                      } text-white shadow-md`}>
+                        {post.item.brand}
+                      </span>
+                    </div>
+
+                    <div className="p-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h4 className={`text-xs font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                          {post.item.name}
+                        </h4>
+                        <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'} truncate`}>
+                          {post.item.material} • {post.item.fit}
+                        </p>
+                      </div>
+
+                      {/* Quick Add To Cart Button with smooth toss and no notification toast banner */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          addToCart(item);
-                          showToast(`Added ${item.name} to cart`, `$${item.price} • ${item.brand}`, 'green');
+                          addToCart(post.item);
                         }}
-                        className="flex-1 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95"
+                        className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-black text-xs font-black transition-transform active:scale-95 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer flex-shrink-0"
+                        title="Add to Cart"
                       >
-                        <ShoppingBag className="w-2.5 h-2.5" />
+                        <ShoppingBag className="w-3.5 h-3.5 stroke-[2.2]" />
                         <span>Cart</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSendItemModalItem(item);
-                        }}
-                        className={`p-1 rounded-lg border ${
-                          isLight
-                            ? 'border-slate-300 text-slate-700 hover:text-pink-600'
-                            : 'border-slate-700 text-slate-400 hover:text-pink-400'
-                        } transition-colors`}
-                        title="Send via chat"
-                      >
-                        <Send className="w-3 h-3" />
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Lower Half: "Hot Right Now" Rotating Carousel with Red Text and Fire Emoji */}
-          <div className={`mt-8 pt-4 border-t ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
-            <div className="flex items-center justify-between mb-3 px-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-black text-red-500 flex items-center gap-1.5 tracking-tight">
-                  <span className="text-base animate-pulse">🔥</span>
-                  <span>Hot Right Now</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => scrollCarousel('left')}
-                  className={`p-1.5 rounded-full ${isLight ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'} border transition-colors`}
-                  title="Previous"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => scrollCarousel('right')}
-                  className={`p-1.5 rounded-full ${isLight ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'} border transition-colors`}
-                  title="Next"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Rotating Carousel Track */}
-            <div
-              ref={carouselRef}
-              className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {trendingItems.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setInspectItem(item)}
-                  className={`w-36 flex-shrink-0 snap-start rounded-2xl ${
-                    isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-950 border-slate-800 shadow-md'
-                  } border p-2 flex flex-col justify-between hover:scale-[1.02] transition-all group cursor-pointer`}
-                  title="Click to view more info"
-                >
-                  <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-slate-900 mb-2">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
-                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/85 text-[10px] font-mono font-bold text-white">
-                      ${item.price}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0 mb-2">
-                    <span className={`text-[9px] uppercase font-bold block truncate ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
-                      {item.brand}
-                    </span>
-                    <p className={`text-[11px] font-bold ${isLight ? 'text-sky-950' : 'text-white'} truncate leading-tight`}>
-                      {item.name}
-                    </p>
-                  </div>
-                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                  {/* Twitter Action Bar: Comments, Repost, Like, Bookmark, Send */}
+                  <div className="flex items-center justify-between mt-3 text-slate-400 max-w-sm">
+                    {/* Comments */}
                     <button
-                      onClick={() => addToCart(item)}
-                      className="flex-1 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold transition-colors shadow-sm active:scale-95"
+                      type="button"
+                      onClick={() => setInspectItem(post.item)}
+                      className="flex items-center gap-1.5 text-xs hover:text-sky-400 transition-colors group cursor-pointer"
+                      title="Comments"
                     >
-                      Cart
+                      <div className="p-1.5 rounded-full group-hover:bg-sky-500/10">
+                        <MessageCircle className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px]">{post.comments}</span>
                     </button>
+
+                    {/* Repost / Share */}
                     <button
-                      onClick={() => toggleWishlist(item)}
-                      className={`p-1 rounded-lg border transition-colors ${
-                        isItemInWishlist(item.id)
-                          ? 'border-pink-600 bg-pink-600/15 text-pink-600'
-                          : isLight
-                          ? 'border-slate-300 text-slate-500 hover:text-black'
-                          : 'border-slate-800 text-slate-400 hover:text-white'
+                      type="button"
+                      onClick={() => setSendItemModalItem(post.item)}
+                      className="flex items-center gap-1.5 text-xs hover:text-emerald-400 transition-colors group cursor-pointer"
+                      title="Share with Friend"
+                    >
+                      <div className="p-1.5 rounded-full group-hover:bg-emerald-500/10">
+                        <Share2 className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px]">{post.reposts}</span>
+                    </button>
+
+                    {/* Like Heart */}
+                    <button
+                      type="button"
+                      onClick={() => togglePostLike(post.id)}
+                      className={`flex items-center gap-1.5 text-xs transition-colors group cursor-pointer ${
+                        isLiked ? 'text-pink-500' : 'hover:text-pink-500'
                       }`}
+                      title="Like"
                     >
-                      <Heart className="w-3 h-3" />
+                      <div className="p-1.5 rounded-full group-hover:bg-pink-500/10">
+                        <Heart className={`w-4 h-4 ${isLiked ? 'fill-pink-500 text-pink-500' : ''}`} />
+                      </div>
+                      <span className="text-[11px]">
+                        {post.likes + (isLiked ? 1 : 0)}
+                      </span>
+                    </button>
+
+                    {/* Bookmark / Wishlist */}
+                    <button
+                      type="button"
+                      onClick={() => toggleWishlist(post.item)}
+                      className={`flex items-center gap-1.5 text-xs transition-colors group cursor-pointer ${
+                        isWishlisted ? 'text-pink-500' : 'hover:text-pink-500'
+                      }`}
+                      title={isWishlisted ? 'In Wishlist' : 'Save to Wishlist'}
+                    >
+                      <div className="p-1.5 rounded-full group-hover:bg-pink-500/10">
+                        <Bookmark className={`w-4 h-4 ${isWishlisted ? 'fill-pink-500 text-pink-500' : ''}`} />
+                      </div>
+                    </button>
+
+                    {/* Send via Direct Message */}
+                    <button
+                      type="button"
+                      onClick={() => setSendItemModalItem(post.item)}
+                      className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                      title="Send via Chat"
+                    >
+                      <Send className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : isAnalyzing ? (
-        /* Analyzing State */
-        <div className="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-slate-800 bg-slate-950 text-center min-h-[380px]">
-          <div className="relative w-48 h-64 rounded-2xl overflow-hidden border-2 border-pink-600 mb-5 shadow-2xl shadow-pink-950/40">
-            {uploadedImageUrl && (
-              <img
-                src={uploadedImageUrl}
-                alt="Analyzing outfit"
-                className="w-full h-full object-cover grayscale-40"
-              />
-            )}
-            <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-pink-600 to-transparent shadow-[0_0_15px_rgba(219,39,119,1)] animate-bounce" />
-          </div>
-
-          <div className="flex items-center gap-2 text-pink-600 mb-2">
-            <div className="w-4 h-4 border-2 border-pink-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-black tracking-wide">Dissecting Garments...</span>
-          </div>
-          <p className="text-xs text-slate-400 max-w-xs">
-            Isolating cuts, fabric textures, and matching with catalog pieces.
-          </p>
-        </div>
-      ) : (
-        /* Dissection Results View */
-        <div className="space-y-4">
-          {/* Top Dissected Image Banner */}
-          <div className="relative rounded-3xl overflow-hidden border-2 border-slate-700 bg-slate-950 shadow-xl max-h-[280px]">
-            {uploadedImageUrl && (
-              <img
-                src={uploadedImageUrl}
-                alt="Analyzed outfit"
-                className="w-full h-[260px] object-cover object-top"
-              />
-            )}
-
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
-
-            <button
-              onClick={handleTriggerUpload}
-              className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md border border-slate-700 text-slate-200 text-xs font-bold hover:text-white hover:border-pink-600 flex items-center gap-1.5 shadow-md"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-pink-600" />
-              <span>Change Photo</span>
-            </button>
-
-            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs">
-              <div>
-                <span className="text-[10px] text-pink-600 font-bold uppercase tracking-wider block">
-                  Aesthetic
-                </span>
-                <p className="text-sm font-extrabold text-white">
-                  {currentDissection?.overallAesthetic}
-                </p>
               </div>
+            </article>
+          );
+        })}
+      </div>
 
-              <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-slate-700">
-                {currentDissection?.colorPalette.map((col, idx) => (
-                  <span key={idx} className="text-[10px] font-bold text-slate-200">
-                    {col}
-                    {idx < (currentDissection.colorPalette.length - 1) && ' • '}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Garments Dissected Tabs */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                Dissected Items ({currentDissection?.items.length})
-              </h2>
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {currentDissection?.items.map((garment) => {
-                const isSelected = garment.id === selectedGarment?.id;
-                return (
-                  <button
-                    key={garment.id}
-                    onClick={() => setSelectedGarmentId(garment.id)}
-                    className={`px-3 py-2 rounded-2xl border text-xs text-left whitespace-nowrap transition-all flex items-center gap-2 ${
-                      isSelected
-                        ? 'border-pink-600 bg-pink-600/20 text-white font-bold shadow-md shadow-pink-600/20'
-                        : 'border-slate-800 bg-slate-900/80 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-pink-600" />
-                    <div>
-                      <p className="text-[10px] text-slate-400 uppercase font-bold leading-none">
-                        {garment.category}
-                      </p>
-                      <p className="text-xs font-bold truncate max-w-[130px] leading-snug">
-                        {garment.name}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active Dissected Garment Deep Dive */}
-          {selectedGarment && (
-            <div className="p-4 rounded-3xl bg-slate-900 border-2 border-slate-700 shadow-xl space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="text-[10px] font-black uppercase text-pink-600 tracking-wider">
-                    {selectedGarment.category} • {selectedGarment.aesthetic}
-                  </span>
-                  <h3 className="text-base font-extrabold text-white mt-0.5">
-                    {selectedGarment.name}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Color: <span className="text-slate-200">{selectedGarment.color}</span> • Fabric:{' '}
-                    <span className="text-slate-200">{selectedGarment.material}</span>
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-xs font-mono font-bold text-pink-600 bg-pink-950 px-2 py-0.5 rounded-md border border-pink-600/40">
-                    {Math.round(selectedGarment.confidence * 100)}% Match
-                  </span>
-                </div>
-              </div>
-
-              {/* Add to Algorithm Button */}
-              <div className="p-3 rounded-2xl bg-black/60 border border-pink-600/30 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-pink-600" />
-                    <span>Train Algorithm</span>
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Boosts {selectedGarment.aesthetic} in recommendations
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => addDissectedStyleToAlgorithm(selectedGarment)}
-                  disabled={selectedGarment.addedToAlgorithm}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    selectedGarment.addedToAlgorithm
-                      ? 'bg-pink-950 text-pink-600 border border-pink-600/50 cursor-default'
-                      : 'bg-pink-600 hover:bg-pink-700 text-white shadow-md shadow-pink-600/20 active:scale-95'
-                  }`}
-                >
-                  {selectedGarment.addedToAlgorithm ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-pink-600" />
-                      <span>Added</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add to Algorithm</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Similar Styles Across Marketplace */}
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <ShoppingBag className="w-3.5 h-3.5 text-pink-600" />
-                    <span>Similar Styles in Marketplace</span>
-                  </h4>
-                  <span className="text-[10px] text-pink-600 font-semibold">Available to Buy</span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {selectedGarment.marketplaceMatches.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 flex flex-col justify-between p-1.5 hover:border-pink-600 transition-colors"
-                    >
-                      <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-900 mb-1.5">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[9px] font-bold text-pink-600">
-                          ${item.price}
-                        </span>
-                      </div>
-
-                      <div>
-                        <p className="text-[9px] uppercase font-bold text-pink-600 truncate">
-                          {item.brand}
-                        </p>
-                        <p className="text-[10px] font-bold text-white truncate leading-tight">
-                          {item.name}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-1 mt-2">
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="flex-1 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold transition-colors shadow-sm active:scale-95"
-                        >
-                          Cart
-                        </button>
-                        <button
-                          onClick={() => toggleWishlist(item)}
-                          className={`p-1 rounded-lg border ${
-                            isItemInWishlist(item.id)
-                              ? 'border-pink-600 bg-pink-600/20 text-pink-600'
-                              : 'border-slate-700 text-slate-300'
-                          }`}
-                        >
-                          <Heart className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Check Swipe Feed button */}
-              <button
-                onClick={() => setActiveTab('swipe')}
-                className="w-full py-2.5 rounded-2xl bg-slate-800 border border-slate-700 text-xs font-bold text-white hover:bg-slate-700 flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <span>Check Swipe Feed with Updated Weights</span>
-                <ArrowRight className="w-3.5 h-3.5 text-pink-600" />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Garment Details Modal (With Floating X, rounded-2xl corners, tap outside to close) */}
+      {/* Inspect Item Modal */}
       {inspectItem && (
         <div
           onClick={() => setInspectItem(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(12px,calc(env(safe-area-inset-top)+8px))] overflow-y-auto overscroll-contain animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-150 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`${
-              isLight
-                ? 'bg-white border-slate-200 text-slate-900 shadow-2xl'
-                : 'bg-slate-950 border-slate-700 text-white shadow-2xl'
-            } border rounded-2xl max-w-sm w-full p-5 pb-5 space-y-4 animate-popup max-h-[85vh] overflow-y-auto overscroll-contain cursor-default relative mt-2 sm:mt-4 mb-24`}
+            className={`w-full max-w-sm rounded-3xl ${isLight ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'} border border-slate-700 p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 cursor-default`}
           >
-            {/* Floating Close Button */}
-            <button
-              onClick={() => setInspectItem(null)}
-              className={`sticky top-0 float-right z-30 ml-auto -mr-1 p-2 rounded-full ${
-                isLight
-                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
-              } border backdrop-blur-md shadow-lg transition-all`}
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="pr-10">
-              <span className={`text-[10px] font-extrabold uppercase ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'} tracking-wider block`}>
-                {inspectItem.brand}
-              </span>
-              <h3 className={`text-lg font-black ${isLight ? 'text-sky-950' : 'text-white'}`}>{inspectItem.name}</h3>
+            <div className="flex items-start justify-between">
+              <div>
+                <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'cosmic-gradient-text-light' : 'cosmic-gradient-text'}`}>
+                  {inspectItem.brand}
+                </span>
+                <h3 className="text-base font-extrabold">{inspectItem.name}</h3>
+              </div>
+              <button
+                onClick={() => setInspectItem(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 border border-slate-800 relative">
-              <img
-                src={inspectItem.image}
-                alt={inspectItem.name}
-                className="w-full h-full object-cover"
-              />
-              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 backdrop-blur-sm font-mono text-sm font-bold text-white border border-white/20 shadow-md">
+            <div className="rounded-2xl overflow-hidden aspect-[4/3] bg-slate-900 relative">
+              <img src={inspectItem.image} alt={inspectItem.name} className="w-full h-full object-cover" />
+              <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/85 font-mono text-sm font-bold text-white">
                 ${inspectItem.price}
               </span>
             </div>
 
-            <p className={`text-xs ${isLight ? 'text-slate-700' : 'text-slate-300'} leading-relaxed`}>
+            <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-300'} leading-relaxed`}>
               {inspectItem.description}
             </p>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
-                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} uppercase font-bold block`}>Material</span>
-                <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{inspectItem.material}</span>
-              </div>
-              <div className={`p-2.5 rounded-xl border ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
-                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} uppercase font-bold block`}>Silhouette Fit</span>
-                <span className={`font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{inspectItem.fit}</span>
-              </div>
-            </div>
 
             <div className="flex gap-2 pt-2">
               <button
@@ -726,35 +794,29 @@ export const UploadTab: React.FC = () => {
                   addToCart(inspectItem);
                   setInspectItem(null);
                 }}
-                className="flex-1 py-3 rounded-xl bg-emerald-500 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
+                className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>Add to Cart (${inspectItem.price})</span>
+                <span>Add to Cart</span>
               </button>
               <button
                 onClick={() => {
                   setSendItemModalItem(inspectItem);
                   setInspectItem(null);
                 }}
-                className={`p-3 rounded-xl border transition-colors ${
-                  isLight
-                    ? 'border-slate-300 bg-white text-slate-700 hover:text-pink-600 hover:border-pink-600'
-                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-pink-400 hover:border-pink-500'
-                }`}
-                title="Send to Friend via Chat"
+                className={`p-3 rounded-xl border ${isLight ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-300'} hover:text-pink-500 cursor-pointer`}
+                title="Send via Chat"
               >
                 <Send className="w-4 h-4" />
               </button>
               <button
-                onClick={() => {
-                  toggleWishlist(inspectItem);
-                }}
-                className={`p-3 rounded-xl border transition-colors ${
+                onClick={() => toggleWishlist(inspectItem)}
+                className={`p-3 rounded-xl border ${
                   isItemInWishlist(inspectItem.id)
-                    ? isLight ? 'cosmic-gradient-bg-light border-pink-400 text-white shadow-sm' : 'cosmic-gradient-bg border-pink-500 text-white shadow-sm'
-                    : isLight ? 'border-slate-300 bg-slate-50 text-slate-600 hover:text-black' : 'border-slate-700 bg-slate-900 text-slate-300 hover:text-white'
-                }`}
-                title="Toggle Wishlist"
+                    ? isLight ? 'cosmic-gradient-bg-light text-white' : 'cosmic-gradient-bg text-white'
+                    : isLight ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-300'
+                } cursor-pointer`}
+                title="Wishlist"
               >
                 <Heart className={`w-4 h-4 ${isItemInWishlist(inspectItem.id) ? 'fill-white text-white' : ''}`} />
               </button>

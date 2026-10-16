@@ -68,6 +68,7 @@ export const SwipeTab: React.FC = () => {
   const [isBrandMenuOpen, setIsBrandMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSavedOverlayOpen, setIsSavedOverlayOpen] = useState(false);
+  const [wishlistPullY, setWishlistPullY] = useState(0);
   const [savedThrowCard, setSavedThrowCard] = useState<ClothingItem | null>(null);
   const [savedThrowAnimating, setSavedThrowAnimating] = useState(false);
   const [cartThrowCard, setCartThrowCard] = useState<ClothingItem | null>(null);
@@ -237,7 +238,7 @@ export const SwipeTab: React.FC = () => {
     }, 600);
   };
 
-  // Save button throws product card to top right Saved button without glitching or returning into stack
+  // Save button throws product card to top right Saved button matching the smooth shrink and speed of cart throw
   const triggerSaveThrow = () => {
     if (!currentItem || tossState !== null || isSwipingRef.current || savedThrowCard || cartThrowCard) return;
     isSwipingRef.current = true;
@@ -256,21 +257,21 @@ export const SwipeTab: React.FC = () => {
       toggleWishlist(itemToSave);
     }, 120);
 
-    // Bump saved button when card arrives
+    // Bump saved button when card arrives (matching add to cart landing)
     setTimeout(() => {
       setSavedButtonBump(true);
       setTimeout(() => {
         setSavedButtonBump(false);
       }, 350);
-    }, 550);
+    }, 480);
 
-    // Complete saving throw animation cleanly
+    // Complete saving throw animation cleanly at 620ms (exact same speed as cart throw)
     setTimeout(() => {
       setSavedThrowCard(null);
       setSavedThrowAnimating(false);
       setDragOffset({ x: 0, y: 0 });
       isSwipingRef.current = false;
-    }, 660);
+    }, 620);
   };
 
   // Bottom quick bar / card Add to Cart throws product card down into nav bar cart icon
@@ -863,16 +864,16 @@ export const SwipeTab: React.FC = () => {
               </div>
             </div>
 
-            {/* 1. Dedicated saving throw card flying to top-right saved button */}
+            {/* 1. Dedicated saving throw card flying to top-right saved button with smooth shrink and toss matching add to cart */}
             {savedThrowCard && (
               <div
                 key={`saved-throw-${savedThrowCard.id}`}
                 style={{
                   transform: savedThrowAnimating
-                    ? 'translate3d(calc(44vw), -55vh, 0) scale(0.08) rotate(16deg)'
+                    ? 'translate3d(min(34vw, 142px), -32vh, 0) scale(0.12) rotate(10deg)'
                     : 'translate3d(0, 0, 0) scale(1) rotate(0deg)',
                   opacity: savedThrowAnimating ? 0.05 : 1,
-                  transition: 'transform 650ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms ease-out',
+                  transition: 'transform 620ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 620ms ease-out',
                 }}
                 className="absolute inset-0 w-full h-full max-h-[min(54vh,460px)] rounded-3xl overflow-hidden border-2 border-pink-500 bg-slate-950 shadow-2xl pointer-events-none z-40 flex flex-col justify-between"
               >
@@ -1412,11 +1413,24 @@ export const SwipeTab: React.FC = () => {
       {/* 4. Saved Overlay (Wishlist) dropping down from top over the swipe page */}
       {isSavedOverlayOpen && (
         <div className="fixed inset-0 z-50 pointer-events-auto overflow-hidden">
-          {/* Subtle backdrop so the main swipe page is visible underneath and becomes gradually more visible on pull-down */}
-          <div className="fixed inset-0 bg-black/55 backdrop-blur-sm pointer-events-none transition-opacity duration-300" />
+          {/* Main swipe page underneath gradually becomes more visible as the wishlist is pulled down */}
+          <div
+            style={{
+              opacity: Math.max(0, 0.65 - (wishlistPullY / 120) * 0.65),
+              transition: wishlistPullY === 0 ? 'opacity 240ms ease-out' : 'none',
+            }}
+            className="fixed inset-0 bg-black backdrop-blur-sm pointer-events-none"
+          />
           <div className="relative w-full h-full overflow-y-auto overscroll-contain animate-wishlist-dropdown pb-28">
             <div className={`min-h-full ${isLight ? 'bg-white/98' : 'bg-slate-950/98'} shadow-2xl`}>
-              <WishlistTab onClose={() => setIsSavedOverlayOpen(false)} isOverlay={true} />
+              <WishlistTab
+                onClose={() => {
+                  setIsSavedOverlayOpen(false);
+                  setWishlistPullY(0);
+                }}
+                onPullChange={(y) => setWishlistPullY(y)}
+                isOverlay={true}
+              />
             </div>
           </div>
         </div>

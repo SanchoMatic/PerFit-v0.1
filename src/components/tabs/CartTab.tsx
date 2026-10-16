@@ -113,7 +113,9 @@ const SwipeableCartItemRow: React.FC<{
 
   return (
     <div
-      className={`relative select-none touch-pan-y my-1.5 rounded-2xl overflow-hidden ${isAnyMenuOpen ? 'z-40' : 'z-10'}`}
+      className={`relative select-none touch-pan-y my-1.5 rounded-2xl ${
+        isAnyMenuOpen ? 'z-50 overflow-visible' : 'z-10 overflow-hidden'
+      }`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -174,7 +176,9 @@ const SwipeableCartItemRow: React.FC<{
           transform: `translate3d(${currentTranslate}px, 0, 0)`,
           transition: isDragging ? 'none' : 'transform 260ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
-        className={`relative z-10 flex items-center justify-between gap-3.5 py-3.5 px-3 rounded-2xl border ${
+        className={`relative ${
+          isAnyMenuOpen ? 'z-50' : 'z-10'
+        } flex items-center justify-between gap-3.5 py-3.5 px-3 rounded-2xl border ${
           isLight
             ? 'bg-white border-slate-200 shadow-sm text-slate-900'
             : 'bg-slate-900 border-slate-800 shadow-md text-white'
@@ -214,10 +218,10 @@ const SwipeableCartItemRow: React.FC<{
             {ci.item.name}
           </h3>
 
-          {/* Dropdown menus for Size and Color - independent clickable dropdowns */}
+          {/* Dropdown menus for Size and Color - independent clickable dropdowns with z-index elevation */}
           <div className="flex items-center gap-2 text-[11px] mb-2 relative">
             {/* Size Dropdown */}
-            <div className="relative">
+            <div className={`relative ${isSizeMenuOpen ? 'z-50' : 'z-20'}`}>
               <button
                 type="button"
                 onClick={(e) => {
@@ -239,15 +243,15 @@ const SwipeableCartItemRow: React.FC<{
               {isSizeMenuOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-30"
+                    className="fixed inset-0 z-40"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsSizeMenuOpen(false);
                     }}
                   />
                   <div className={`dropdown-menu absolute top-full left-0 mt-1 w-28 ${
-                    isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
-                  } border rounded-xl shadow-xl py-1 z-40 max-h-44 overflow-y-auto`}>
+                    isLight ? 'bg-white border-slate-200 text-slate-900 shadow-2xl' : 'bg-slate-900 border-slate-700 text-white shadow-2xl'
+                  } border rounded-xl shadow-2xl py-1 z-50 max-h-44 overflow-y-auto`}>
                     {availableSizes.map((s) => (
                       <button
                         key={s}
@@ -273,7 +277,7 @@ const SwipeableCartItemRow: React.FC<{
             </div>
 
             {/* Color Dropdown */}
-            <div className="relative">
+            <div className={`relative ${isColorMenuOpen ? 'z-50' : 'z-20'}`}>
               <button
                 type="button"
                 onClick={(e) => {
@@ -295,15 +299,15 @@ const SwipeableCartItemRow: React.FC<{
               {isColorMenuOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-30"
+                    className="fixed inset-0 z-40"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsColorMenuOpen(false);
                     }}
                   />
                   <div className={`dropdown-menu absolute top-full left-0 mt-1 w-32 ${
-                    isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
-                  } border rounded-xl shadow-xl py-1 z-40 max-h-44 overflow-y-auto`}>
+                    isLight ? 'bg-white border-slate-200 text-slate-900 shadow-2xl' : 'bg-slate-900 border-slate-700 text-white shadow-2xl'
+                  } border rounded-xl shadow-2xl py-1 z-50 max-h-44 overflow-y-auto`}>
                     {availableColors.map((c) => (
                       <button
                         key={c}

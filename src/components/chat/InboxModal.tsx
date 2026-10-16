@@ -945,9 +945,8 @@ export const InboxModal: React.FC = () => {
                                 <button
                                   onClick={() => {
                                     addToCart(msg.sharedItem!);
-                                    showToast(`Added ${msg.sharedItem!.name} to cart`, '', 'green');
                                   }}
-                                  className="px-2.5 py-1 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-[10px] font-bold transition-colors shadow-sm flex items-center gap-1"
+                                  className="px-2.5 py-1 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-[10px] font-bold transition-colors shadow-sm flex items-center gap-1 cursor-pointer"
                                 >
                                   <ShoppingBag className="w-3 h-3" />
                                   <span>Bag</span>
@@ -999,13 +998,8 @@ export const InboxModal: React.FC = () => {
                                 <button
                                   onClick={() => {
                                     msg.sharedOutfit!.items.forEach((it) => addToCart(it));
-                                    showToast(
-                                      `Added all ${msg.sharedOutfit!.items.length} outfit pieces to cart!`,
-                                      '',
-                                      'green'
-                                    );
                                   }}
-                                  className="px-2.5 py-1 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-[10px] font-bold transition-colors shadow-sm"
+                                  className="px-2.5 py-1 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-[10px] font-bold transition-colors shadow-sm cursor-pointer"
                                 >
                                   Add Outfit to Bag
                                 </button>

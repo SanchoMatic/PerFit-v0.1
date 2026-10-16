@@ -954,9 +954,8 @@ export const ProfileTab: React.FC = () => {
                     <button
                       onClick={() => {
                         addToCart(item);
-                        showToast(`Added ${item.name} to cart`, '', 'green');
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center gap-1 transition-colors shadow-sm active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center gap-1 transition-colors shadow-sm active:scale-95 cursor-pointer"
                     >
                       <ShoppingBag className="w-3 h-3" />
                       <span>Cart</span>
@@ -972,9 +971,8 @@ export const ProfileTab: React.FC = () => {
             <button
               onClick={() => {
                 selectedOutfitDetail.items.forEach((it) => addToCart(it));
-                showToast(`Added ${selectedOutfitDetail.title} to cart!`, `${selectedOutfitDetail.items.length} pieces added`, 'green');
               }}
-              className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
+              className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99] cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>Add Outfit to Cart (${selectedOutfitDetail.items.reduce((acc, it) => acc + it.price, 0)})</span>
@@ -1323,9 +1321,8 @@ export const ProfileTab: React.FC = () => {
                         <button
                           onClick={() => {
                             addToCart(item);
-                            showToast(`Added ${item.name} to cart`, '', 'green');
                           }}
-                          className="w-full py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95"
+                          className="w-full py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95 cursor-pointer"
                         >
                           <ShoppingBag className="w-3 h-3" />
                           <span>Cart</span>
@@ -1339,9 +1336,8 @@ export const ProfileTab: React.FC = () => {
                 <button
                   onClick={() => {
                     exactItems.forEach((it: ClothingItem) => addToCart(it));
-                    showToast(`Added all ${exactItems.length} moodboard pieces to cart!`, '', 'green');
                   }}
-                  className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99]"
+                  className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.99] cursor-pointer"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span>Add All Moodboard Pieces to Cart (${exactItems.reduce((acc: number, it: ClothingItem) => acc + it.price, 0)})</span>
@@ -1789,9 +1785,8 @@ export const ProfileTab: React.FC = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             outfit.items.forEach((it) => addToCart(it));
-                            showToast(`Added ${outfit.title} to cart!`, `${outfit.items.length} pieces added`, 'green');
                           }}
-                          className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.99]"
+                          className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 active:scale-[0.99] cursor-pointer"
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
                           <span>Add Outfit to Cart (${totalOutfitPrice})</span>
@@ -1969,9 +1964,8 @@ export const ProfileTab: React.FC = () => {
                             <button
                               onClick={() => {
                                 addToCart(item);
-                                showToast(`Added ${item.name} to cart`, 'Ready to reorder', 'green');
                               }}
-                              className="w-full py-1.5 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-extrabold transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
+                              className="w-full py-1.5 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] font-extrabold transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                               <ShoppingBag className="w-3.5 h-3.5" />
                               <span>Buy Again</span>

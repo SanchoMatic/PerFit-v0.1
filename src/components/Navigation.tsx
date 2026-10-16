@@ -232,8 +232,8 @@ export const Navigation: React.FC = () => {
         onTouchCancel={handleTouchEnd}
         className={`pointer-events-auto relative w-full max-w-sm sm:max-w-md ${
           isLight
-            ? 'bg-white/84 border-slate-200/90 text-zinc-900 shadow-[0_8px_32px_0_rgba(0,0,0,0.12),inset_0_1px_1px_0_rgba(255,255,255,0.95)]'
-            : 'bg-neutral-950/82 border-white/20 text-white shadow-[0_8px_32px_0_rgba(0,0,0,0.65),inset_0_1px_1px_0_rgba(255,255,255,0.22)]'
+            ? 'bg-white/72 border-slate-200/80 text-zinc-900 shadow-[0_8px_32px_0_rgba(0,0,0,0.12),inset_0_1px_1px_0_rgba(255,255,255,0.95)]'
+            : 'bg-neutral-950/72 border-white/15 text-white shadow-[0_8px_32px_0_rgba(0,0,0,0.65),inset_0_1px_1px_0_rgba(255,255,255,0.22)]'
         } border rounded-full backdrop-blur-3xl backdrop-saturate-150 p-1 select-none touch-none transition-shadow`}
       >
         <div

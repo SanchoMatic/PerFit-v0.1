@@ -16,9 +16,10 @@ import { ClothingItem } from '../../types';
 interface WishlistTabProps {
   onClose?: () => void;
   isOverlay?: boolean;
+  onPullChange?: (pullY: number) => void;
 }
 
-export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = false }) => {
+export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = false, onPullChange }) => {
   const {
     wishlistItems,
     removeItemFromWishlist,
@@ -50,6 +51,11 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
 
   const PULL_THRESHOLD = 70;
 
+  const updatePull = (val: number) => {
+    setPullY(val);
+    onPullChange?.(val);
+  };
+
   // Return to main wishlist page when tab is tapped
   useEffect(() => {
     setIsSettingsOpen(false);
@@ -74,9 +80,10 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
     // Only vertical downward pull from top
     if (dy > 8 && dy > Math.abs(dx) * 1.5) {
       isPullingDown.current = true;
-      setPullY(Math.min(dy * 0.5, 120));
+      const damped = Math.min(dy * 0.45, 130);
+      updatePull(damped);
     } else if (dy <= 0) {
-      setPullY(0);
+      updatePull(0);
       isPullingDown.current = false;
     }
   };
@@ -87,12 +94,15 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
     if (isPullingDown.current && pullY >= PULL_THRESHOLD) {
       // Threshold reached! Confirm vanish mode exit down
       setIsDismissing(true);
+      updatePull(140);
       setTimeout(() => {
         onClose();
-      }, 200);
+        updatePull(0);
+        setIsDismissing(false);
+      }, 220);
     } else {
       // Smoothly spring back
-      setPullY(0);
+      updatePull(0);
     }
 
     touchStartY.current = 0;
@@ -311,7 +321,6 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
                       e.stopPropagation();
                       addToCart(item);
                       removeItemFromWishlist(item.id);
-                      showToast(`Added to cart`, `${item.name} moved to cart`, 'green');
                     }}
                     className="w-full py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-extrabold flex items-center justify-center gap-1 transition-colors shadow-sm active:scale-95 cursor-pointer min-h-[30px]"
                   >
@@ -412,7 +421,6 @@ export const WishlistTab: React.FC<WishlistTabProps> = ({ onClose, isOverlay = f
                   addToCart(selectedItemForAction);
                   removeItemFromWishlist(selectedItemForAction.id);
                   setSelectedItemForAction(null);
-                  showToast(`Added to cart`, `${selectedItemForAction.name} moved to cart`, 'green');
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-emerald-500/20 cursor-pointer min-h-[42px]"
               >
