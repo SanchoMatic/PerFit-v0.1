@@ -144,6 +144,16 @@ interface AppContextType {
   sendItemModalItem: ClothingItem | null;
   setSendItemModalItem: (item: ClothingItem | null) => void;
 
+  // Try On Outfits & Sharing
+  savedTryOnOutfits: Array<{ id: string; name: string; items: ClothingItem[]; aesthetic: string; createdAt: number }>;
+  saveTryOnOutfit: (name: string, items: ClothingItem[], aesthetic?: string) => void;
+  deleteTryOnOutfit: (id: string) => void;
+  pendingTryOnOutfit: SharedOutfit | null;
+  setPendingTryOnOutfit: (outfit: SharedOutfit | null) => void;
+  loadOutfitInTryOn: (outfit: SharedOutfit) => void;
+  currentTryOnOutfitName: string;
+  setCurrentTryOnOutfitName: (name: string) => void;
+
   // Toasts
   toasts: NotificationToast[];
   showToast: (message: string, subtext?: string, type?: 'green' | 'silver' | 'red') => void;
@@ -1439,6 +1449,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsInboxOpen(true);
   }, [createConversation]);
 
+  // Try On Outfits & Sharing State
+  const [savedTryOnOutfits, setSavedTryOnOutfits] = useState<
+    Array<{ id: string; name: string; items: ClothingItem[]; aesthetic: string; createdAt: number }>
+  >([
+    {
+      id: 'tryon-default-1',
+      name: 'Outfit 1',
+      items: [
+        INITIAL_CATALOG[0], // Black T-Shirt
+        INITIAL_CATALOG[1], // Indigo denim pants
+      ],
+      aesthetic: 'Minimalist',
+      createdAt: Date.now() - 3600000,
+    },
+    {
+      id: 'tryon-default-2',
+      name: 'Minimalist Fall',
+      items: [
+        INITIAL_CATALOG[2] || INITIAL_CATALOG[0],
+        INITIAL_CATALOG[4] || INITIAL_CATALOG[1],
+      ],
+      aesthetic: 'Quiet Luxury',
+      createdAt: Date.now() - 7200000,
+    },
+  ]);
+
+  const [currentTryOnOutfitName, setCurrentTryOnOutfitName] = useState<string>('Outfit 1');
+  const [pendingTryOnOutfit, setPendingTryOnOutfit] = useState<SharedOutfit | null>(null);
+
+  const saveTryOnOutfit = useCallback((name: string, items: ClothingItem[], aesthetic?: string) => {
+    const newOutfit = {
+      id: `tryon-outfit-${Date.now()}`,
+      name: name.trim() || `Outfit ${savedTryOnOutfits.length + 1}`,
+      items,
+      aesthetic: aesthetic || 'Custom Fit',
+      createdAt: Date.now(),
+    };
+    setSavedTryOnOutfits((prev) => [newOutfit, ...prev]);
+    setCurrentTryOnOutfitName(newOutfit.name);
+    showToast(`Saved ${newOutfit.name}!`, `${items.length} items saved`, 'green');
+  }, [savedTryOnOutfits.length, showToast]);
+
+  const deleteTryOnOutfit = useCallback((id: string) => {
+    setSavedTryOnOutfits((prev) => prev.filter((o) => o.id !== id));
+    showToast('Outfit removed', '', 'silver');
+  }, [showToast]);
+
+  const loadOutfitInTryOn = useCallback((outfit: SharedOutfit) => {
+    setPendingTryOnOutfit(outfit);
+    setCurrentTryOnOutfitName(outfit.name);
+    setIsInboxOpen(false);
+    setActiveTab('try-on');
+    showToast(`Loaded ${outfit.name} into Try On!`, 'Outfit ready on your avatar', 'green');
+  }, [setActiveTab, setIsInboxOpen, showToast]);
+
   const totalUnreadMessages = useMemo(() => {
     return conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   }, [conversations]);
@@ -1540,6 +1605,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         totalUnreadMessages,
         sendItemModalItem,
         setSendItemModalItem,
+        savedTryOnOutfits,
+        saveTryOnOutfit,
+        deleteTryOnOutfit,
+        pendingTryOnOutfit,
+        setPendingTryOnOutfit,
+        loadOutfitInTryOn,
+        currentTryOnOutfitName,
+        setCurrentTryOnOutfitName,
         toasts,
         showToast,
         removeToast,

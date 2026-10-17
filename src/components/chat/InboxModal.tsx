@@ -14,6 +14,8 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Camera,
+  Shirt,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Friend, Conversation, ChatMessage, ClothingItem, SharedOutfit } from '../../types';
@@ -36,6 +38,7 @@ export const InboxModal: React.FC = () => {
     showToast,
     chatOnlineStatus,
     setChatOnlineStatus,
+    loadOutfitInTryOn,
   } = useApp();
 
   const isLight = userProfile.preferences.theme === 'light';
@@ -49,6 +52,7 @@ export const InboxModal: React.FC = () => {
   const [isAttachingItem, setIsAttachingItem] = useState(false);
   const [selectedAttachmentItem, setSelectedAttachmentItem] = useState<ClothingItem | null>(null);
   const [showStatusOptions, setShowStatusOptions] = useState(false);
+  const [confirmLoadOutfit, setConfirmLoadOutfit] = useState<SharedOutfit | null>(null);
 
   // New message state
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
@@ -963,17 +967,50 @@ export const InboxModal: React.FC = () => {
                               }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-pink-600 font-mono">
-                                  Curated Fit
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-pink-500 font-mono flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-pink-500" />
+                                  <span>Curated Fit</span>
                                 </span>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-600/10 text-pink-600 font-bold border border-pink-600/20">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-500 font-bold border border-pink-500/20">
                                   {msg.sharedOutfit.aesthetic}
                                 </span>
                               </div>
 
-                              <h4 className="text-xs font-black leading-tight">
-                                {msg.sharedOutfit.name}
-                              </h4>
+                              {/* Stylized Avatar Graphic Wearing the Outfit */}
+                              {msg.sharedOutfit.avatarGraphic ? (
+                                <div
+                                  onClick={() => setConfirmLoadOutfit(msg.sharedOutfit!)}
+                                  className="relative rounded-2xl overflow-hidden aspect-[4/3] bg-slate-950 border border-slate-800 cursor-pointer group shadow-inner flex items-center justify-center"
+                                  title="Tap to try this outfit on your avatar in Try On"
+                                >
+                                  <img
+                                    src={msg.sharedOutfit.avatarGraphic}
+                                    alt={msg.sharedOutfit.name}
+                                    className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200"
+                                  />
+                                  <div className="absolute inset-0 bg-black/25 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                    <span className="opacity-90 group-hover:opacity-100 transition-opacity bg-black/80 backdrop-blur-md text-white text-[11px] font-black px-3 py-1.5 rounded-full border border-pink-500/50 flex items-center gap-1.5 shadow-xl">
+                                      <Shirt className="w-3.5 h-3.5 text-pink-400" />
+                                      <span>Tap to Try On Avatar</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-xs font-black leading-tight">
+                                  {msg.sharedOutfit.name}
+                                </h4>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmLoadOutfit(msg.sharedOutfit!)}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-lg border border-pink-500/50 bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 text-[10px] font-bold transition-all cursor-pointer"
+                                  title="Try On Avatar"
+                                >
+                                  <Shirt className="w-3 h-3 text-pink-400" />
+                                  <span>Try On</span>
+                                </button>
+                              </div>
 
                               {/* Mini pieces grid */}
                               <div className="grid grid-cols-4 gap-1.5">
@@ -1197,6 +1234,56 @@ export const InboxModal: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation prompt to load outfit onto user's avatar in Try On */}
+      {confirmLoadOutfit && (
+        <div
+          onClick={() => setConfirmLoadOutfit(null)}
+          className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-xs rounded-3xl ${
+              isLight ? 'bg-white text-slate-900 border-slate-200' : 'bg-slate-950 text-white border-slate-800'
+            } border p-5 shadow-2xl space-y-3.5 text-center`}
+          >
+            <div className={`w-12 h-12 rounded-2xl ${isLight ? 'cosmic-gradient-bg-light' : 'cosmic-gradient-bg'} mx-auto flex items-center justify-center text-white shadow-lg`}>
+              <Shirt className="w-6 h-6 text-white" />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-black">Load into Try On?</h3>
+              <p className="text-xs text-slate-400 mt-1">
+                This will redirect you to the Try On page and auto-apply all {confirmLoadOutfit.items.length} pieces from{' '}
+                <span className="font-bold text-pink-400">&apos;{confirmLoadOutfit.name}&apos;</span> onto your 3D avatar.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setConfirmLoadOutfit(null)}
+                className={`flex-1 py-2.5 rounded-xl border ${
+                  isLight ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-300'
+                } text-xs font-bold cursor-pointer`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const outfit = confirmLoadOutfit;
+                  setConfirmLoadOutfit(null);
+                  loadOutfitInTryOn(outfit);
+                }}
+                className={`flex-1 py-2.5 rounded-xl ${isLight ? 'cosmic-gradient-bg-light' : 'cosmic-gradient-bg'} text-white text-xs font-black shadow-md shadow-pink-600/30 active:scale-95 cursor-pointer`}
+              >
+                Load &amp; Try On
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

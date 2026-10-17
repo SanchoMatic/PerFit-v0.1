@@ -162,6 +162,7 @@ export interface SharedOutfit {
   aesthetic: string;
   items: ClothingItem[];
   createdAt: number;
+  avatarGraphic?: string;
 }
 
 export interface ChatMessage {
