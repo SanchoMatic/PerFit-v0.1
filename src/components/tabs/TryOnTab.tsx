@@ -33,8 +33,8 @@ interface ApparelCategoryDef {
 
 const APPAREL_CATEGORIES: ApparelCategoryDef[] = [
   {
-    id: 'hats',
-    name: 'Hats',
+    id: 'headwear',
+    name: 'Headwear',
     icon: ({ className }) => (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className || 'w-4 h-4'}>
         <path d="M3 17h18" />
@@ -103,15 +103,151 @@ export const TryOnTab: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Active head-to-toe category
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('tops');
-  const [hoveredCategory, setHoveredCategory] = useState<ApparelCategoryDef | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('headwear');
+
+  // Draggable category selector state (like the nav bar highlighter selector)
+  const categoryBarRef = useRef<HTMLDivElement>(null);
+  const [isDraggingCategory, setIsDraggingCategory] = useState(false);
+  const [dragPixelY, setDragPixelY] = useState<number | null>(null);
+  const [barHeight, setBarHeight] = useState(0);
+
+  useEffect(() => {
+    const updateBarHeight = () => {
+      if (categoryBarRef.current) {
+        setBarHeight(categoryBarRef.current.getBoundingClientRect().height);
+      }
+    };
+    updateBarHeight();
+    window.addEventListener('resize', updateBarHeight);
+    return () => window.removeEventListener('resize', updateBarHeight);
+  }, []);
+
+  const activeCatIndex = APPAREL_CATEGORIES.findIndex((c) => c.id === selectedCategoryId);
+  const safeCatIndex = activeCatIndex !== -1 ? activeCatIndex : 0;
+  const rowHeight = barHeight > 0 ? barHeight / APPAREL_CATEGORIES.length : 38;
+
+  // Category speech bubble state (appears temporarily for ~1.5s after selection, only one visible, fades out every time)
+  const [bubbleInfo, setBubbleInfo] = useState<{
+    catId: string;
+    name: string;
+    fading: boolean;
+  } | null>(null);
+  const bubbleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const bubbleFadeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerCategoryBubble = useCallback((category: ApparelCategoryDef) => {
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+    if (bubbleFadeTimerRef.current) clearTimeout(bubbleFadeTimerRef.current);
+
+    setBubbleInfo({
+      catId: category.id,
+      name: category.name,
+      fading: false,
+    });
+
+    bubbleTimerRef.current = setTimeout(() => {
+      setBubbleInfo((prev) => (prev ? { ...prev, fading: true } : null));
+      bubbleFadeTimerRef.current = setTimeout(() => {
+        setBubbleInfo(null);
+      }, 350);
+    }, 1500);
+  }, []);
+
+  const handleSelectCategory = (cat: ApparelCategoryDef) => {
+    setSelectedCategoryId(cat.id);
+    triggerCategoryBubble(cat);
+  };
+
+  // Pull / Drag up and down on vertical scroll bar exactly like nav bar highlighter
+  const handleCategoryTouchStart = (e: React.TouchEvent) => {
+    if (!categoryBarRef.current) return;
+    setIsDraggingCategory(true);
+    const rect = categoryBarRef.current.getBoundingClientRect();
+    const relY = e.touches[0].clientY - rect.top;
+    setBarHeight(rect.height);
+    setDragPixelY(relY);
+    const rowH = rect.height / APPAREL_CATEGORIES.length;
+    const idx = Math.max(0, Math.min(APPAREL_CATEGORIES.length - 1, Math.floor(relY / rowH)));
+    const cat = APPAREL_CATEGORIES[idx];
+    if (cat) {
+      handleSelectCategory(cat);
+    }
+  };
+
+  const handleCategoryTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingCategory || !categoryBarRef.current) return;
+    if (e.cancelable) e.preventDefault();
+    const rect = categoryBarRef.current.getBoundingClientRect();
+    const relY = e.touches[0].clientY - rect.top;
+    setDragPixelY(relY);
+    const rowH = rect.height / APPAREL_CATEGORIES.length;
+    const idx = Math.max(0, Math.min(APPAREL_CATEGORIES.length - 1, Math.floor(relY / rowH)));
+    const cat = APPAREL_CATEGORIES[idx];
+    if (cat && cat.id !== selectedCategoryId) {
+      handleSelectCategory(cat);
+    }
+  };
+
+  const handleCategoryTouchEnd = () => {
+    if (isDraggingCategory && dragPixelY !== null && barHeight > 0) {
+      const rowH = barHeight / APPAREL_CATEGORIES.length;
+      const finalIdx = Math.max(0, Math.min(APPAREL_CATEGORIES.length - 1, Math.floor(dragPixelY / rowH)));
+      const cat = APPAREL_CATEGORIES[finalIdx];
+      if (cat) {
+        handleSelectCategory(cat);
+      }
+    }
+    setIsDraggingCategory(false);
+    setDragPixelY(null);
+  };
+
+  const handleCategoryMouseDown = (e: React.MouseEvent) => {
+    if (!categoryBarRef.current) return;
+    setIsDraggingCategory(true);
+    const rect = categoryBarRef.current.getBoundingClientRect();
+    const relY = e.clientY - rect.top;
+    setBarHeight(rect.height);
+    setDragPixelY(relY);
+    const rowH = rect.height / APPAREL_CATEGORIES.length;
+    const idx = Math.max(0, Math.min(APPAREL_CATEGORIES.length - 1, Math.floor(relY / rowH)));
+    const cat = APPAREL_CATEGORIES[idx];
+    if (cat) {
+      handleSelectCategory(cat);
+    }
+  };
+
+  const handleCategoryMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingCategory || !categoryBarRef.current) return;
+    const rect = categoryBarRef.current.getBoundingClientRect();
+    const relY = e.clientY - rect.top;
+    setDragPixelY(relY);
+    const rowH = rect.height / APPAREL_CATEGORIES.length;
+    const idx = Math.max(0, Math.min(APPAREL_CATEGORIES.length - 1, Math.floor(relY / rowH)));
+    const cat = APPAREL_CATEGORIES[idx];
+    if (cat && cat.id !== selectedCategoryId) {
+      handleSelectCategory(cat);
+    }
+  };
+
+  const handleCategoryMouseUp = () => {
+    setIsDraggingCategory(false);
+    setDragPixelY(null);
+  };
+
+  const pillHeightPx = rowHeight > 0 ? Math.min(34, rowHeight - 4) : 32;
+  const targetItemCenterY = (safeCatIndex + 0.5) * rowHeight;
+  const snappedPillTop = targetItemCenterY - pillHeightPx / 2;
+
+  const draggedPillTop =
+    dragPixelY !== null && barHeight > 0
+      ? Math.max(2, Math.min(barHeight - pillHeightPx - 2, dragPixelY - pillHeightPx / 2))
+      : snappedPillTop;
 
   // Dropdown for saved outfits
   const [isOutfitDropdownOpen, setIsOutfitDropdownOpen] = useState(false);
 
   // Selected items in memory (keyed by id so they persist across category changes)
   const [selectedItemsMap, setSelectedItemsMap] = useState<Record<string, ClothingItem>>(() => {
-    // Default initial selection
     const defaultTop = INITIAL_CATALOG.find((i) => i.category.toLowerCase().includes('top')) || INITIAL_CATALOG[0];
     const defaultPants = INITIAL_CATALOG.find((i) => i.category.toLowerCase().includes('pant')) || INITIAL_CATALOG[1];
     return {
@@ -120,12 +256,8 @@ export const TryOnTab: React.FC = () => {
     };
   });
 
-  // Currently applied items on the 3D avatar (only updated when user taps 'Try On')
-  const [appliedItems, setAppliedItems] = useState<ClothingItem[]>(() => {
-    const defaultTop = INITIAL_CATALOG.find((i) => i.category.toLowerCase().includes('top')) || INITIAL_CATALOG[0];
-    const defaultPants = INITIAL_CATALOG.find((i) => i.category.toLowerCase().includes('pant')) || INITIAL_CATALOG[1];
-    return [defaultTop, defaultPants];
-  });
+  // Currently applied items on the 3D avatar (initially empty so plain casual base white clothing displays as requested)
+  const [appliedItems, setAppliedItems] = useState<ClothingItem[]>([]);
 
   const [isApplying, setIsApplying] = useState(false);
   const [avatarSnapshot, setAvatarSnapshot] = useState<string | null>(null);
@@ -206,7 +338,7 @@ export const TryOnTab: React.FC = () => {
 
     const matchesCategory = (item: ClothingItem) => {
       const itemCat = item.category.toLowerCase();
-      if (cat === 'hats') return itemCat.includes('hat') || itemCat.includes('beanie') || itemCat.includes('cap');
+      if (cat === 'headwear' || cat === 'hats') return itemCat.includes('hat') || itemCat.includes('beanie') || itemCat.includes('cap') || itemCat.includes('headwear') || itemCat.includes('beret');
       if (cat === 'eyewear') return itemCat.includes('eye') || itemCat.includes('glass') || itemCat.includes('accessory');
       if (cat === 'jackets') return itemCat.includes('jacket') || itemCat.includes('outerwear') || itemCat.includes('coat');
       if (cat === 'tops') return itemCat.includes('top') || itemCat.includes('shirt') || itemCat.includes('hoodie') || itemCat.includes('sweater') || itemCat.includes('tee');
@@ -488,32 +620,55 @@ export const TryOnTab: React.FC = () => {
             />
           </div>
 
-          {/* Right Side Vertical Apparel Category Selector (Head-to-Toe scroll/tap bar) */}
+          {/* Right Side Vertical Apparel Category Selector (Pullable highlighter bar exactly like nav bar) */}
           <div className="w-[18%] sm:w-[16%] flex flex-col items-center justify-center relative py-1">
             {/* The Vertical Pill Strip */}
             <div
-              className={`py-3 px-1.5 rounded-full border ${
+              ref={categoryBarRef}
+              onTouchStart={handleCategoryTouchStart}
+              onTouchMove={handleCategoryTouchMove}
+              onTouchEnd={handleCategoryTouchEnd}
+              onMouseDown={handleCategoryMouseDown}
+              onMouseMove={handleCategoryMouseMove}
+              onMouseUp={handleCategoryMouseUp}
+              className={`py-2 px-1.5 rounded-full border ${
                 isLight
                   ? 'bg-white/90 border-slate-300 shadow-md'
                   : 'bg-slate-900/80 border-slate-700/80 shadow-xl'
-              } backdrop-blur-md flex flex-col items-center gap-3 relative`}
+              } backdrop-blur-md flex flex-col items-center relative select-none touch-none cursor-ns-resize`}
             >
+              {/* Draggable highlighter selector pill (slides smoothly with finger drag or snaps mathematically to category) */}
+              <div
+                style={{
+                  top: `${draggedPillTop}px`,
+                  height: `${pillHeightPx}px`,
+                  transition: isDraggingCategory ? 'none' : 'top 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+                className={`absolute left-1 right-1 rounded-full ${
+                  isLight ? 'cosmic-gradient-bg-light shadow-pink-600/30' : 'cosmic-gradient-bg shadow-pink-600/50'
+                } shadow-md pointer-events-none z-0`}
+              />
+
               {APPAREL_CATEGORIES.map((cat) => {
                 const isSelected = selectedCategoryId === cat.id;
                 const IconComp = cat.icon;
 
                 return (
-                  <div key={cat.id} className="relative flex items-center justify-center">
-                    {/* Speech bubble on hover or active selection, pointing to the category item */}
-                    {(hoveredCategory?.id === cat.id || (isSelected && !hoveredCategory)) && (
+                  <div key={cat.id} className="relative flex items-center justify-center my-1 z-10">
+                    {/* Category title bubble that emerges to the left of the scroll bar for ~1.5s after being selected, then fades out */}
+                    {bubbleInfo && bubbleInfo.catId === cat.id && (
                       <div
-                        className={`absolute right-full mr-2.5 px-2.5 py-1 rounded-xl pointer-events-none whitespace-nowrap shadow-xl z-50 text-[11px] font-black tracking-wide flex items-center gap-1 animate-in fade-in slide-in-from-right-1 duration-150 ${
+                        className={`absolute right-full mr-2.5 px-3 py-1.5 rounded-xl pointer-events-none whitespace-nowrap shadow-xl z-50 text-[11px] font-black tracking-wide flex items-center gap-1 transition-all duration-300 ease-out ${
+                          bubbleInfo.fading
+                            ? 'opacity-0 -translate-x-2'
+                            : 'opacity-100 translate-x-0'
+                        } ${
                           isLight
                             ? 'bg-slate-900 text-white border border-slate-800'
                             : 'bg-white text-slate-950 border border-slate-200'
                         }`}
                       >
-                        <span>{cat.name}</span>
+                        <span>{bubbleInfo.name}</span>
                         {/* Speech Bubble Arrow pointing right to the symbol */}
                         <div
                           className={`absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 rotate-45 ${
@@ -526,19 +681,13 @@ export const TryOnTab: React.FC = () => {
                     {/* Category symbol button */}
                     <button
                       type="button"
-                      onMouseEnter={() => setHoveredCategory(cat)}
-                      onMouseLeave={() => setHoveredCategory(null)}
-                      onTouchStart={() => setHoveredCategory(cat)}
-                      onTouchEnd={() => setHoveredCategory(null)}
-                      onClick={() => setSelectedCategoryId(cat.id)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                      onClick={() => handleSelectCategory(cat)}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
                         isSelected
-                          ? isLight
-                            ? 'cosmic-gradient-bg-light text-white shadow-md scale-110'
-                            : 'cosmic-gradient-bg text-white shadow-md scale-110'
+                          ? 'text-white font-bold'
                           : isLight
-                          ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                          ? 'text-slate-600 hover:text-slate-950'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                       title={cat.name}
                     >
@@ -592,7 +741,7 @@ export const TryOnTab: React.FC = () => {
               </span>
             </div>
             <span className="text-[10px] text-slate-400">
-              Tap card or bubble to select
+              Tap to select
             </span>
           </div>
 
